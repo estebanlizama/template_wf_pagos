@@ -1,0 +1,13 @@
+pages:
+  stage: deploy
+  script:
+    - mkdir public
+    - cp *.html public/
+    - cp 01_vista_formulario_solicitud.html public/index.html
+    # Si tuvieras carpetas de css o js, las copiaríamos aquí también
+    # cp -r css public/ 
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
