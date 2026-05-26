@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisión Presupuestaria y Pago Finanzas - Universidad de La Frontera</title>
+    <!-- Bootstrap 4 & Font Awesome -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: 'Outfit', 'Inter', sans-serif; background-color: #f1f5f9; }
+        
+        /* Visor A4 PDF Premium */
+        .card-minimal {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        
+        .nav-tabs-premium {
+            border-bottom: 1px solid #e2e8f0;
+            padding-left: 1rem;
+            background: #f8fafc;
+        }
+
+        .nav-tabs-premium .nav-link {
+            border: none;
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.9rem 1.25rem;
+            background: transparent;
+            margin-bottom: -1px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s ease;
+        }
+
+        .nav-tabs-premium .nav-link:hover {
+            color: var(--ufro-blue);
+            border-bottom-color: #cbd5e1;
+        }
+
+        .nav-tabs-premium .nav-link.active {
+            color: var(--ufro-blue);
+            font-weight: 700;
+            background: #ffffff;
+            border-bottom: 2.5px solid var(--ufro-blue);
+        }
+
+        .document-wrapper {
+            background-color: #ffffff;
+            padding: 1.5rem;
+        }
+
+        .pdf-canvas {
+            background-color: #cbd5e1;
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            max-height: 520px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .pdf-page-sheet {
+            background: #ffffff;
+            width: 100%;
+            max-width: 720px;
+            padding: 2.5rem 3rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border-radius: 4px;
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            line-height: 1.4;
+        }
+
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+            margin-bottom: 15px;
+        }
+
+        .pdf-header-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--ufro-blue);
+            text-transform: uppercase;
+        }
+
+        .pdf-header-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.55rem;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .pdf-res-number {
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-align: right;
+        }
+
+        .pdf-body-title {
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 15px 0;
+        }
+
+        .pdf-section-text {
+            text-align: justify;
+            text-indent: 30px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+
+        .pdf-bold-tag {
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-block;
+            text-indent: 0;
+            margin-right: 8px;
+        }
+
+        .pdf-annex-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            margin: 10px 0;
+        }
+
+        .pdf-annex-table th, .pdf-annex-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .pdf-annex-table th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+        }
+
+        .pdf-signatures {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .pdf-signature-box {
+            width: 45%;
+        }
+
+        .pdf-signature-line {
+            border-top: 1px solid #000;
+            margin-top: 30px;
+            padding-top: 4px;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+
+        .pdf-distrib {
+            margin-top: 20px;
+            font-size: 0.55rem;
+            border-top: 1px solid #ddd;
+            padding-top: 4px;
+            color: #555;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Bitácora de Trazabilidad */
+        .trace-timeline {
+            border-left: 2px solid #e2e8f0;
+            padding-left: 20px;
+            margin-left: 10px;
+        }
+        
+        .trace-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .trace-item::before {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #cbd5e1;
+            border: 2.5px solid #fff;
+            box-shadow: 0 0 0 2px #cbd5e1;
+            position: absolute;
+            left: -27px;
+            top: 4px;
+            z-index: 10;
+        }
+        
+        .trace-item.completed::before {
+            background-color: var(--ufro-green);
+            box-shadow: 0 0 0 2px var(--ufro-green);
+        }
+
+        .trace-item.active::before {
+            background-color: var(--ufro-orange);
+            box-shadow: 0 0 0 2px var(--ufro-orange);
+        }
+        
+        .trace-time {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 2px;
+        }
+
+        .trace-content {
+            font-size: 0.8rem;
+            color: #334155;
+        }
+
+        .evidence-btn-download {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <div id="sidebar-wrapper">
+        <div class="logo-cont">
+            <img src="https://intranet.ufro.cl/estilo/img/logo_bl.png" class="logo" alt="UFRO">
+        </div>
+        <div class="list-group list-group-flush">
+            <h6 class="sidebar-heading">Workflow de Pagos</h6>
+            <a href="#" class="list-group-item"><i class="fas fa-home"></i> Inicio</a>
+            <a href="01_vista_solicitante_pago.html" class="list-group-item"><i class="fas fa-hand-holding-usd"></i> Solicitud de Pago</a>
+            <a href="02_vista_dgdp_pago.html" class="list-group-item"><i class="fas fa-shield-alt"></i> Control DGDP</a>
+            <a href="03_vista_direccion_finanzas_pago.html" class="list-group-item active"><i class="fas fa-receipt"></i> Pago Finanzas</a>
+        </div>
+    </div>
+
+    <!-- Page Content -->
+    <div id="page-content-wrapper">
+        <!-- Topbar -->
+        <nav id="dna-topbar">
+            <div class="d-flex align-items-center">
+                <button class="btn-toggle-menu mr-3" id="menu-toggle" aria-label="Toggle Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <img class="topbar-logo mr-3" src="https://intranet.ufro.cl/estilo/img/logo_bl.png" alt="UFRO">
+                <h5 class="topbar-title m-0 d-none d-sm-inline-block">REVISIÓN PRESUPUESTARIA Y EGRESO</h5>
+            </div>
+            
+            <div class="d-flex align-items-center ml-auto">
+                <div class="user-details text-right mr-3">
+                    <span class="user-name d-block">HERNÁN LÓPEZ C.</span>
+                    <span class="user-role small">ANALISTA DE FINANZAS CENTRAL</span>
+                </div>
+                <div class="topbar-icon-circle mr-2">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="topbar-icon-circle">
+                    <i class="fas fa-bell"></i>
+                </div>
+            </div>
+            <div class="topbar-rainbow-bar"></div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container-fluid py-4 px-lg-5">
+            <div class="row">
+                <div class="col-xl-12">
+                    
+                    <!-- Encabezado de la solicitud -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h4 class="font-weight-bold text-dark mb-1" style="font-family: 'Outfit';">Revisión Presupuestaria y Cierre Contable de Egreso</h4>
+                            <p class="text-muted small mb-0">Expediente mensual: <strong>ID_SOLI_PAGO_39402</strong> | Mes de cobro: <strong>Junio 2026</strong></p>
+                        </div>
+                        <span class="badge-status status-3 shadow-xs" id="pago_estado_badge">
+                            <i class="fas fa-receipt"></i> EN REVISIÓN FINANZAS
+                        </span>
+                    </div>
+
+                    <div class="row">
+                        <!-- Columna Izquierda: Visor PDF A4 e Historial Completo -->
+                        <div class="col-lg-7 col-xl-8">
+                            
+                            <!-- Visor PDF A4 Premium -->
+                            <div class="card-minimal">
+                                <ul class="nav nav-tabs nav-tabs-premium" id="documentTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="formato-tab" data-toggle="tab" data-target="#formato" type="button" role="tab" aria-controls="formato" aria-selected="true">
+                                            <i class="fas fa-file-invoice mr-1 text-danger"></i> Formato de resolución
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="anexo-tab" data-toggle="tab" data-target="#anexo" type="button" role="tab" aria-controls="anexo" aria-selected="false">
+                                            <i class="fas fa-table mr-1 text-primary"></i> Anexo
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content document-wrapper" id="documentTabsContent">
+                                    
+                                    <!-- TAB 1: Formato de Resolución (PDF Canvas) -->
+                                    <div class="tab-pane fade show active" id="formato" role="tabpanel" aria-labelledby="formato-tab">
+                                        <div class="pdf-canvas">
+                                            <div class="pdf-page-sheet shadow">
+                                                <!-- Header PDF -->
+                                                <div class="pdf-header">
+                                                    <div>
+                                                        <span class="pdf-header-title">Universidad de La Frontera</span>
+                                                        <div class="pdf-header-subtitle">Secretaría General</div>
+                                                    </div>
+                                                    <div class="pdf-res-number">
+                                                        RESOLUCIÓN EXENTA Nº 009/2026
+                                                    </div>
+                                                </div>
+
+                                                <div class="pdf-body-title">
+                                                    TEMUCO, 15 de Enero de 2026
+                                                </div>
+
+                                                <!-- Vistos -->
+                                                <div class="pdf-section-text">
+                                                    <span class="pdf-bold-tag">VISTO:</span> El Estatuto de la Universidad de La Frontera, aprobado por D.F.L. Nº 156 de 1981 de Educación; la Ley Nº 19.886 de Bases sobre Contratos Administrativos de Suministro y Prestación de Servicios; el Reglamento de Prestación de Servicios de la Universidad formalizado en el Decreto Universitario Nº 009/2026; y las atribuciones que me confiere la normativa interna vigente.
+                                                </div>
+
+                                                <!-- Considerandos -->
+                                                <div class="pdf-section-text">
+                                                    <span class="pdf-bold-tag">CONSIDERANDO:</span>
+                                                    1. Que, en conformidad con los objetivos del proyecto "ANID Fondecyt 1240398 - Desarrollo e implementación del módulo analítico de bioprocesos en reactores", se requiere encomendar la ejecución de labores de prestación de servicios profesionales de carácter transitorio e independiente.
+                                                    2. Que la propuesta ha sido visada administrativamente, acreditándose que los prestadores cumplen con los requisitos de idoneidad y tope normativo establecido en el Decreto Nº 009/2026.
+                                                    3. Que existe saldo disponible y financiamiento compatible en el Centro de Costos "4050.21" asociado a Fondos Propios de la institución.
+                                                </div>
+
+                                                <!-- Resuelvo -->
+                                                <div class="pdf-section-text" style="text-indent: 0;">
+                                                    <span class="pdf-bold-tag">RESUELVO:</span>
+                                                </div>
+                                                <div class="pdf-section-text">
+                                                    1. AUTORÍZASE la prestación de servicios del profesional individualizado en el anexo de la presente resolución, bajo las condiciones y sueldos brutas mensuales indicados.
+                                                </div>
+                                                <div class="pdf-section-text">
+                                                    2. ESTABLÉCESE que los pagos se materializarán mensualmente contra presentación del informe de labores preexistente y la respectiva carga física de los medios de verificación (evidencias) que acrediten el cumplimiento de la prestación.
+                                                </div>
+
+                                                <!-- Signatures -->
+                                                <div class="pdf-signatures">
+                                                    <div class="pdf-signature-box">
+                                                        <div class="pdf-signature-line">
+                                                            GONZALO OPORTO VENEGAS<br>
+                                                            Secretario General
+                                                        </div>
+                                                    </div>
+                                                    <div class="pdf-signature-box">
+                                                        <div class="pdf-signature-line">
+                                                            DR. EDUARDO HEBEL WEISS<br>
+                                                            Rector
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Distribution -->
+                                                <div class="pdf-distrib">
+                                                    <strong>DISTRIBUCIÓN:</strong> Solicitante, Dirección de Finanzas, DGDP, Control Contable.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- TAB 2: Anexo -->
+                                    <div class="tab-pane fade" id="anexo" role="tabpanel" aria-labelledby="anexo-tab">
+                                        <div class="pdf-canvas">
+                                            <div class="pdf-page-sheet shadow">
+                                                <h6 class="font-weight-bold text-dark text-center mb-3 text-uppercase small" style="letter-spacing: 0.5px; font-family:'Outfit';">ANEXO DE PRESTACIÓN DE SERVICIOS</h6>
+                                                
+                                                <table class="pdf-annex-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>RUT</th>
+                                                            <th>Nombre del Prestador</th>
+                                                            <th>Proyecto</th>
+                                                            <th>CC Imputación</th>
+                                                            <th>Monto Mensual</th>
+                                                            <th>Total Pactado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td class="font-weight-bold">15.845.221-K</td>
+                                                            <td>Carlos Fuentes Rivera</td>
+                                                            <td>Fondecyt 1240398</td>
+                                                            <td>4050.21 (Fondos Propios)</td>
+                                                            <td class="font-weight-bold text-success">$1.850.000</td>
+                                                            <td class="font-weight-bold">$3.700.000</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Historial de Trazabilidad Completo -->
+                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                <div class="card-header bg-white border-bottom py-3">
+                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-history mr-2"></i> Trazabilidad del Workflow del Mes</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="trace-timeline">
+                                        
+                                        <!-- Paso 1 -->
+                                        <div class="trace-item completed">
+                                            <div class="trace-time">01/06/2026 09:15:30 &bull; SOLICITANTE</div>
+                                            <div class="trace-content">
+                                                <strong>Franco Valdebenito (Solicitante/Beneficiario)</strong> crea borrador, valida labores y adjunta archivos de evidencias físicas en conformidad con las funciones del mes.
+                                            </div>
+                                        </div>
+
+                                        <!-- Paso 2 -->
+                                        <div class="trace-item completed">
+                                            <div class="trace-time">01/06/2026 09:16:05 &bull; SISTEMA (MOTOR BDD)</div>
+                                            <div class="trace-content">
+                                                Cruce automático con <strong>SISPER</strong> exitoso. Se constata ausencia de Licencias Médicas, Permisos sin Goce de Sueldo y vigencia formal del proyecto Fondecyt 1240398.
+                                            </div>
+                                        </div>
+
+                                        <!-- Paso 3 -->
+                                        <div class="trace-item completed">
+                                            <div class="trace-time">02/06/2026 14:20:44 &bull; CONTROL DGDP</div>
+                                            <div class="trace-content">
+                                                <strong>Marcela Morales G. (Analista DGDP)</strong> aprueba visación normativo y deriva a Finanzas.
+                                                <div class="text-primary font-italic mt-1 small bg-light p-2 border rounded">
+                                                    "Comentario: Se auditan y aprueban las labores preexistentes y respaldos de evidencias físicas. Se certifica que la asignación bruta de $1.850.000 respeta de manera exacta el tope del 50% de la Renta Bruta del funcionario ($3.700.000)."
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Paso 4 -->
+                                        <div class="trace-item active">
+                                            <div class="trace-time">Hoy (Pendiente) &bull; DIRECCIÓN DE FINANZAS</div>
+                                            <div class="trace-content font-italic text-muted">
+                                                Esperando verificación final de saldo contable en Centro de Costos e ingreso de referencia contable bancaria de egreso para archivar la cuota.
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Controles de Presupuestos, Egreso y Pago -->
+                        <div class="col-lg-5 col-xl-4">
+                            
+                            <!-- Consulta Presupuestaria en Tiempo Real -->
+                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                <div class="card-header bg-white border-bottom py-3">
+                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-wallet mr-2"></i> Consulta Presupuestaria CC</h6>
+                                </div>
+                                <div class="card-body">
+                                    
+                                    <!-- Selector de Simulación de CC -->
+                                    <div class="form-group mb-3 pb-3 border-bottom">
+                                        <label class="small text-muted font-weight-bold">Centro de Costo Consultar</label>
+                                        <select class="form-control form-control-sm" id="cc_selector" onchange="actualizarCencoPresupuesto()">
+                                            <option value="cc_normal">4050.21 - Inst. Agroindustria (Fondos Propios)</option>
+                                            <option value="cc_insuficiente">4112.21 - Ctro. Excelencia CICA (Saldo Insuficiente)</option>
+                                            <option value="cc_incompatible">5020.10 - Depto. Computación (Fondos Estructurales)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="row no-gutters mb-3">
+                                        <div class="col-6">
+                                            <div class="data-label">Financiamiento</div>
+                                            <div class="data-value text-dark" style="font-size:0.85rem;" id="lbl_financia">21 - Fondos Propios</div>
+                                        </div>
+                                        <div class="col-6 text-right">
+                                            <div class="data-label">Decreto Afecto</div>
+                                            <div class="data-value text-muted font-weight-normal" style="font-size:0.85rem;">Decreto 009/2026</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row no-gutters mb-3 pb-3 border-bottom">
+                                        <div class="col-6">
+                                            <div class="data-label">Saldo Disponible CC</div>
+                                            <div class="data-value text-success font-weight-bold" style="font-size:0.95rem;" id="lbl_saldo">$15.420.000</div>
+                                        </div>
+                                        <div class="col-6 text-right">
+                                            <div class="data-label">Sueldo Cuota Mes</div>
+                                            <div class="data-value text-dark font-weight-bold" style="font-size:0.95rem;">$1.850.000</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row no-gutters">
+                                        <div class="col-12">
+                                            <div class="data-label">Saldo Proyectado CC</div>
+                                            <div class="data-value text-success font-weight-bold" style="font-size:1.1rem;" id="lbl_saldo_proyectado">$13.570.000</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Alerta Presupuestaria de Deuda/Incompatibilidad -->
+                                    <div class="alert alert-danger mb-0 mt-3 rounded-lg hidden" id="cc_alerta_box">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> <span id="cc_alerta_text">El saldo proyectado es inferior al monto solicitado. Operación bloqueada.</span>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Panel de Egreso Contable y Cierre de Pago -->
+                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                <div class="card-header bg-white border-bottom py-3">
+                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-receipt mr-2"></i> Registro de Egreso y Cierre</h6>
+                                </div>
+                                <div class="card-body">
+                                    
+                                    <!-- Input Nro. Transacción -->
+                                    <div class="form-group mb-4">
+                                        <label class="small text-danger font-weight-bold"><i class="fas fa-barcode mr-1"></i> Número Transacción Bancaria / Egreso (Obligatorio)</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text bg-white"><i class="fas fa-receipt"></i></span></div>
+                                            <input type="text" class="form-control font-weight-bold text-dark text-uppercase" style="letter-spacing:1px;" id="nro_transac" placeholder="Ej: TE-984039A">
+                                        </div>
+                                        <p class="text-muted small mt-1 mb-0">Debe registrar la referencia de dispersión contable de fondos antes de liquidar.</p>
+                                    </div>
+
+                                    <!-- Botones de Acción -->
+                                    <button class="btn-ufro-success btn-block font-weight-bold text-center py-2" id="btn_pagar" onclick="procesarPago()">
+                                        <i class="fas fa-check-circle mr-2"></i> Autorizar Egreso y Confirmar Pago
+                                    </button>
+                                    
+                                    <button class="btn-ufro-secondary btn-block font-weight-bold text-center mt-2" id="btn_rechazar" style="font-size:0.75rem !important;" onclick="abrirRechazo()">
+                                        <i class="fas fa-ban mr-1"></i> Rechazar Pago por Falta Presupuesto
+                                    </button>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contenedor global de Toasts -->
+<div id="ufro-toast-container"></div>
+
+<!-- Modal Aprobación y Pago -->
+<div class="modal fade" id="modalPagar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered ufro-confirm-modal" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-receipt mr-2"></i> Confirmar Ejecución de Pago</h5>
+            </div>
+            <div class="modal-body text-dark">
+                <p>¿Está seguro que desea **Autorizar el Egreso Contable** y cerrar la cuota del mes de Junio 2026 por el monto de **$1.850.000**?</p>
+                <p class="small text-muted mb-0">Al confirmar, el sistema deducirá el saldo en el Centro de Costos, registrará la transacción bancaria y enviará notificación electrónica de depósito al prestador.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ufro-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-ufro-primary" id="btn_confirmar_final" onclick="confirmarPago()">Confirmar y Pagar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rechazo Presupuestario -->
+<div class="modal fade" id="modalRechazar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered ufro-confirm-modal" role="document">
+        <div class="modal-content" style="border-top: 5px solid #dc2626 !important;">
+            <div class="modal-header" style="background-color: #dc2626 !important;">
+                <h5 class="modal-title"><i class="fas fa-ban mr-2"></i> Rechazo de Transferencia</h5>
+            </div>
+            <div class="modal-body text-dark">
+                <p class="font-weight-bold text-danger">Se rechazará y cancelará el expediente mensual debido a problemas presupuestarios o de fondos.</p>
+                <div class="form-group mb-0">
+                    <label class="font-weight-bold text-dark">Indique justificación contable (Mínimo 20 caracteres)</label>
+                    <textarea class="form-control" id="rechazo_comentario" rows="3" placeholder="Ej: Centro de costo no presenta saldo líquido suficiente..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ufro-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-ufro-danger" onclick="confirmarRechazo()">Rechazar y Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS INTERACTIVOS MOCKUP -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    // Toasts
+    function showToast(type, title, message) {
+        const container = document.getElementById('ufro-toast-container');
+        const toast = document.createElement('div');
+        toast.className = `ufro-toast ufro-toast-${type}`;
+        
+        let iconClass = 'fa-info-circle';
+        if (type === 'success') iconClass = 'fa-check-circle';
+        if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+        if (type === 'danger') iconClass = 'fa-ban';
+
+        toast.innerHTML = `
+            <div class="ufro-toast-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="ufro-toast-content">
+                <div class="ufro-toast-title">${title}</div>
+                <div class="ufro-toast-message">${message}</div>
+            </div>
+            <button class="ufro-toast-close" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, 5000);
+    }
+
+    function downloadSimulation(filename) {
+        showToast('info', 'Descargando Archivo', `Descargando evidencia física de respaldo: ${filename}`);
+    }
+
+    // Simulación cambio de Cenco
+    function actualizarCencoPresupuesto() {
+        const cenco = document.getElementById('cc_selector').value;
+        const lblFinancia = document.getElementById('lbl_financia');
+        const lblSaldo = document.getElementById('lbl_saldo');
+        const lblProyectado = document.getElementById('lbl_saldo_proyectado');
+        const alertBox = document.getElementById('cc_alerta_box');
+        const alertText = document.getElementById('cc_alerta_text');
+        const btnPagar = document.getElementById('btn_pagar');
+
+        if (cenco === 'cc_normal') {
+            lblFinancia.textContent = "21 - Fondos Propios";
+            lblFinancia.className = "data-value text-dark";
+            lblSaldo.textContent = "$15.420.000";
+            lblSaldo.className = "data-value text-success font-weight-bold";
+            lblProyectado.textContent = "$13.570.000";
+            lblProyectado.className = "data-value text-success font-weight-bold";
+            alertBox.classList.add('hidden');
+            btnPagar.disabled = false;
+            showToast('success', 'CC Agroindustria Consultada', 'Fondos compatibles (21) y liquidez suficiente.');
+        } else if (cenco === 'cc_insuficiente') {
+            lblFinancia.textContent = "21 - Fondos Propios";
+            lblFinancia.className = "data-value text-dark";
+            lblSaldo.textContent = "$450.000";
+            lblSaldo.className = "data-value text-danger font-weight-bold";
+            lblProyectado.textContent = "-$1.400.000";
+            lblProyectado.className = "data-value text-danger font-weight-bold badge-pulse";
+            alertText.textContent = "El saldo disponible es menor que el sueldo mensual solicitado ($1.850.000). Operación bloqueada.";
+            alertBox.classList.remove('hidden');
+            btnPagar.disabled = true;
+            showToast('danger', 'Liquidez Insuficiente', 'El Centro de Costos presenta un saldo inferior a la cuota del mes.');
+        } else if (cenco === 'cc_incompatible') {
+            lblFinancia.textContent = "10 - Fondos Estructurales";
+            lblFinancia.className = "data-value text-danger font-weight-bold";
+            lblSaldo.textContent = "$32.890.000";
+            lblSaldo.className = "data-value text-muted font-weight-bold";
+            lblProyectado.textContent = "$31.040.000";
+            lblProyectado.className = "data-value text-muted font-weight-bold";
+            alertText.textContent = "Financiamiento incompatible: Prohibido imputar PDS normadas por el Decreto 009/2026 con fondos estructurales (10).";
+            alertBox.classList.remove('hidden');
+            btnPagar.disabled = true;
+            showToast('danger', 'Fondos Incompatibles', 'El origen de los fondos no corresponde a Fondos Propios (21) o Terceros (44).');
+        }
+    }
+
+    function procesarPago() {
+        const transac = document.getElementById('nro_transac').value.trim();
+        if (transac.length === 0) {
+            showToast('danger', 'Transacción Bancaria Requerida', 'Debe ingresar el código de referencia contable de egreso contable / nro_transac para archivar el pago.');
+            return;
+        }
+        $('#modalPagar').modal('show');
+    }
+
+    function confirmarPago() {
+        $('#modalPagar').modal('hide');
+        const transac = document.getElementById('nro_transac').value.trim().toUpperCase();
+        
+        // Simulación de carga
+        const btnPagar = document.getElementById('btn_pagar');
+        btnPagar.disabled = true;
+        btnPagar.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span> Procesando egreso bancario...';
+        
+        setTimeout(() => {
+            showToast('success', 'Pago Transferido con Éxito', `Egreso bancario registrado bajo el correlativo ${transac} en sg_pago_soli.`);
+            showToast('info', 'Notificación Despachada', 'Correo electrónico de aviso de depósito enviado exitosamente al beneficiario Carlos Fuentes.');
+            
+            // Actualizar interfaz
+            document.getElementById('pago_estado_badge').className = "badge-status status-8 shadow-xs";
+            document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-check-double"></i> RESOLUCIÓN PAGADA';
+            
+            btnPagar.innerHTML = '<i class="fas fa-check-double mr-2"></i> Transacción Ejecutada y Archivado';
+            btnPagar.className = "btn btn-info btn-block font-weight-bold text-center";
+            btnPagar.disabled = true;
+            
+            document.getElementById('btn_rechazar').style.display = 'none';
+            document.getElementById('nro_transac').disabled = true;
+            document.getElementById('cc_selector').disabled = true;
+            
+            // Actualizar saldo visualmente
+            const cenco = document.getElementById('cc_selector').value;
+            if (cenco === 'cc_normal') {
+                document.getElementById('lbl_saldo').textContent = "$13.570.000";
+            }
+        }, 1800);
+    }
+
+    function abrirRechazo() {
+        $('#modalRechazar').modal('show');
+    }
+
+    function confirmarRechazo() {
+        const comment = document.getElementById('rechazo_comentario').value.trim();
+        if (comment.length < 20) {
+            showToast('danger', 'Justificación Requerida', 'Debe justificar el rechazo presupuestario con al menos 20 caracteres para documentar el log contable.');
+            return;
+        }
+        
+        $('#modalRechazar').modal('hide');
+        showToast('info', 'Registrando Rechazo Financiero', 'Anulando cobro de la cuota mensual...');
+        
+        setTimeout(() => {
+            showToast('danger', 'Cobro Cancelado', 'La solicitud de pago fue rechazada por motivos presupuestarios y no se desembolsará este mes.');
+            document.getElementById('pago_estado_badge').className = "badge-status status-4 shadow-xs";
+            document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-ban"></i> RECHAZADA';
+            
+            // Inhabilitar controles
+            document.querySelectorAll('button, input, select, textarea').forEach(el => el.disabled = true);
+            document.getElementById('btn_pagar').style.display = 'none';
+        }, 1500);
+    }
+
+    // Toggle menu responsivo
+    $("#menu-toggle").click(function(e) {
+        e.preventDefault();
+        $("#wrapper").toggleClass("toggled");
+    });
+</script>
+</body>
+</html>
