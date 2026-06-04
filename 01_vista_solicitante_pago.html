@@ -516,6 +516,28 @@
                             </span>
                         </div>
 
+                        <!-- BANDEJA / ALERTA DE SOLICITANTE (PP01-B11) -->
+                        <div class="card shadow-sm border-0 mb-4 rounded-lg bg-white" id="bandeja_solicitante_alerta_box">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <div class="p-2 rounded-circle mr-3" style="color: var(--ufro-orange); background-color: rgba(245, 158, 11, 0.1);">
+                                            <i class="fas fa-exclamation-circle fa-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="font-weight-bold text-dark mb-1" style="font-family: 'Outfit'; font-size: 0.85rem;">Tareas Pendientes del Solicitante</h6>
+                                            <p class="text-muted mb-0 small" id="lbl_bandeja_resumen">Tiene solicitudes devueltas a corrección por la DGDP o borradores sin enviar.</p>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex">
+                                        <button class="btn btn-sm btn-ufro-primary font-weight-bold text-uppercase" id="btn_continuar_correccion" onclick="cargarSolicitudDevuelta()" style="font-size:0.7rem;">
+                                            <i class="fas fa-edit mr-1"></i> Continuar corrección
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Pestañas de Navegación Globales (PP01-B08) -->
                         <ul class="nav nav-pills nav-pills-premium mb-4" id="mainGlobalTabs" role="tablist"
                             style="background: #e2e8f0; border-radius: 12px; padding: 6px;">
@@ -813,13 +835,11 @@
                                                 style="table-layout: auto; min-width: 100%; width: 100%; border: none;">
                                                 <thead>
                                                     <tr class="bg-light text-muted">
-                                                        <th class="pl-4" style="width: 5%; text-align: center;">COBRAR
-                                                        </th>
-                                                        <th style="width: 32%;">FUNCIONARIO / CONTRATO / ACTIVIDAD</th>
-                                                        <th style="width: 20%;">PRESTACIONES DE SERVICIO</th>
-                                                        <th style="width: 25%;">MODALIDAD / COMPENSACIÓN HORARIA</th>
-                                                        <th style="width: 18%;" class="text-right pr-4">SUELDO BRUTO /
-                                                            ESTADO</th>
+                                                        <th class="pl-4" style="width: 5%; text-align: center;">SELEC.</th>
+                                                        <th style="width: 32%;">FUNCIONARIO / CUOTA / DETALLES TÉCNICOS</th>
+                                                        <th style="width: 28%;">EVIDENCIAS DE RESPALDO (sg_fuev)</th>
+                                                        <th style="width: 20%;" class="text-right">VALORES CONTABLES</th>
+                                                        <th style="width: 15%; text-align: center;" class="pr-4">ESTADO CUOTA</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="funcionarios_table_body">
@@ -829,52 +849,75 @@
                                         </div>
                                     </div>
 
-                                    <!-- FILA 3: SELECCIÓN DE PERIODO Y EVIDENCIAS DE EJECUCIÓN -->
-                                    <div class="row">
-                                        <!-- Selección de Mes de Cobro (PP01-B06) -->
-                                        <div class="col-lg-6">
-                                            <div class="card shadow-sm border-0 mb-4 rounded-lg h-100">
-                                                <div class="card-header bg-white border-bottom py-3">
-                                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase"
-                                                        style="font-size:0.75rem; letter-spacing:0.5px;"><i
-                                                            class="fas fa-calendar-alt mr-2"></i> 3. Periodo Mensual a
-                                                        Cobrar</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="form-group mb-0">
-                                                        <label class="small text-muted font-weight-bold">Seleccione el
-                                                            mes específico de cobro del listado de periodicidades
-                                                            pendientes</label>
-                                                        <div class="d-flex flex-wrap gap-2" id="meses_container">
-                                                            <!-- Cargado de forma interactiva en JS -->
+                                        <!-- Selección de Mes de Cobro y Carga de Evidencias (PP01-B07) -->
+                                        <div class="row">
+                                            <div class="col-lg-12">
+                                                <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                                                        <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;">
+                                                            <i class="fas fa-cloud-upload-alt mr-2"></i> 3. Evidencias y Constancias Obligatorias por Cuota/Mes (sg_fuev)
+                                                        </h6>
+                                                        <span class="badge badge-light text-muted small" id="evidence_totals_badge">Cargados: 0/0</span>
+                                                    </div>
+                                                    <div class="card-body animate-fade-in" id="evidencias_container">
+                                                        <div class="alert alert-info small py-2 mb-0">
+                                                            <i class="fas fa-info-circle mr-1"></i> Seleccione al menos una cuota de la nómina para cargar y revisar sus archivos de evidencia requeridos.
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <!-- Carga de Evidencias Físicas obligatorias (PP01-B07) -->
-                                        <div class="col-lg-6">
-                                            <div class="card shadow-sm border-0 mb-4 rounded-lg h-100">
-                                                <div
-                                                    class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase"
-                                                        style="font-size:0.75rem; letter-spacing:0.5px;"><i
-                                                            class="fas fa-cloud-upload-alt mr-2"></i> 4. Evidencias y
-                                                        Respaldos Obligatorios</h6>
-                                                    <span class="badge badge-light text-muted small"
-                                                        id="evidence_totals_badge">Cargados: 0/0</span>
+                                        <!-- PP01-B06b: ASIGNACIÓN DE MONTO BRUTO Y MES DE PAGO SOLICITADO POR CUOTA -->
+                                        <div class="card shadow-sm border-0 mb-4 rounded-lg" id="bloque_monto_dia_pago">
+                                            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                                                <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;">
+                                                    <i class="fas fa-hand-holding-usd mr-2"></i> 4. Asignación de Monto Bruto y Mes de Pago Solicitado por Cuota
+                                                </h6>
+                                                <span class="badge badge-light text-muted" style="font-size:0.68rem;">PP01-B06b</span>
+                                            </div>
+                                            <div class="card-body p-0">
+                                                <div class="alert alert-info small py-2 px-3 mb-0 border-0 rounded-0" style="font-size:0.75rem;">
+                                                    <i class="fas fa-info-circle mr-1"></i>
+                                                    La fecha efectiva o programada de pago será definida por la Dirección de Finanzas. Si el mes de pago solicitado es posterior al mes de ejecución, se registrará como un <strong>pago posterior informativo</strong>.
                                                 </div>
-                                                <div class="card-body" id="evidencias_container">
-                                                    <div class="alert alert-info small py-2 mb-0">
-                                                        <i class="fas fa-info-circle mr-1"></i> Seleccione al menos un
-                                                        funcionario de la nómina para cargar sus evidencias de
-                                                        ejecución.
-                                                    </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered mb-0" id="tabla_monto_dia_pago" style="font-size:0.78rem;">
+                                                        <thead class="bg-light text-muted text-uppercase" style="font-size:0.68rem; letter-spacing:0.4px;">
+                                                            <tr>
+                                                                <th class="pl-3" style="width:18%;">Funcionario</th>
+                                                                <th style="width:10%;">Mes Ejec.</th>
+                                                                <th style="width:8%;">Cuota</th>
+                                                                <th class="text-right" style="width:12%;">Aprobado PDS</th>
+                                                                <th class="text-right" style="width:10%;">Pagado Prev.</th>
+                                                                <th class="text-right" style="width:10%;">En Trámite</th>
+                                                                <th class="text-right" style="width:10%;">Pendiente</th>
+                                                                <th class="text-right" style="width:12%;">Monto a Pagar ($)</th>
+                                                                <th class="text-center" style="width:14%;">Mes/Año Pago Sol.</th>
+                                                                <th class="text-center" style="width:8%;">Pago Post.</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="tbody_monto_dia_pago">
+                                                            <tr>
+                                                                <td colspan="10" class="text-center text-muted py-3">Seleccione una cuota de la nómina para habilitar la asignación.</td>
+                                                            </tr>
+                                                        </tbody>
+                                                        <tfoot class="bg-light">
+                                                            <tr>
+                                                                <td colspan="7" class="text-right font-weight-bold small text-muted text-uppercase">Total Solicitud de Pago:</td>
+                                                                <td class="text-right">
+                                                                    <input type="text" id="total_pago_display" class="form-control form-control-sm font-weight-bold text-primary text-right border-primary" style="border-width:2px;" readonly value="$ 0">
+                                                                </td>
+                                                                <td colspan="2"></td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+
+
 
                                     <!-- Panel Fijo Inferior de Acciones (PP01-B09) -->
                                     <div class="sticky-actions text-right">
@@ -1165,361 +1208,209 @@
     </div>
 
     <!-- SCRIPTS INTERACTIVOS MOCKUP -->
+    <script src="mock_data_pagos.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script>
-        // Datos mockup de prestaciones/resoluciones detalladas (UFRO 2026)
-        const resolucionesMock = [
-            {
-                id_solpds: 'PDS-2026-0082',
-                nro: 'RE-009/2026',
-                solicitante_original: 'FRANCO VALDEBENITO',
-                unidad_ejecutora: 'Depto. Ingeniería de Sistemas',
-                cenco: '4050.21',
-                cenco_nombre: 'INST. AGROINDUSTRIA',
-                unifin: 'UNIFIN-AGRO',
-                fondo: '21 - FONDOS PROPIOS',
-                decreto_afecto: 'Exento Afecto D9',
-                proyecto: 'ANID Fondecyt 1240398',
-                jefe: 'DR. ARTURO GÓMEZ',
-                jefe_rut: '8.482.918-5',
-                periodo_desde: '01/05/2026',
-                periodo_hasta: '30/06/2026',
-                monto_total: 9100000,
-                total_pagado: 4550000,
-                saldo_pendiente: 4550000,
-                saldo_cc: 12500000,
-                obs_finan: '<i class="fas fa-exclamation-circle text-primary mr-1"></i> Sin restricciones de vigencia ni alertas de presupuesto.',
-                actividad_general: 'Desarrollo e implementación del módulo analítico de bioprocesos en reactores para el Instituto de Agroindustria.',
-                estado_pds: 'Firmada y Vigente',
-                tiene_documento_firmado: true,
-                du_decreto: 'DECRETO UNIVERSITARIO N° 009/2026',
-                fecha_decretacion: '15 de Enero de 2026',
-
-                // 5 CC Financial Checks
-                cc_checks: {
-                    no_estructural: true,
-                    cc_habilitado: true,
-                    cc_vigente: true,
-                    formacion_continua_ok: true,
-                    control_presupuestario: true
-                },
-
-                // Items presupuestarios por cargo table data
-                items_presupuestarios: [
-                    { cargo: 'Académico Investigador', funcionario: 'Carlos Fuentes Rivera', item: '21.03.001 - Personal Contrata', aprobado: 3700000, solicitado: 1850000, saldo_item: 4500000, estado: 'Disponible' },
-                    { cargo: 'Asesor Profesional de Datos', funcionario: 'Julio Cortázar Prado', item: '21.03.005 - Honorarios', aprobado: 2400000, solicitado: 1200000, saldo_item: 3200000, estado: 'Disponible' },
-                    { cargo: 'Asesor Técnico Profesional', funcionario: 'Loreto Valenzuela Osses', item: '21.03.002 - Honorarios Asesoría', aprobado: 3000000, solicitado: 1500000, saldo_item: 5000000, estado: 'Disponible' }
-                ],
-
-                // Funcionarios
-                funcionarios: [
-                    {
-                        nombre: 'Carlos Fuentes Rivera',
-                        rut: '15.845.221-K',
-                        estamento: 'Académico',
-                        cargo: 'Regular Contrata | Grado 4 | Antigüedad: 10 Años',
-                        actividad: 'Desarrollo e implementación del módulo analítico de bioprocesos en reactores...',
-                        tipo_prestacion: 'Investigación Científica',
-                        modalidad: 'Fuera de jornada',
-                        sea: 'Sí',
-                        compensacion_html: `<div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important; margin-top: 5px;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación (SEA Académico fuera de jornada).</div>`,
-                        monto_mensual: 1850000,
-                        total_aprobado: 3700000,
-                        total_pagado: 1850000,
-                        saldo_pendiente: 1850000,
-                        meses_aprobados: 'Mayo, Junio',
-                        meses_pagados: 'Mayo',
-                        meses_disponibles: ['Junio'],
-
-                        // 7 Employee Validations
-                        validaciones: {
-                            inhabilidad_cargo: true,
-                            deudas_pendientes: true,
-                            contrato_asociado: true,
-                            meses_asignados: true,
-                            monto_ok: true,
-                            jornada_sea: true,
-                            compensacion: true
-                        },
-
-                        evidencias: [
-                            { id: 101, label: 'Acta de Conformidad de la Jefatura (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 102, label: 'Informe Técnico Mensual de Actividades (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 103, label: 'Base de Datos entregada con mediciones (XLSX)', loaded: false, file: null, format: '.xlsx' }
-                        ]
-                    },
-                    {
-                        nombre: 'Julio Cortázar Prado',
-                        rut: '12.345.678-9',
-                        estamento: 'Profesional',
-                        cargo: 'Honorarios Externos | Grado 8 | Antigüedad: 3 Años',
-                        actividad: 'Análisis y modelación matemática de fluidos térmicos en reactores...',
-                        tipo_prestacion: 'Asesoría Profesional de Datos',
-                        modalidad: 'Jornada Completa',
-                        sea: 'No',
-                        compensacion_html: `<div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important; margin-top: 5px;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación (Honorarios).</div>`,
-                        monto_mensual: 1200000,
-                        total_aprobado: 2400000,
-                        total_pagado: 1200000,
-                        saldo_pendiente: 1200000,
-                        meses_aprobados: 'Mayo, Junio',
-                        meses_pagados: 'Mayo',
-                        meses_disponibles: ['Junio'],
-
-                        // 7 Employee Validations
-                        validaciones: {
-                            inhabilidad_cargo: true,
-                            deudas_pendientes: true,
-                            contrato_asociado: true,
-                            meses_asignados: true,
-                            monto_ok: true,
-                            jornada_sea: true,
-                            compensacion: true
-                        },
-
-                        evidencias: [
-                            { id: 201, label: 'Acta de Conformidad firmada (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 202, label: 'Informe Técnico de Modelación de Fluidos (PDF)', loaded: false, file: null, format: '.pdf' }
-                        ]
-                    },
-                    {
-                        nombre: 'Loreto Valenzuela Osses',
-                        rut: '17.382.918-4',
-                        estamento: 'Profesional',
-                        cargo: 'Coordinadora de Calidad | Grado 10 | Antigüedad: 5 Años',
-                        actividad: 'Coordinación del levantamiento de requerimientos y manual de procesos analíticos.',
-                        tipo_prestacion: 'Asesoría Técnica Profesional',
-                        modalidad: 'Dentro de jornada',
-                        sea: 'No',
-                        compensacion_html: `<div class="bg-light p-2 rounded border text-left" style="font-size: 0.65rem; margin-top: 5px;">
-                                            <div class="font-weight-bold text-ufro-blue mb-1" style="font-size: 0.62rem;"><i class="fas fa-history mr-1"></i> Compensación Horaria (Dentro Jornada):</div>
-                                            <div class="row no-gutters text-dark">
-                                                <div class="col-6 pr-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Martes:</span>
-                                                        <span class="font-weight-bold">3 Hrs</span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6 pl-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Jueves:</span>
-                                                        <span class="font-weight-bold">3 Hrs</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="text-muted text-right font-weight-bold" style="font-size: 0.58rem;">Total: 6 Hrs / Semanales Aprobadas</div>
-                                        </div>`,
-                        monto_mensual: 1500000,
-                        total_aprobado: 3000000,
-                        total_pagado: 1500000,
-                        saldo_pendiente: 1500000,
-                        meses_aprobados: 'Mayo, Junio',
-                        meses_pagados: 'Mayo',
-                        meses_disponibles: ['Junio'],
-
-                        // 7 Employee Validations
-                        validaciones: {
-                            inhabilidad_cargo: true,
-                            deudas_pendientes: true,
-                            contrato_asociado: true,
-                            meses_asignados: true,
-                            monto_ok: true,
-                            jornada_sea: true,
-                            compensacion: true
-                        },
-
-                        evidencias: [
-                            { id: 401, label: 'Acta de Conformidad de la Jefatura (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 402, label: 'Reporte de Compensación Horaria (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 403, label: 'Bitácora de Actividades (PDF)', loaded: false, file: null, format: '.pdf' }
-                        ]
-                    }
-                ],
-
-                // Meses Cobro General
-                meses: [
-                    { mes: 'MAYO', status: 'PAID', label: 'MAYO: PAGADO' },
-                    { mes: 'JUNIO', status: 'PENDING', label: 'JUNIO: COBRAR' },
-                    { mes: 'JULIO', status: 'NOT_PACTIONED', label: 'JULIO: NO PACTADO' }
-                ]
-            },
-            {
-                id_solpds: 'PDS-2026-0154',
-                nro: 'RE-114/2026',
-                solicitante_original: 'ELIZABETH PEÑA',
-                unidad_ejecutora: 'Instituto de Agroindustria',
-                cenco: '4112.21',
-                cenco_nombre: 'INST. AGROINDUSTRIA (FLUIDOS)',
-                unifin: 'UNIFIN-AGRO',
-                fondo: '21 - FONDOS PROPIOS',
-                decreto_afecto: 'Exento D9 Ocasional',
-                proyecto: 'DIUFRO 2026 - Investigación Fluidos',
-                jefe: 'DRA. ELENA TRONCOSO',
-                jefe_rut: '9.382.910-K',
-                periodo_desde: '01/05/2026',
-                periodo_hasta: '30/06/2026',
-                monto_total: 560000,
-                total_pagado: 280000,
-                saldo_pendiente: 280000,
-                saldo_cc: 4200000,
-                obs_finan: '<i class="fas fa-exclamation-triangle text-warning mr-1"></i> Alerta: Centro de costo vence el 31/07/2026.',
-                actividad_general: 'Apoyo administrativo en levantamiento de procesos y gestión de documentación técnica de fluidos.',
-                estado_pds: 'Firmada y Vigente',
-                tiene_documento_firmado: true,
-                du_decreto: 'DECRETO UNIVERSITARIO N° 114/2026',
-                fecha_decretacion: '22 de Febrero de 2026',
-
-                // 5 CC Financial Checks
-                cc_checks: {
-                    no_estructural: true,
-                    cc_habilitado: true,
-                    cc_vigente: true,
-                    formacion_continua_ok: true,
-                    control_presupuestario: true
-                },
-
-                // Items presupuestarios por cargo table data
-                items_presupuestarios: [
-                    { cargo: 'Apoyo Administrativo Técnico', funcionario: 'María Elena Soto Figueroa', item: '21.03.003 - Personal Administrativo', aprobado: 560000, solicitado: 280000, saldo_item: 1200000, estado: 'Disponible' }
-                ],
-
-                // Funcionarios
-                funcionarios: [
-                    {
-                        nombre: 'María Elena Soto Figueroa',
-                        rut: '16.452.891-2',
-                        estamento: 'Administrativo',
-                        cargo: 'Planta Estamento | Grado 12 | Antigüedad: 8 Años',
-                        actividad: 'Apoyo administrativo en levantamiento de procesos y gestión de documentación técnica de fluidos.',
-                        tipo_prestacion: 'Apoyo Administrativo Técnico',
-                        modalidad: 'Dentro de jornada',
-                        sea: 'No',
-                        compensacion_html: `<div class="bg-light p-2 rounded border text-left" style="font-size: 0.65rem; margin-top: 5px;">
-                                            <div class="font-weight-bold text-ufro-blue mb-1" style="font-size: 0.62rem;"><i class="fas fa-history mr-1"></i> Compensación Horaria (Dentro Jornada):</div>
-                                            <div class="row no-gutters text-dark">
-                                                <div class="col-6 pr-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Lunes:</span>
-                                                        <span class="font-weight-bold">2 Hrs</span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6 pl-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Miér.:</span>
-                                                        <span class="font-weight-bold">2 Hrs</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="text-muted text-right font-weight-bold" style="font-size: 0.58rem;">Total: 4 Hrs / Semanales Aprobadas</div>
-                                        </div>`,
-                        monto_mensual: 280000,
-                        total_aprobado: 560000,
-                        total_pagado: 280000,
-                        saldo_pendiente: 280000,
-                        meses_aprobados: 'Mayo, Junio',
-                        meses_pagados: 'Mayo',
-                        meses_disponibles: ['Junio'],
-
-                        // 7 Employee Validations
-                        validaciones: {
-                            inhabilidad_cargo: true,
-                            deudas_pendientes: true,
-                            contrato_asociado: true,
-                            meses_asignados: true,
-                            monto_ok: true,
-                            jornada_sea: true,
-                            compensacion: true
-                        },
-
-                        evidencias: [
-                            { id: 301, label: 'Acta de Conformidad firmada (PDF)', loaded: false, file: null, format: '.pdf' },
-                            { id: 302, label: 'Informe mensual de avance administrativo (PDF)', loaded: false, file: null, format: '.pdf' }
-                        ]
-                    }
-                ],
-
-                // Meses Cobro General
-                meses: [
-                    { mes: 'MAYO', status: 'PAID', label: 'MAYO: PAGADO' },
-                    { mes: 'JUNIO', status: 'PENDING', label: 'JUNIO: COBRAR' },
-                    { mes: 'JULIO', status: 'NOT_PACTIONED', label: 'JULIO: NO PACTADO' }
-                ]
-            }
-        ];
-
-        const resolucionDetalle = document.getElementById('resolucion_detalle_seccion');
+        let dbState = getLocalDB();
         let selectedRes = null;
-        let selectedMonth = 'JUNIO'; // Por defecto
-        let activeEmployeesChecked = [];
+        let selectedCuotas = []; // Array of id_funcuo chosen for this request
+        let activeSolicitudId = null; // Set when loading a draft or devuelta
+        const resolucionDetalle = document.getElementById('resolucion_detalle_seccion');
 
-        // Abrir Modal de Búsqueda de PDS
-        function openSearchModal() {
-            $('#modalSearchPDS').modal('show');
+        $(document).ready(function() {
+            // Toggle menu sidebar
+            $("#menu-toggle").click(function(e) {
+                e.preventDefault();
+                $("#wrapper").toggleClass("toggled");
+            });
+
+            // Initialize Search Modal results
             filterPDSModal();
+
+            // Check if there is an active draft or devuelta to notify
+            revisarBandejaSolicitante();
+
+            // Support loading request from URL parameter
+            const params = new URLSearchParams(window.location.search);
+            const urlSol = params.get('nro_solici') || params.get('nro_solpag');
+            if (urlSol) {
+                cargarSolicitudPorId(urlSol);
+            }
+        });
+
+        // Dashboard/bandeja check (PP01-B11)
+        function revisarBandejaSolicitante() {
+            const devueltas = dbState.solicitudes_pago.filter(s => s.cod_estsol === 'DEVUELTA_DGDP' || s.cod_estsol === 'DEVUELTA_CORRECCION');
+            const borradores = dbState.solicitudes_pago.filter(s => s.cod_estsol === 'BORRADOR');
+            
+            const alertBox = document.getElementById('bandeja_solicitante_alerta_box');
+            const summaryText = document.getElementById('lbl_bandeja_resumen');
+            
+            if (devueltas.length > 0 || borradores.length > 0) {
+                alertBox.style.display = 'block';
+                summaryText.innerHTML = `Tiene <strong>${devueltas.length}</strong> solicitud(es) devuelta(s) a corrección y <strong>${borradores.length}</strong> borrador(es) activo(s) en su bandeja.`;
+            } else {
+                alertBox.style.display = 'none';
+            }
         }
 
-        // Filtrar PDS dentro del Modal
-        function filterPDSModal() {
+        window.cargarSolicitudDevuelta = function() {
+            // Priority to devueltas
+            let sol = dbState.solicitudes_pago.find(s => s.cod_estsol === 'DEVUELTA_DGDP' || s.cod_estsol === 'DEVUELTA_CORRECCION');
+            if (!sol) sol = dbState.solicitudes_pago.find(s => s.cod_estsol === 'BORRADOR');
+            if (sol) {
+                cargarSolicitudPorId(sol.nro_solpag);
+            } else {
+                showToast('info', 'Sin Tareas', 'No tiene solicitudes devueltas ni borradores.');
+            }
+        };
+
+        function cargarSolicitudPorId(nro_solpag) {
+            const sol = dbState.solicitudes_pago.find(s => s.nro_solpag === nro_solpag);
+            if (!sol) {
+                showToast('danger', 'Error', `No se encontró la solicitud ${nro_solpag}.`);
+                return;
+            }
+
+            activeSolicitudId = sol.nro_solpag;
+            
+            // Find corresponding PDS
+            const res = dbState.prestaciones.find(p => p.nro_solpds === sol.nro_solpds);
+            if (!res) {
+                showToast('danger', 'Error', `No se encontró la PDS de origen.`);
+                return;
+            }
+
+            // Load PDS metadata first
+            selectResolucion(res);
+
+            // Restore selected cuotas and inputs
+            selectedCuotas = sol.detalles.map(d => d.id_funcuo);
+            
+            // Wait for UI to render
+            setTimeout(() => {
+                // Populate checkboxes
+                selectedCuotas.forEach(id_funcuo => {
+                    const chk = document.getElementById(`chk_cuo_${id_funcuo}`);
+                    if (chk) chk.checked = true;
+
+                    // Populate custom inputs in B06b table
+                    const det = sol.detalles.find(d => d.id_funcuo === id_funcuo);
+                    if (det) {
+                        const mtoInp = document.getElementById(`inp_sol_${id_funcuo}`);
+                        if (mtoInp) mtoInp.value = det.mto_solpag;
+                    }
+                });
+
+                // Update UI state badges
+                const badge = document.getElementById('pago_estado_badge');
+                badge.className = "badge-status shadow-xs";
+                if (sol.cod_estsol === 'DEVUELTA_DGDP' || sol.cod_estsol === 'DEVUELTA_CORRECCION') {
+                    badge.classList.add("status-6");
+                    badge.innerHTML = `<i class="fas fa-reply"></i> DEVUELTA A CORRECCIÓN (${sol.nro_solpag})`;
+                    
+                    // Show warning toast with DGDP comment if history exists
+                    showToast('warning', 'Corrección Requerida', `El expediente ${sol.nro_solpag} fue devuelto por DGDP para regularizar.`);
+                } else {
+                    badge.classList.add("status-5");
+                    badge.innerHTML = `<i class="fas fa-edit"></i> BORRADOR ACTIVO (${sol.nro_solpag})`;
+                }
+
+                // Lock PDS origin search since we are editing an existing request
+                document.getElementById('selected_pds_display').value = `[CORRECCIÓN DE ${sol.nro_solpag}] — ${res.resolucion}`;
+                document.querySelector('[onclick="openSearchModal()"]').disabled = true;
+
+                recalcularTotalSolicitado();
+                updateValidationPanel();
+                renderTablaAsignacion();
+                renderEvidenciasCuotas();
+            }, 100);
+        }
+
+        // Open search modal
+        window.openSearchModal = function() {
+            $('#modalSearchPDS').modal('show');
+            filterPDSModal();
+        };
+
+        // Filter modal search results
+        window.filterPDSModal = function() {
             const valCC = document.getElementById('modal_filter_cc').value.trim().toLowerCase();
             const valRes = document.getElementById('modal_filter_res').value.trim().toLowerCase();
             const valFun = document.getElementById('modal_filter_fun').value.trim().toLowerCase();
             const valUnidad = document.getElementById('modal_filter_unidad').value.trim().toLowerCase();
-            const valEstado = document.getElementById('modal_filter_estado').value;
 
-            const filtered = resolucionesMock.filter(res => {
-                const matchesCC = !valCC || res.cenco.toLowerCase().includes(valCC) || res.cenco_nombre.toLowerCase().includes(valCC);
-                const matchesRes = !valRes || res.nro.toLowerCase().includes(valRes) || res.id_solpds.toLowerCase().includes(valRes);
+            const filtered = dbState.prestaciones.filter(res => {
+                const matchesCC = !valCC || res.centro_costo.codigo.toLowerCase().includes(valCC) || res.centro_costo.nombre.toLowerCase().includes(valCC);
+                const matchesRes = !valRes || res.resolucion.toLowerCase().includes(valRes) || res.nro_solpds.toLowerCase().includes(valRes);
                 const matchesFun = !valFun || res.funcionarios.some(f => f.nombre.toLowerCase().includes(valFun) || f.rut.toLowerCase().includes(valFun));
                 const matchesUnidad = !valUnidad || res.unidad_ejecutora.toLowerCase().includes(valUnidad);
-                const matchesEstado = valEstado === 'ALL' || res.estado_pds === valEstado;
-                return matchesCC && matchesRes && matchesFun && matchesUnidad && matchesEstado;
+                return matchesCC && matchesRes && matchesFun && matchesUnidad;
             });
 
             renderModalResults(filtered);
-        }
+        };
 
-        // Renderizar resultados filtrados en la tabla del Modal
+        // Render modal results table (PP01-B01)
         function renderModalResults(results) {
             const tbody = document.getElementById('modal_results_tbody');
             tbody.innerHTML = '';
 
             if (results.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted py-4">No se encontraron prestaciones de servicio formalizadas bajo estos filtros.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted py-4">No se encontraron prestaciones de servicio formalizadas.</td></tr>`;
                 return;
             }
 
             results.forEach(res => {
+                // Calculate cuotas
+                let dispCount = 0;
+                let tramCount = 0;
+                res.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.cod_estcuo === "DISPONIBLE") dispCount++;
+                        if (c.cod_estcuo === "EN_TRAMITE") tramCount++;
+                    });
+                });
+
+                const isSigned = res.estado_doc_firmado === "Firmado y Vigente";
+                const canSelect = isSigned && dispCount > 0;
+
                 const tr = document.createElement('tr');
+                if (!canSelect) tr.style.opacity = '0.6';
+
                 tr.innerHTML = `
-                <td class="font-weight-bold text-ufro-blue">${res.id_solpds}</td>
-                <td class="font-weight-bold text-dark">${res.nro}</td>
-                <td><span class="badge badge-light text-dark">${res.cenco}</span></td>
-                <td class="text-truncate font-weight-bold" style="max-width: 100px;">${res.cenco_nombre}</td>
-                <td>${res.unidad_ejecutora}</td>
-                <td class="text-truncate" style="max-width: 100px;">${res.jefe}</td>
-                <td class="text-truncate" style="max-width: 150px;">${res.actividad_general}</td>
-                <td><span style="font-size:0.65rem;">${res.periodo_desde} al ${res.periodo_hasta}</span></td>
-                <td class="text-center font-weight-bold">${res.funcionarios.length}</td>
-                <td class="text-right font-weight-bold">$${res.monto_total.toLocaleString('es-CL')}</td>
-                <td class="text-right font-weight-bold text-success">$${res.saldo_pendiente.toLocaleString('es-CL')}</td>
-                <td class="text-center"><span class="badge badge-success" style="font-size: 0.65rem;">${res.estado_pds}</span></td>
-                <td class="text-center text-success"><i class="fas fa-check-circle"></i> Firmado</td>
-                <td class="text-center">
-                    <button class="btn btn-xs btn-primary font-weight-bold py-1 px-2" style="font-size:0.68rem;" onclick="selectPdsFromModal('${res.id_solpds}')">
-                        Seleccionar
-                    </button>
-                </td>
-            `;
+                    <td class="font-weight-bold text-ufro-blue">${res.nro_solpds}</td>
+                    <td class="font-weight-bold text-dark">${res.resolucion}</td>
+                    <td><span class="badge badge-light text-dark">${res.centro_costo.codigo}</span></td>
+                    <td class="text-truncate font-weight-bold" style="max-width: 100px;">${res.centro_costo.nombre}</td>
+                    <td>${res.unidad_ejecutora}</td>
+                    <td class="text-truncate" style="max-width: 100px;">${res.jefe_proyecto}</td>
+                    <td class="text-truncate" style="max-width: 150px;">${res.actividad_general}</td>
+                    <td><span style="font-size:0.65rem;">01/05/2026 al 30/06/2026</span></td>
+                    <td class="text-center font-weight-bold">${res.funcionarios.length}</td>
+                    <td class="text-center text-success font-weight-bold">${dispCount}</td>
+                    <td class="text-center text-warning font-weight-bold">${tramCount}</td>
+                    <td class="text-right font-weight-bold">$${res.monto_total.toLocaleString('es-CL')}</td>
+                    <td class="text-right font-weight-bold text-primary">$${res.saldo_pendiente.toLocaleString('es-CL')}</td>
+                    <td class="text-center"><span class="badge ${isSigned ? 'badge-success' : 'badge-danger'}" style="font-size: 0.65rem;">${res.estado_doc_firmado}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-xs btn-primary font-weight-bold py-1 px-2" style="font-size:0.68rem;" 
+                            ${canSelect ? '' : 'disabled'}
+                            onclick="selectPdsFromModal('${res.nro_solpds}')">
+                            Seleccionar
+                        </button>
+                    </td>
+                `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Al seleccionar una PDS en el modal
-        window.selectPdsFromModal = function (id_solpds) {
-            const res = resolucionesMock.find(r => r.id_solpds === id_solpds);
+        // On select PDS
+        window.selectPdsFromModal = function(nro_solpds) {
+            const res = dbState.prestaciones.find(r => r.nro_solpds === nro_solpds);
             if (res) {
                 selectResolucion(res);
                 $('#modalSearchPDS').modal('hide');
@@ -1527,480 +1418,532 @@
         };
 
         function selectResolucion(res) {
-            selectedRes = JSON.parse(JSON.stringify(res)); // Deep copy para mantener estados locales del uploader
+            selectedRes = JSON.parse(JSON.stringify(res));
+            selectedCuotas = [];
+            activeSolicitudId = null;
 
-            // Colocar nombre en display de solo lectura
-            document.getElementById('selected_pds_display').value = `${selectedRes.id_solpds} — Resolución: ${selectedRes.nro} — CC: ${selectedRes.cenco} (${selectedRes.cenco_nombre})`;
+            // Set display
+            document.getElementById('selected_pds_display').value = `${selectedRes.nro_solpds} — Resolución: ${selectedRes.resolucion} — CC: ${selectedRes.centro_costo.codigo} (${selectedRes.centro_costo.nombre})`;
 
-            // 1. Cargar metadatos generales (PP01-B02)
-            document.getElementById('lbl_id_solpds').textContent = selectedRes.id_solpds;
-            document.getElementById('lbl_nro_res_ex').textContent = selectedRes.nro;
-            document.getElementById('lbl_estado_pds').textContent = selectedRes.estado_pds;
-            document.getElementById('lbl_jefe_proy').textContent = selectedRes.jefe;
-            document.getElementById('lbl_solic_original').textContent = selectedRes.solicitante_original;
-            document.getElementById('lbl_periodo_pds').textContent = `${selectedRes.periodo_desde} al ${selectedRes.periodo_hasta}`;
+            // Load Metadata
+            document.getElementById('lbl_id_solpds').textContent = selectedRes.nro_solpds;
+            document.getElementById('lbl_nro_res_ex').textContent = selectedRes.resolucion;
+            document.getElementById('lbl_estado_pds').textContent = selectedRes.estado_doc_firmado;
+            document.getElementById('lbl_jefe_proy').textContent = selectedRes.jefe_proyecto;
+            document.getElementById('lbl_solic_original').textContent = selectedRes.solicitante;
+            document.getElementById('lbl_periodo_pds').textContent = "01/05/2026 al 30/06/2026";
             document.getElementById('lbl_total_aprob').textContent = `$${selectedRes.monto_total.toLocaleString('es-CL')}`;
             document.getElementById('lbl_total_pag').textContent = `$${selectedRes.total_pagado.toLocaleString('es-CL')}`;
             document.getElementById('lbl_saldo_pend').textContent = `$${selectedRes.saldo_pendiente.toLocaleString('es-CL')}`;
 
-            // 2. Cargar Centro de Costo (PP01-B03)
-            document.getElementById('lbl_ccto_cod').textContent = selectedRes.cenco;
-            document.getElementById('lbl_ccto_nombre').textContent = selectedRes.cenco_nombre;
-            document.getElementById('lbl_unifin').textContent = selectedRes.unifin;
-            document.getElementById('lbl_financ').textContent = selectedRes.fondo;
-            document.getElementById('lbl_dec_afecto').textContent = selectedRes.decreto_afecto;
+            // Load CC
+            document.getElementById('lbl_ccto_cod').textContent = selectedRes.centro_costo.codigo;
+            document.getElementById('lbl_ccto_nombre').textContent = selectedRes.centro_costo.nombre;
+            document.getElementById('lbl_unifin').textContent = selectedRes.centro_costo.unifin;
+            document.getElementById('lbl_financ').textContent = selectedRes.centro_costo.financiamiento;
+            document.getElementById('lbl_dec_afecto').textContent = selectedRes.centro_costo.decreto_afecto;
             document.getElementById('lbl_uni_ejecutora').textContent = selectedRes.unidad_ejecutora;
-            document.getElementById('lbl_saldo_disp_cc').textContent = `$${selectedRes.saldo_cc.toLocaleString('es-CL')}`;
-            document.getElementById('lbl_proy_global').textContent = selectedRes.proyecto;
-            document.getElementById('lbl_obs_finan').innerHTML = selectedRes.obs_finan;
+            document.getElementById('lbl_saldo_disp_cc').textContent = `$${selectedRes.centro_costo.saldo_cc.toLocaleString('es-CL')}`;
+            document.getElementById('lbl_proy_global').textContent = selectedRes.centro_costo.proyecto;
+            document.getElementById('lbl_obs_finan').innerHTML = `<i class="fas fa-exclamation-circle text-primary mr-1"></i> CC normalizado bajo control de presupuesto.`;
 
-            // 3. Actividad general
             document.getElementById('lbl_actividad_general').textContent = `"${selectedRes.actividad_general}"`;
             document.getElementById('lbl_du_decreto').textContent = selectedRes.du_decreto;
 
-            // 4. Renderizar 5 Checks Financieros de CC (PP01-B03)
+            // Render Validation Cards and Items
             renderCCFinancialChecks();
-
-            // 5. Renderizar Items Presupuestarios por Cargo (PP01-B03)
             renderCCItemsPresupuestarios();
+            renderCuotasNominas();
 
-            // 6. Renderizar Nómina de Funcionarios con selectores
-            renderNominaFuncionarios();
-
-            // 7. Renderizar Meses
-            renderMesesCobro();
-
-            // 8. Actualizar PDF Visor
-            document.getElementById('pdf_nro_reso').textContent = `RESOLUCIÓN EXENTA Nº ${selectedRes.nro.replace('RE-', '')}`;
+            // Setup PDF viewer
+            document.getElementById('pdf_nro_reso').textContent = `RESOLUCIÓN EXENTA Nº ${selectedRes.resolucion.replace('RE-', '')}`;
             document.getElementById('pdf_resol_fecha').textContent = `TEMUCO, ${selectedRes.fecha_decretacion}`;
             renderPDFAnexo();
 
-            // Habilitar visualización de resolución firmada
-            document.getElementById('resolucion_no_pds_alert').classList.add('hidden');
-            document.getElementById('resolucion_documento_seccion').classList.remove('hidden');
-
-            // 9. Actualizar Panel de Validaciones Inicial
+            // Toggle sections
+            const noPdsAlert = document.getElementById('resolucion_no_pds_alert');
+            if (noPdsAlert) noPdsAlert.classList.add('hidden');
+            
+            const docSeccion = document.getElementById('resolucion_documento_seccion');
+            if (docSeccion) docSeccion.classList.remove('hidden');
+            
+            if (resolucionDetalle) resolucionDetalle.classList.remove('hidden');
+            
             updateValidationPanel();
-
-            // Habilitar sección
-            resolucionDetalle.classList.remove('hidden');
-            showToast('success', 'PDS Cargada con Éxito', 'Se recuperó el expediente completo y la resolución oficial firmada desde la base de datos.');
+            renderTablaAsignacion();
+            renderEvidenciasCuotas();
+            showToast('success', 'PDS Cargada', 'Se importaron los datos origen y cuotas disponibles para solicitud de pago.');
         }
 
-        // Renderizar los 5 Checks Financieros de CC
         function renderCCFinancialChecks() {
             const container = document.getElementById('cc_financial_checks_container');
             container.innerHTML = '';
-
-            const checks = selectedRes.cc_checks;
             const items = [
-                { key: 'no_estructural', title: 'CC No Estructural', desc: 'El CC no corresponde a presupuesto estructural/base no permitido.' },
-                { key: 'cc_habilitado', title: 'CC Habilitado', desc: 'El CC se encuentra habilitado para operar financieramente.' },
-                { key: 'cc_vigente', title: 'CC Vigente', desc: 'El CC se encuentra vigente en el periodo solicitado.' },
-                { key: 'formacion_continua_ok', title: 'Formación Continua OK', desc: 'La PDS no corresponde a presupuesto no permitido.' },
-                { key: 'control_presupuestario', title: 'Control Presupuestario', desc: 'Existe saldo presupuestario suficiente en el CC.' }
+                { title: 'CC No Estructural', desc: 'El CC no pertenece a cuentas base restringidas.' },
+                { title: 'CC Habilitado', desc: 'El CC se encuentra habilitado para cobros.' },
+                { title: 'CC Vigente', desc: 'Vigencia activa del CC en este periodo.' },
+                { title: 'Formación Continua OK', desc: 'Vigencia de clasificador presupuestario compatible.' },
+                { title: 'Control Presupuestario', desc: 'Verificación contable de saldo suficiente.' }
             ];
 
             items.forEach((it, idx) => {
-                const status = checks[it.key];
                 const div = document.createElement('div');
                 div.className = "validation-item mb-2";
                 div.innerHTML = `
-                <div class="validation-icon ${status ? 'val-icon-success' : 'val-icon-alert'} mr-2" style="width: 18px; height: 18px; font-size: 0.6rem;">
-                    <i class="fas ${status ? 'fa-check' : 'fa-times'}"></i>
-                </div>
-                <div>
-                    <strong class="text-dark d-block" style="font-size:0.72rem;">${idx + 1}. ${it.title}</strong>
-                    <span class="text-muted" style="font-size:0.62rem;">${it.desc}</span>
-                </div>
-            `;
+                    <div class="validation-icon val-icon-success mr-2" style="width: 18px; height: 18px; font-size: 0.6rem;">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <strong class="text-dark d-block" style="font-size:0.72rem;">${idx + 1}. ${it.title}</strong>
+                        <span class="text-muted" style="font-size:0.62rem;">${it.desc}</span>
+                    </div>
+                `;
                 container.appendChild(div);
             });
         }
 
-        // Renderizar la tabla de Items Presupuestarios por Cargo
         function renderCCItemsPresupuestarios() {
             const tbody = document.getElementById('cc_items_presupuestarios_tbody');
             tbody.innerHTML = '';
-
             selectedRes.items_presupuestarios.forEach(it => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                <td class="pl-3 font-weight-bold">${it.cargo}</td>
-                <td>${it.funcionario}</td>
-                <td class="font-weight-bold text-muted">${it.item}</td>
-                <td class="text-right font-weight-bold">$${it.aprobado.toLocaleString('es-CL')}</td>
-                <td class="text-right font-weight-bold text-primary">$${it.solicitado.toLocaleString('es-CL')}</td>
-                <td class="text-right font-weight-bold text-success">$${it.saldo_item.toLocaleString('es-CL')}</td>
-                <td class="text-center pr-3"><span class="badge badge-success" style="font-size:0.65rem;">${it.estado}</span></td>
-            `;
+                    <td class="pl-3 font-weight-bold">${it.cargo}</td>
+                    <td>${it.funcionario}</td>
+                    <td class="font-weight-bold text-muted">${it.item}</td>
+                    <td class="text-right font-weight-bold">$${it.aprobado.toLocaleString('es-CL')}</td>
+                    <td class="text-right font-weight-bold text-primary">$${it.solicitado.toLocaleString('es-CL')}</td>
+                    <td class="text-right font-weight-bold text-success">$${it.saldo_item.toLocaleString('es-CL')}</td>
+                    <td class="text-center pr-3"><span class="badge badge-success" style="font-size:0.65rem;">${it.estado}</span></td>
+                `;
                 tbody.appendChild(tr);
             });
         }
 
-        function renderNominaFuncionarios() {
+        // Render cuotas as selectable rows in the main table (sg_fucu)
+        function renderCuotasNominas() {
             const tbody = document.getElementById('funcionarios_table_body');
             tbody.innerHTML = '';
-            activeEmployeesChecked = [];
 
-            selectedRes.funcionarios.forEach((fun, idx) => {
-                // Por defecto, marcar los funcionarios con cobro disponible
-                const isEligible = fun.meses_disponibles.some(m => m.toUpperCase() === selectedMonth.toUpperCase());
-                const tr = document.createElement('tr');
-                tr.className = "row-accent-sea";
-                if (!isEligible) {
-                    tr.style.opacity = '0.7';
-                }
+            selectedRes.funcionarios.forEach(fun => {
+                fun.cuotas.forEach(cuo => {
+                    const tr = document.createElement('tr');
+                    tr.className = "employee-detail-row text-dark";
 
-                tr.innerHTML = `
-                <td style="text-align: center; vertical-align: middle;">
-                    <input type="checkbox" class="checkbox-custom" id="chk_fun_${idx}" ${isEligible ? 'checked' : 'disabled'} onchange="toggleEmployee(${idx})">
-                </td>
-                <td class="pl-4">
-                    <div class="font-weight-bold text-dark" style="font-size: 0.85rem;">${fun.nombre}</div>
-                    <div class="text-muted small mb-1" style="font-size: 0.72rem;">RUT: <span>${fun.rut}</span> <span class="mx-1 text-light">|</span> <span class="font-weight-bold text-dark">${fun.estamento}</span></div>
-                    <div class="text-muted small mb-1" style="font-size: 0.7rem; opacity: 0.85;">${fun.cargo}</div>
-                    <div class="mt-2 text-dark small italic bg-white p-2 rounded border" style="border-left: 2px solid var(--ufro-blue) !important; font-size: 0.7rem; max-width: 380px;">
-                        <i class="fas fa-tasks mr-1 text-primary"></i>Labores: <span>"${fun.actividad}"</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="mb-1 text-dark" style="font-size: 0.7rem;"><span class="font-weight-bold text-muted" style="font-size: 0.65rem; display: block; text-transform: uppercase;">Prestación</span>${fun.tipo_prestacion}</div>
-                    <div class="text-muted" style="font-size: 0.68rem; margin-top: 4px;">
-                        <span class="font-weight-bold text-muted" style="font-size: 0.65rem; display: block; text-transform: uppercase; margin-bottom: 3px;">Evidencias de Origen</span>
-                        ${fun.evidencias.map(ev => `<i class="fas fa-check-square text-success mr-1"></i>${ev.label.split('(')[0]}<br>`).join('')}
-                    </div>
-                </td>
-                <td>
-                    <div class="d-flex align-items-center mb-1">
-                        <span class="badge badge-success mr-2" style="width: 8px; height: 8px; border-radius: 4px; padding: 0;">&nbsp;</span>
-                        <span class="small font-weight-bold text-dark" style="font-size: 0.72rem;">${fun.modalidad}</span>
-                    </div>
-                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">¿Pertenece a SEA? <span class="font-weight-bold text-success">${fun.sea}</span></div>
-                    <div id="tbl_compensacion_box_${idx}">
-                        ${fun.compensacion_html}
-                    </div>
-                </td>
-                <td class="text-right pr-4 align-middle">
-                    <div class="font-weight-bold text-primary" style="font-size: 0.95rem;">$${fun.monto_mensual.toLocaleString('es-CL')}</div>
-                    <div class="small text-muted mb-2" style="font-size: 0.72rem;">Sueldo Mensual</div>
-                    
-                    ${isEligible ?
-                        `<span class="badge badge-success"><i class="fas fa-check"></i> Disponible cobro</span>` :
-                        `<span class="badge badge-secondary"><i class="fas fa-ban"></i> Sin cobros pend.</span>`
+                    // PENDIENTE_SALDO is re-triable/selectable, but RECHAZADA is definitive
+                    const isSelectable = cuo.cod_estcuo === "DISPONIBLE" || cuo.cod_estcuo === "PENDIENTE_SALDO";
+                    const isChecked = selectedCuotas.includes(cuo.id_funcuo);
+
+                    // Month Mapping
+                    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    const mesNombre = monthNames[cuo.mes_ejecucion - 1] || "Mes";
+
+                    // Build indicators from SISPER
+                    let indicatorsHtml = '';
+                    if (cuo.licencia_medica_periodo === 'S') {
+                        indicatorsHtml += `<span class="badge badge-warning val-badge-warning mr-1"><i class="fas fa-notes-medical"></i> Licencia</span>`;
                     }
-                </td>
-            `;
-                tbody.appendChild(tr);
+                    if (cuo.permiso_sin_goce_periodo === 'S') {
+                        indicatorsHtml += `<span class="badge badge-warning val-badge-warning mr-1"><i class="fas fa-user-slash"></i> Permiso s/g</span>`;
+                    }
+                    if (cuo.receso_universitario_periodo === 'S') {
+                        indicatorsHtml += `<span class="badge badge-info mr-1" style="font-size:0.65rem;"><i class="fas fa-snowflake"></i> Receso</span>`;
+                    }
+                    if (cuo.ausencias_periodo > 0) {
+                        indicatorsHtml += `<span class="badge badge-danger val-badge-danger mr-1"><i class="fas fa-user-clock"></i> ${cuo.ausencias_periodo} Ausencias</span>`;
+                    }
 
-                // Generar la Ficha Completa de Detalle y las 7 Validaciones por Funcionario (PP01-B05)
-                const trDetail = document.createElement('tr');
-                trDetail.id = `detail_row_${idx}`;
-                trDetail.className = `employee-detail-row ${isEligible ? '' : 'hidden'}`;
-                trDetail.innerHTML = `
-                <td colspan="5" class="p-3 bg-light" style="border-top: 1px dashed #e2e8f0; border-bottom: 1px solid #cbd5e1;">
-                    <div class="row">
-                        <!-- Ficha de Datos Contractuales y Periodos Heredados -->
-                        <div class="col-md-6 pr-md-2">
-                            <div class="card shadow-xs border-0 mb-0 h-100" style="border-radius: 8px;">
-                                <div class="card-body p-3">
-                                    <h6 class="small font-weight-bold text-ufro-blue text-uppercase mb-3" style="font-size: 0.68rem; letter-spacing: 0.5px;">
-                                        <i class="fas fa-address-card mr-1"></i> Ficha Contractual PDS (Heredada)
-                                    </h6>
-                                    <div class="row" style="font-size: 0.72rem; line-height: 1.8;">
-                                        <div class="col-6 text-muted">Contrato SISPER:</div>
-                                        <div class="col-6 font-weight-bold text-dark">${fun.cargo.split('|')[0] || 'Asociado'}</div>
-                                        <div class="col-6 text-muted">Meses Asignados:</div>
-                                        <div class="col-6 font-weight-bold text-dark">${fun.meses_aprobados}</div>
-                                        <div class="col-6 text-muted">Meses Cobrados / Trámite:</div>
-                                        <div class="col-6 font-weight-bold text-success">${fun.meses_pagados} (${fun.meses_disponibles.length} pend)</div>
-                                        <div class="col-6 text-muted">Modalidad de Jornada:</div>
-                                        <div class="col-6 font-weight-bold text-dark">${fun.modalidad}</div>
-                                        <div class="col-6 text-muted">Pertenencia a SEA:</div>
-                                        <div class="col-6 font-weight-bold text-dark">${fun.sea}</div>
-                                        <div class="col-6 text-muted">Monto Total Aprobado:</div>
-                                        <div class="col-6 font-weight-bold text-primary">$${fun.total_aprobado.toLocaleString('es-CL')}</div>
-                                        <div class="col-6 text-muted">Total Tramitado / Pagado:</div>
-                                        <div class="col-6 font-weight-bold text-success">$${fun.total_pagado.toLocaleString('es-CL')}</div>
-                                        <div class="col-6 text-muted">Saldo Pendiente Funcionario:</div>
-                                        <div class="col-6 font-weight-bold text-danger">$${fun.saldo_pendiente.toLocaleString('es-CL')}</div>
-                                    </div>
-                                </div>
+                    tr.innerHTML = `
+                        <td class="text-center align-middle pl-4">
+                            <input type="checkbox" class="checkbox-custom" id="chk_cuo_${cuo.id_funcuo}" 
+                                ${isSelectable ? '' : 'disabled'} ${isChecked ? 'checked' : ''} 
+                                onchange="toggleCuotaSelection(${cuo.id_funcuo})">
+                        </td>
+                        <td>
+                            <div class="font-weight-bold text-dark" style="font-size: 0.85rem;">${fun.nombre}</div>
+                            <div class="text-muted small" style="font-size: 0.72rem;">
+                                RUT: ${fun.rut} | <strong>Cuota ${cuo.nro_cuota}/${cuo.tot_cuotas}</strong> | Ejecución: ${mesNombre} ${cuo.anio_ejecucion}
                             </div>
-                        </div>
-                        
-                        <!-- 7 Validaciones por Funcionario (PP01-B05) -->
-                        <div class="col-md-6 pl-md-2">
-                            <div class="card shadow-xs border-0 mb-0 h-100" style="border-radius: 8px;">
-                                <div class="card-body p-3">
-                                    <h6 class="small font-weight-bold text-ufro-blue text-uppercase mb-3" style="font-size: 0.68rem; letter-spacing: 0.5px;">
-                                        <i class="fas fa-user-shield mr-1"></i> Validaciones de Personal (Cruce SISPER)
-                                    </h6>
-                                    <div class="validation-list" style="font-size: 0.72rem;">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.inhabilidad_cargo ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.inhabilidad_cargo ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Inhabilidad por Cargo:</strong> Sin incompatibilidades ni topes extraordinarios.</span>
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.deudas_pendientes ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.deudas_pendientes ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Deudas Pendientes:</strong> No registra compromisos financieros impagos.</span>
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.contrato_asociado ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.contrato_asociado ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Contrato Principal:</strong> Contrato laboral activo detectado en SISPER.</span>
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.meses_asignados ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.meses_asignados ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Meses Asignados:</strong> Cobro mensual dentro de la resolución de origen.</span>
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.monto_ok ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.monto_ok ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Sueldo Equivalente:</strong> Monto exacto al estipulado mensual ($${fun.monto_mensual.toLocaleString('es-CL')}).</span>
-                                        </div>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge ${fun.validaciones.jornada_sea ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.jornada_sea ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>SEA / Jornada:</strong> Régimen de dedicación horaria compatible en SISPER.</span>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="badge ${fun.validaciones.compensacion ? 'badge-success' : 'badge-danger'} mr-2" style="width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem;"><i class="fas ${fun.validaciones.compensacion ? 'fa-check' : 'fa-times'}"></i></span>
-                                            <span><strong>Compensación Horaria:</strong> Aprobado y firmado digitalmente cuando aplica.</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="text-muted mt-1" style="font-size:0.6rem;">
+                                id_funprse: <code>${fun.id_funprse}</code> | id_funmes: <code>${cuo.id_funmes}</code> | id_funcuo: <code>${cuo.id_funcuo}</code>
                             </div>
-                        </div>
-                    </div>
-                </td>
-            `;
-                tbody.appendChild(trDetail);
-
-                if (isEligible) {
-                    activeEmployeesChecked.push(idx);
-                }
+                            <div class="mt-2">${indicatorsHtml || '<span class="text-muted font-italic small" style="font-size:0.65rem;">Cero ausencias/alertas (SISPER)</span>'}</div>
+                        </td>
+                        <td>
+                            <div class="evidencias-celda" id="ev_cell_${cuo.id_funcuo}">
+                                <span class="text-muted font-italic small" style="font-size:0.68rem;">Elegible en panel de asignación inferior</span>
+                            </div>
+                        </td>
+                        <td class="text-right align-middle text-dark">
+                            <div class="small">Cuota Base: <strong>${formatCLP(cuo.mto_cuota)}</strong></div>
+                            <div class="small text-muted" style="font-size: 0.65rem;">Monto Pagado: ${formatCLP(cuo.monto_pagado_previo)}</div>
+                            <div class="small text-muted" style="font-size: 0.65rem;">En Trámite: ${formatCLP(cuo.monto_en_tramite)}</div>
+                            <div class="small text-primary font-weight-bold" style="font-size: 0.68rem;">Pendiente: ${formatCLP(cuo.saldo_pendiente_funcionario)}</div>
+                        </td>
+                        <td class="text-center align-middle pr-4">
+                            <span class="badge ${getCuotaBadgeClass(cuo.cod_estcuo)}" style="font-size: 0.68rem;">${cuo.cod_estcuo}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
             });
 
-            calculateRequestedTotal();
-            renderEvidenciasUploader();
+            recalcularTotalSolicitado();
         }
 
-        function renderMesesCobro() {
-            const container = document.getElementById('meses_container');
-            container.innerHTML = '';
-
-            selectedRes.meses.forEach(m => {
-                if (m.status === 'PAID') {
-                    const span = document.createElement('span');
-                    span.className = "month-status-pill month-status-paid";
-                    span.innerHTML = `<i class="fas fa-check-circle"></i> ${m.label}`;
-                    container.appendChild(span);
-                } else if (m.status === 'PENDING') {
-                    const btn = document.createElement('button');
-                    btn.className = `month-status-pill border-0 ${selectedMonth === m.mes ? 'month-status-selected' : 'month-status-process'}`;
-                    btn.innerHTML = `<i class="fas fa-clock"></i> ${m.label} ${selectedMonth === m.mes ? '(SELECCIONADO)' : ''}`;
-                    btn.addEventListener('click', () => {
-                        selectedMonth = m.mes;
-                        renderNominaFuncionarios();
-                        renderMesesCobro();
-                    });
-                    container.appendChild(btn);
-                } else {
-                    const span = document.createElement('span');
-                    span.className = "month-status-pill month-status-pending";
-                    span.innerHTML = `<i class="fas fa-circle"></i> ${m.label}`;
-                    container.appendChild(span);
-                }
-            });
-        }
-
-        function renderPDFAnexo() {
-            const container = document.getElementById('pdf_anexo_container');
-            container.innerHTML = `
-            <h6 class="font-weight-bold text-dark text-center mb-3 text-uppercase small" style="letter-spacing: 0.5px; font-family:'Outfit';">ANEXO DE PRESTACIÓN DE SERVICIOS</h6>
-            
-            <table class="pdf-annex-table">
-                <thead>
-                    <tr>
-                        <th>RUT</th>
-                        <th>Nombre del Prestador</th>
-                        <th>Tipo Contrato / Prestación</th>
-                        <th>CC Imputación</th>
-                        <th>Monto Mensual Bruto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${selectedRes.funcionarios.map(fun => `
-                        <tr>
-                            <td class="font-weight-bold">${fun.rut}</td>
-                            <td>${fun.nombre}</td>
-                            <td>${fun.estamento} / ${fun.tipo_prestacion}</td>
-                            <td>${selectedRes.cenco}</td>
-                            <td class="font-weight-bold text-success">$${fun.monto_mensual.toLocaleString('es-CL')}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        }
-
-        window.toggleEmployee = function (idx) {
-            const detailRow = document.getElementById(`detail_row_${idx}`);
-            const chk = document.getElementById(`chk_fun_${idx}`);
-            if (chk.checked) {
-                detailRow.classList.remove('hidden');
-                if (!activeEmployeesChecked.includes(idx)) {
-                    activeEmployeesChecked.push(idx);
-                }
-            } else {
-                detailRow.classList.add('hidden');
-                const idxInArr = activeEmployeesChecked.indexOf(idx);
-                if (idxInArr > -1) {
-                    activeEmployeesChecked.splice(idxInArr, 1);
-                }
+        function getCuotaBadgeClass(state) {
+            switch(state) {
+                case "DISPONIBLE": return "badge-success";
+                case "PAGADA": return "badge-secondary";
+                case "EN_TRAMITE": return "badge-warning";
+                case "RECHAZADA": return "badge-danger";
+                case "PENDIENTE_SALDO": return "badge-info";
+                default: return "badge-light";
             }
-            calculateRequestedTotal();
-            renderEvidenciasUploader();
+        }
+
+        window.toggleCuotaSelection = function(id_funcuo) {
+            const index = selectedCuotas.indexOf(id_funcuo);
+            if (index > -1) {
+                selectedCuotas.splice(index, 1);
+            } else {
+                selectedCuotas.push(id_funcuo);
+            }
+            recalcularTotalSolicitado();
             updateValidationPanel();
+            renderTablaAsignacion();
+            renderEvidenciasCuotas();
         };
 
-        function calculateRequestedTotal() {
-            let total = 0;
-            activeEmployeesChecked.forEach(idx => {
-                total += selectedRes.funcionarios[idx].monto_mensual;
-            });
+        // Render PP01-B06b real dynamic grid
+        function renderTablaAsignacion() {
+            const tbody = document.getElementById('tbody_monto_dia_pago');
+            tbody.innerHTML = '';
 
-            document.getElementById('sticky_total_monto').textContent = `$${total.toLocaleString('es-CL')}`;
-        }
-
-        function renderEvidenciasUploader() {
-            const container = document.getElementById('evidencias_container');
-            container.innerHTML = '';
-
-            if (activeEmployeesChecked.length === 0) {
-                container.innerHTML = `
-                <div class="alert alert-info small py-2 mb-0">
-                    <i class="fas fa-info-circle mr-1"></i> Seleccione al menos un funcionario de la nómina para cargar sus evidencias de ejecución.
-                </div>
-            `;
-                document.getElementById('evidence_totals_badge').textContent = "Cargados: 0/0";
+            if (selectedCuotas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Seleccione una cuota de la nómina para habilitar la asignación.</td></tr>`;
                 return;
             }
 
-            let totalEvidences = 0;
-            let loadedEvidences = 0;
-
-            activeEmployeesChecked.forEach(fIdx => {
-                const fun = selectedRes.funcionarios[fIdx];
-
-                const employeeBox = document.createElement('div');
-                employeeBox.className = "employee-evidence-card shadow-xs";
-                employeeBox.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                    <strong class="text-ufro-blue" style="font-size:0.75rem;"><i class="fas fa-user-edit mr-1"></i> Respaldos: ${fun.nombre}</strong>
-                    <span class="badge badge-light text-primary font-weight-bold" style="font-size:0.62rem;">${fun.rut}</span>
-                </div>
-            `;
-
-                fun.evidencias.forEach((ev, evIdx) => {
-                    totalEvidences++;
-                    if (ev.loaded) loadedEvidences++;
-
-                    const row = document.createElement('div');
-                    row.className = "file-upload-row d-flex align-items-center p-2 mb-2";
-                    row.innerHTML = `
-                    <div class="status-badge-custom ${ev.loaded ? 'status-badge-success' : 'status-badge-pending'} mr-3 shadow-xs" style="width:24px; height:24px;" id="status_icon_${fIdx}_${evIdx}">
-                        <i class="fas ${ev.loaded ? 'fa-check' : 'fa-times'}" style="font-size:0.7rem;" id="status_i_${fIdx}_${evIdx}"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div class="font-weight-bold text-dark" style="font-size:0.7rem;">${ev.label}</div>
-                        <div class="text-muted" style="font-size:0.62rem;" id="file_name_${fIdx}_${evIdx}">${ev.file ? ev.file : `No se ha cargado archivo (${ev.format})`}</div>
-                    </div>
-                    <input type="file" id="file_input_${fIdx}_${evIdx}" class="hidden" accept="${ev.format}" onchange="handleEvidenceUpload(${fIdx}, ${evIdx})">
-                    <button class="btn btn-xs btn-outline-primary font-weight-bold py-1 px-2" style="font-size:0.65rem;" id="btn_upload_${fIdx}_${evIdx}" onclick="triggerEvidenceFileInput(${fIdx}, ${evIdx})">
-                        <i class="fas fa-upload mr-1"></i> Subir
-                    </button>
-                `;
-                    employeeBox.appendChild(row);
+            selectedCuotas.forEach(id_funcuo => {
+                let cuoObj = null;
+                let funObj = null;
+                selectedRes.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.id_funcuo === id_funcuo) {
+                            cuoObj = c;
+                            funObj = f;
+                        }
+                    });
                 });
 
-                container.appendChild(employeeBox);
+                if (!cuoObj) return;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="pl-3 align-middle font-weight-bold">
+                        ${funObj.nombre}
+                        <div class="text-muted small" style="font-size: 0.65rem;">Contrato: ${funObj.contrato_pds}</div>
+                    </td>
+                    <td class="align-middle text-center font-weight-bold">${cuoObj.mes_ejecucion}/${cuoObj.anio_ejecucion}</td>
+                    <td class="align-middle text-center font-weight-bold">${cuoObj.nro_cuota}/${cuoObj.tot_cuotas}</td>
+                    <td class="text-right align-middle text-muted">${formatCLP(funObj.monto_bruto_aprobado)}</td>
+                    <td class="text-right align-middle text-muted">${formatCLP(funObj.total_pagado)}</td>
+                    <td class="text-right align-middle text-muted">${formatCLP(funObj.monto_en_tramite)}</td>
+                    <td class="text-right align-middle text-primary font-weight-bold">${formatCLP(cuoObj.saldo_pendiente_funcionario)}</td>
+                    <td class="align-middle">
+                        <div class="input-group input-group-sm ml-auto" style="width: 140px;">
+                            <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                            <input type="number" class="form-control text-right mto-sol-inp" id="inp_sol_${id_funcuo}" 
+                                value="${cuoObj.mto_cuota}"
+                                oninput="validarMontoCuota(${id_funcuo}, ${cuoObj.mto_cuota})">
+                        </div>
+                        <input type="text" class="form-control form-control-sm mt-1 ${cuoObj.ausencias_periodo > 0 ? '' : 'd-none'}" 
+                            style="font-size: 0.65rem; border-color: var(--ufro-orange);"
+                            id="motivo_${id_funcuo}" 
+                            placeholder="Motivo de ajuste/ausencia..."
+                            value="${cuoObj.ausencias_periodo > 0 ? 'Ajuste por ausencias en el periodo trabajado.' : ''}">
+                    </td>
+                    <td class="align-middle">
+                        <div class="d-flex align-items-center">
+                            <select class="form-control form-control-sm mr-1 sel-mes-pago" id="sel_mes_${id_funcuo}" onchange="checkPagoPosterior(${id_funcuo})">
+                                ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `<option value="${m}" ${m === cuoObj.mes_ejecucion ? 'selected' : ''}>${m}</option>`).join('')}
+                            </select>
+                            <select class="form-control form-control-sm sel-anio-pago" id="sel_anio_${id_funcuo}" onchange="checkPagoPosterior(${id_funcuo})">
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
+                    </td>
+                    <td class="text-center align-middle" id="pago_post_badge_${id_funcuo}">
+                        <span class="badge badge-light text-muted">No</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                checkPagoPosterior(id_funcuo);
             });
 
-            document.getElementById('evidence_totals_badge').textContent = `Cargados: ${loadedEvidences}/${totalEvidences}`;
-            document.getElementById('evidence_totals_badge').className = loadedEvidences === totalEvidences ? "badge badge-success small font-weight-bold" : "badge badge-warning small font-weight-bold";
+            recalcularTotalSolicitado();
         }
 
-        window.triggerEvidenceFileInput = function (fIdx, evIdx) {
-            document.getElementById(`file_input_${fIdx}_${evIdx}`).click();
-        };
+        window.checkPagoPosterior = function(id_funcuo) {
+            let cuoObj = null;
+            selectedRes.funcionarios.forEach(f => {
+                f.cuotas.forEach(c => {
+                    if (c.id_funcuo === id_funcuo) cuoObj = c;
+                });
+            });
+            if (!cuoObj) return;
 
-        window.handleEvidenceUpload = function (fIdx, evIdx) {
-            const input = document.getElementById(`file_input_${fIdx}_${evIdx}`);
-            if (input.files.length > 0) {
-                const file = input.files[0];
-                selectedRes.funcionarios[fIdx].evidencias[evIdx].file = file.name;
-                selectedRes.funcionarios[fIdx].evidencias[evIdx].loaded = true;
+            const mesSol = parseInt(document.getElementById(`sel_mes_${id_funcuo}`).value);
+            const anioSol = parseInt(document.getElementById(`sel_anio_${id_funcuo}`).value);
+            const badge = document.getElementById(`pago_post_badge_${id_funcuo}`);
 
-                // Renderizar de nuevo uploader y actualizar el panel de validaciones
-                renderEvidenciasUploader();
-                updateValidationPanel();
-                showToast('success', 'Archivo Adjuntado', `Se vinculó el documento físico [${file.name}] al prestador.`);
+            const isPost = (anioSol > cuoObj.anio_ejecucion) || (anioSol === cuoObj.anio_ejecucion && mesSol > cuoObj.mes_ejecucion);
+            
+            if (isPost) {
+                badge.innerHTML = `<span class="badge badge-warning val-badge-warning"><i class="fas fa-info-circle mr-1"></i> Posterior</span>`;
+            } else {
+                badge.innerHTML = `<span class="badge badge-light text-muted">No</span>`;
             }
         };
 
-        // Actualización dinámica del panel de validación D9
+        window.validarMontoCuota = function(id_funcuo, base) {
+            const input = document.getElementById(`inp_sol_${id_funcuo}`);
+            const value = parseFloat(input.value) || 0;
+            const motivoInp = document.getElementById(`motivo_${id_funcuo}`);
+
+            if (value > base || value <= 0) {
+                input.classList.add('is-invalid');
+                input.classList.add('border-danger');
+            } else {
+                input.classList.remove('is-invalid');
+                input.classList.remove('border-danger');
+            }
+
+            if (value < base) {
+                motivoInp.classList.remove('d-none');
+            } else {
+                let cuoObj = null;
+                selectedRes.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.id_funcuo === id_funcuo) cuoObj = c;
+                    });
+                });
+                if (cuoObj && cuoObj.ausencias_periodo > 0) {
+                    motivoInp.classList.remove('d-none');
+                } else {
+                    motivoInp.classList.add('d-none');
+                }
+            }
+
+            recalcularTotalSolicitado();
+        };
+
+        // Render evidences and constancias by selected cuota (PP01-B07)
+        function renderEvidenciasCuotas() {
+            const container = document.getElementById('evidencias_container');
+            container.innerHTML = '';
+
+            if (selectedCuotas.length === 0) {
+                container.innerHTML = `<div class="alert alert-info small py-2 mb-0"><i class="fas fa-info-circle mr-1"></i> Seleccione al menos una cuota de la nómina para cargar sus evidencias.</div>`;
+                return;
+            }
+
+            selectedCuotas.forEach(id_funcuo => {
+                let cuoObj = null;
+                let funObj = null;
+                selectedRes.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.id_funcuo === id_funcuo) {
+                            cuoObj = c;
+                            funObj = f;
+                        }
+                    });
+                });
+
+                if (!cuoObj) return;
+
+                // Find corresponding evidences from the PDS evidences list
+                const evs = selectedRes.evidencias.filter(e => e.id_funprse === funObj.id_funprse && e.id_funmes === cuoObj.id_funmes);
+                
+                // Add dynamically simulated constancias if licenses, receso or ausencias apply
+                const requiredConstancias = [];
+                if (cuoObj.licencia_medica_periodo === 'S') {
+                    requiredConstancias.push({ tipo: "CONST_LICENCIA", label: "Constancia y Dictamen de Continuidad por Licencia Médica (Firmado por Jefe de Proyecto)" });
+                }
+                if (cuoObj.permiso_sin_goce_periodo === 'S') {
+                    requiredConstancias.push({ tipo: "CONST_PERMISO", label: "Constancia de Justificación por Permiso sin Goce de Sueldo" });
+                }
+                if (cuoObj.ausencias_periodo > 0) {
+                    requiredConstancias.push({ tipo: "CONST_AUSENCIAS", label: "Informe de Cumplimiento Técnico proporcional a días ausentes" });
+                }
+
+                const card = document.createElement('div');
+                card.className = "employee-evidence-card shadow-xs mb-3 border-left-primary";
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <strong class="text-dark small" style="font-size:0.75rem;"><i class="fas fa-user-circle mr-1 text-primary"></i> ${funObj.nombre} (Cuota ${cuoObj.nro_cuota})</strong>
+                        <span class="badge badge-light text-muted small">ID Cuota: ${cuoObj.id_funcuo}</span>
+                    </div>
+                    
+                    <!-- Evidencias Base -->
+                    ${evs.map(ev => `
+                        <div class="file-upload-row d-flex justify-content-between align-items-center py-2 px-3 bg-light rounded border mb-2" style="font-size:0.75rem;">
+                            <div>
+                                <span class="badge badge-pill ${ev.loaded ? 'badge-success' : 'badge-warning'} mr-2">${ev.cod_tievi}</span>
+                                <strong>${ev.label}</strong>
+                                ${ev.file ? `<div class="text-success small mt-1 font-weight-bold"><i class="fas fa-file-pdf mr-1"></i> ${ev.file}</div>` : `<div class="text-muted small mt-1">Pendiente de subir</div>`}
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-xs btn-outline-primary" onclick="triggerEvHidden(${funObj.id_funprse}, ${cuoObj.id_funcuo}, ${ev.id_fuev})">
+                                    <i class="fas fa-upload mr-1"></i> Subir
+                                </button>
+                                <input type="file" id="ev_file_${cuoObj.id_funcuo}_${ev.id_fuev}" style="display:none;" onchange="handleEvFile(${funObj.id_funprse}, ${cuoObj.id_funcuo}, ${ev.id_fuev})">
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    <!-- Constancias Especiales Requeridas -->
+                    ${requiredConstancias.map(co => `
+                        <div class="file-upload-row d-flex justify-content-between align-items-center py-2 px-3 rounded border border-danger mb-2" style="font-size:0.75rem; background-color:#fffefe;">
+                            <div>
+                                <span class="badge badge-pill badge-danger mr-2">CONST_ESPECIAL</span>
+                                <strong class="text-danger">${co.label}</strong>
+                                <div class="text-muted small mt-1">Requerido por Licencia/Permiso/Ausencia en el periodo.</div>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-xs btn-outline-danger" onclick="triggerConstHidden(${cuoObj.id_funcuo}, '${co.tipo}')">
+                                    <i class="fas fa-file-signature mr-1"></i> Firmar y Cargar
+                                </button>
+                                <input type="file" id="const_file_${cuoObj.id_funcuo}_${co.tipo}" style="display:none;" onchange="handleConstFile(${cuoObj.id_funcuo}, '${co.tipo}')">
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+                container.appendChild(card);
+            });
+
+            updateValidationPanel();
+        }
+
+        window.triggerEvHidden = function(id_funprse, id_funcuo, id_fuev) {
+            document.getElementById(`ev_file_${id_funcuo}_${id_fuev}`).click();
+        };
+
+        window.handleEvFile = function(id_funprse, id_funcuo, id_fuev) {
+            const input = document.getElementById(`ev_file_${id_funcuo}_${id_fuev}`);
+            if (input.files.length > 0) {
+                const filename = input.files[0].name;
+                
+                // Update in local memory PDS evidence state
+                const ev = selectedRes.evidencias.find(e => e.id_fuev === id_fuev);
+                if (ev) {
+                    ev.file = filename;
+                    ev.loaded = true;
+                    ev.rut_carga = "16.482.938-K";
+                    ev.f_carga = "Hoy";
+                }
+                
+                showToast('success', 'Archivo Cargado', `Evidencia [${filename}] asociada exitosamente.`);
+                renderEvidenciasCuotas();
+            }
+        };
+
+        window.triggerConstHidden = function(id_funcuo, tipo) {
+            document.getElementById(`const_file_${id_funcuo}_${tipo}`).click();
+        };
+
+        window.handleConstFile = function(id_funcuo, tipo) {
+            const input = document.getElementById(`const_file_${id_funcuo}_${tipo}`);
+            if (input.files.length > 0) {
+                const filename = input.files[0].name;
+                
+                // Add to PDS constancias_requeridas state
+                if (!selectedRes.constancias_requeridas) {
+                    selectedRes.constancias_requeridas = [];
+                }
+                let existing = selectedRes.constancias_requeridas.find(c => c.id_funmes === id_funcuo && c.tipo_condicion === tipo);
+                if (!existing) {
+                    selectedRes.constancias_requeridas.push({
+                        tipo_condicion: tipo,
+                        id_funmes: id_funcuo,
+                        obligatoria: true,
+                        loaded: true,
+                        file: filename
+                    });
+                } else {
+                    existing.file = filename;
+                    existing.loaded = true;
+                }
+
+                showToast('success', 'Constancia Registrada', `Constancia especial [${filename}] cargada y firmada digitalmente.`);
+                renderEvidenciasCuotas();
+            }
+        };
+
+        function recalcularTotalSolicitado() {
+            let total = 0;
+            selectedCuotas.forEach(id_funcuo => {
+                const input = document.getElementById(`inp_sol_${id_funcuo}`);
+                if (input) {
+                    total += parseFloat(input.value) || 0;
+                }
+            });
+            document.getElementById('sticky_total_monto').textContent = formatCLP(total);
+            document.getElementById('total_pago_display').value = formatCLP(total);
+        }
+
         function updateValidationPanel() {
             if (!selectedRes) return;
 
-            // Check 1: PDS formalizada y con resolución
-            setCheck(1, true, `Resolución exenta ${selectedRes.nro} formalizada y firmada en el anterior workflow.`);
-
-            // Check 2: Funcionario seleccionado habilitado
-            if (activeEmployeesChecked.length > 0) {
-                setCheck(2, true, `Se incluyeron ${activeEmployeesChecked.length} funcionarios autorizados de la nómina.`);
-            } else {
-                setCheck(2, false, 'No se ha seleccionado ningún funcionario para el pago.', 'pending');
-            }
-
-            // Check 3: Periodo dentro de meses autorizados
-            setCheck(3, true, `Mes de cobro [${selectedMonth} 2026] coincide con los periodos aprobados.`);
-
-            // Check 4: Control Duplicidad
-            setCheck(4, true, `Validado en Sybase: No existen cobros activos ni en proceso en el periodo para los seleccionados.`);
-
-            // Check 5: Evidencias de Ejecución (Contar cargadas)
-            let total = 0;
-            let loaded = 0;
-            activeEmployeesChecked.forEach(fIdx => {
-                const fun = selectedRes.funcionarios[fIdx];
-                fun.evidencias.forEach(ev => {
-                    total++;
-                    if (ev.loaded) loaded++;
+            setCheck(1, true, `PDS ${selectedRes.nro_solpds} formalizada con resolución firmada.`);
+            setCheck(2, selectedCuotas.length > 0, selectedCuotas.length > 0 ? `Se seleccionaron ${selectedCuotas.length} cuotas de la nómina.` : `No se ha seleccionado ninguna cuota para cobro.`, selectedCuotas.length > 0 ? 'success' : 'pending');
+            
+            // Validate evidences
+            let missingEv = false;
+            selectedCuotas.forEach(id_funcuo => {
+                let cuoObj = null;
+                let funObj = null;
+                selectedRes.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.id_funcuo === id_funcuo) {
+                            cuoObj = c;
+                            funObj = f;
+                        }
+                    });
                 });
+                
+                // Get obligatoria evidences
+                const evs = selectedRes.evidencias.filter(e => e.id_funprse === funObj.id_funprse && e.id_funmes === cuoObj.id_funmes);
+                const missingBase = evs.some(e => e.obligatoria && !e.loaded);
+                
+                // Check if license/ausencia requires constancia
+                let missingConst = false;
+                if (cuoObj.licencia_medica_periodo === 'S') {
+                    const constLoaded = selectedRes.constancias_requeridas && selectedRes.constancias_requeridas.some(c => c.id_funmes === id_funcuo && c.tipo_condicion === 'CONST_LICENCIA' && c.loaded);
+                    if (!constLoaded) missingConst = true;
+                }
+                if (cuoObj.ausencias_periodo > 0) {
+                    const constLoaded = selectedRes.constancias_requeridas && selectedRes.constancias_requeridas.some(c => c.id_funmes === id_funcuo && c.tipo_condicion === 'CONST_AUSENCIAS' && c.loaded);
+                    if (!constLoaded) missingConst = true;
+                }
+
+                if (missingBase || missingConst) missingEv = true;
             });
 
-            if (total > 0 && loaded === total) {
-                setCheck(5, true, `Carga física completa de respaldos mensuales (${loaded}/${total} archivos).`);
-            } else if (total > 0) {
-                setCheck(5, false, `Evidencias: Faltan respaldos físicos obligatorios (${loaded}/${total} cargadas).`, 'warning');
+            if (selectedCuotas.length === 0) {
+                setCheck(5, false, 'Carga física de respaldos mensuales (0/0 archivos).', 'pending');
+            } else if (missingEv) {
+                setCheck(5, false, 'Faltan evidencias obligatorias o constancias especiales por licencias/ausencias.', 'warning');
             } else {
-                setCheck(5, false, 'Carga física total de respaldos mensuales (0/0 archivos).', 'pending');
+                setCheck(5, true, 'Evidencias y constancias especiales cargadas y visadas.');
             }
 
-            // Check 6: Cruce con SISPER: Ausencia de licencias médicas
-            setCheck(6, true, `Cruce SISPER: Prestadores sin registro de licencias médicas vigentes en ${selectedMonth}.`);
-
-            // Check 7: Cruce con SISPER: Ausencia de permisos sin goce
-            setCheck(7, true, `Cruce SISPER: Prestadores sin registro de permisos vigentes en ${selectedMonth}.`);
-
-            // Check 8: Vigencia del CC
-            if (selectedRes.nro === 'RE-114/2026') {
-                setCheck(8, false, 'Alerta contable: CC con vigencia hasta el 31/07/2026.', 'warning');
-            } else {
-                setCheck(8, true, `Centro de costo contable ${selectedRes.cenco} activo y vigente.`);
-            }
-
-            // Check 9: Receso Universitario
-            setCheck(9, true, `Validado: El mes ${selectedMonth} no coincide con recesos académicos programados.`);
+            setCheck(6, true, 'Cruce SISPER: Prestadores sin registro de licencias médicas.');
+            setCheck(7, true, 'Cruce SISPER: Prestadores sin deudas ni permisos vigentes.');
+            setCheck(8, true, `Centro de costo ${selectedRes.centro_costo.codigo} activo y con saldo.`);
+            setCheck(9, true, 'Meses válidos fuera de receso académico.');
         }
 
         function setCheck(num, status, text, type = 'success') {
@@ -2009,7 +1952,6 @@
             const textSpan = document.getElementById(`val_check_txt_${num}`);
 
             if (!iconDiv) return;
-
             textSpan.textContent = text;
 
             if (status) {
@@ -2029,25 +1971,285 @@
             }
         }
 
-        // Toasts
+        // Guardar Borrador real (PP01-B08)
+        window.saveAsDraft = function() {
+            if (!selectedRes) {
+                showToast('danger', 'Error', 'Debe seleccionar una PDS primero.');
+                return;
+            }
+
+            // Create or update draft
+            const nro_solpag = activeSolicitudId || "SP-2026-" + Math.floor(10000 + Math.random() * 90000);
+            
+            const detalles = selectedCuotas.map(id_funcuo => {
+                const input = document.getElementById(`inp_sol_${id_funcuo}`);
+                const mto_sol = parseFloat(input.value) || 0;
+                const mesSol = parseInt(document.getElementById(`sel_mes_${id_funcuo}`).value);
+                const anioSol = parseInt(document.getElementById(`sel_anio_${id_funcuo}`).value);
+
+                let originalCuo = null;
+                let foundFun = selectedRes.funcionarios.find(f => f.cuotas.some(c => {
+                    if (c.id_funcuo === id_funcuo) {
+                        originalCuo = c;
+                        return true;
+                    }
+                    return false;
+                }));
+
+                const evs = selectedRes.evidencias
+                    .filter(e => e.id_funprse === foundFun.id_funprse && e.id_funmes === originalCuo.id_funmes)
+                    .map(e => ({ label: e.label, file: e.file || 'Pendiente', loaded: e.loaded }));
+
+                return {
+                    id_pagdet: 7000 + Math.floor(Math.random() * 1000),
+                    id_funcuo: id_funcuo,
+                    id_funmes: originalCuo.id_funmes,
+                    id_funprse: foundFun.id_funprse,
+                    rut: foundFun.rut,
+                    nombre: foundFun.nombre,
+                    nro_cuota: originalCuo.nro_cuota,
+                    tot_cuotas: originalCuo.tot_cuotas,
+                    mes_ejecucion: originalCuo.mes_ejecucion,
+                    anio_ejecucion: originalCuo.anio_ejecucion,
+                    nro_mespag: mesSol,
+                    anio_pag: anioSol,
+                    mto_cuota: originalCuo.mto_cuota,
+                    mto_solpag: mto_sol,
+                    mto_autpag: null,
+                    cod_estcuo: "BORRADOR",
+                    cod_estdet: "PENDIENTE",
+                    evidencias: evs
+                };
+            });
+
+            // Find and delete existing if activeSolicitudId is set
+            if (activeSolicitudId) {
+                dbState.solicitudes_pago = dbState.solicitudes_pago.filter(s => s.nro_solpag !== activeSolicitudId);
+            }
+
+            const draftSol = {
+                nro_solpag: nro_solpag,
+                nro_solpds: selectedRes.nro_solpds,
+                resolucion: selectedRes.resolucion,
+                cod_estsol: "BORRADOR",
+                detalles: detalles
+            };
+
+            dbState.solicitudes_pago.push(draftSol);
+            
+            // Sync with local memory
+            saveLocalDB(dbState);
+            activeSolicitudId = nro_solpag;
+
+            showToast('success', 'Borrador Guardado', `La solicitud de pago ${nro_solpag} se guardó localmente en Borrador.`);
+            revisarBandejaSolicitante();
+        };
+
+        // Enviar a DGDP
+        window.submitPaymentRequest = function() {
+            if (!selectedRes) {
+                showToast('danger', 'Error', 'Debe seleccionar una PDS primero.');
+                return;
+            }
+            if (selectedCuotas.length === 0) {
+                showToast('danger', 'Error', 'Debe seleccionar al menos una cuota para cobro.');
+                return;
+            }
+
+            // Check invalid amounts
+            let hasInvalid = false;
+            let hasZero = false;
+            selectedCuotas.forEach(id_funcuo => {
+                const input = document.getElementById(`inp_sol_${id_funcuo}`);
+                const value = parseFloat(input.value) || 0;
+                if (value <= 0) hasZero = true;
+                if (input && input.classList.contains('is-invalid')) {
+                    hasInvalid = true;
+                }
+            });
+
+            if (hasZero) {
+                showToast('danger', 'Monto Requerido', 'El monto bruto solicitado debe ser mayor a $0.');
+                return;
+            }
+            if (hasInvalid) {
+                showToast('danger', 'Monto Excedido', 'Una o más cuotas superan el saldo o base disponible.');
+                return;
+            }
+
+            // Check Evidencias obligatorias
+            let missingEv = false;
+            selectedCuotas.forEach(id_funcuo => {
+                let cuoObj = null;
+                let funObj = null;
+                selectedRes.funcionarios.forEach(f => {
+                    f.cuotas.forEach(c => {
+                        if (c.id_funcuo === id_funcuo) {
+                            cuoObj = c;
+                            funObj = f;
+                        }
+                    });
+                });
+                
+                const evs = selectedRes.evidencias.filter(e => e.id_funprse === funObj.id_funprse && e.id_funmes === cuoObj.id_funmes);
+                const missingBase = evs.some(e => e.obligatoria && !e.loaded);
+                
+                let missingConst = false;
+                if (cuoObj.licencia_medica_periodo === 'S') {
+                    const constLoaded = selectedRes.constancias_requeridas && selectedRes.constancias_requeridas.some(c => c.id_funmes === id_funcuo && c.tipo_condicion === 'CONST_LICENCIA' && c.loaded);
+                    if (!constLoaded) missingConst = true;
+                }
+                if (cuoObj.ausencias_periodo > 0) {
+                    const constLoaded = selectedRes.constancias_requeridas && selectedRes.constancias_requeridas.some(c => c.id_funmes === id_funcuo && c.tipo_condicion === 'CONST_AUSENCIAS' && c.loaded);
+                    if (!constLoaded) missingConst = true;
+                }
+
+                // Constancias are evaluated by DGDP, so only missing base evidences block submission
+                if (missingBase) missingEv = true;
+            });
+
+            if (missingEv) {
+                showToast('danger', 'Falta Documentación', 'No puede enviar sin cargar todos los respaldos base requeridos.');
+                return;
+            }
+
+            $('#modalConfirm').modal('show');
+        };
+
+        window.confirmSubmit = function() {
+            $('#modalConfirm').modal('hide');
+            showToast('info', 'Procesando Envío', 'Validando cruce de base de datos con SISPER y registrando cobro...');
+
+            setTimeout(() => {
+                const nro_solpag = activeSolicitudId || "SP-2026-" + Math.floor(10000 + Math.random() * 90000);
+
+                // Update cuota state in prestations
+                selectedCuotas.forEach(id_funcuo => {
+                    dbState.prestaciones.forEach(res => {
+                        res.funcionarios.forEach(fun => {
+                            fun.cuotas.forEach(cuo => {
+                                if (cuo.id_funcuo === id_funcuo) {
+                                    cuo.cod_estcuo = "EN_TRAMITE";
+                                }
+                            });
+                        });
+                    });
+                });
+
+                // Map detalles to sg_pade
+                const detalles = selectedCuotas.map(id_funcuo => {
+                    const input = document.getElementById(`inp_sol_${id_funcuo}`);
+                    const mto_sol = parseFloat(input.value) || 0;
+                    const mesSol = parseInt(document.getElementById(`sel_mes_${id_funcuo}`).value);
+                    const anioSol = parseInt(document.getElementById(`sel_anio_${id_funcuo}`).value);
+
+                    let originalCuo = null;
+                    let foundFun = selectedRes.funcionarios.find(f => f.cuotas.some(c => {
+                        if (c.id_funcuo === id_funcuo) {
+                            originalCuo = c;
+                            return true;
+                        }
+                        return false;
+                    }));
+
+                    const evs = selectedRes.evidencias
+                        .filter(e => e.id_funprse === foundFun.id_funprse && e.id_funmes === originalCuo.id_funmes)
+                        .map(e => ({ label: e.label, file: e.file || 'Pendiente.pdf', loaded: e.loaded }));
+
+                    return {
+                        id_pagdet: 7000 + Math.floor(Math.random() * 1000),
+                        id_funcuo: id_funcuo,
+                        id_funmes: originalCuo.id_funmes,
+                        id_funprse: foundFun.id_funprse,
+                        rut: foundFun.rut,
+                        nombre: foundFun.nombre,
+                        nro_cuota: originalCuo.nro_cuota,
+                        tot_cuotas: originalCuo.tot_cuotas,
+                        mes_ejecucion: originalCuo.mes_ejecucion,
+                        anio_ejecucion: originalCuo.anio_ejecucion,
+                        nro_mespag: mesSol,
+                        anio_pag: anioSol,
+                        mto_cuota: originalCuo.mto_cuota,
+                        mto_solpag: mto_sol,
+                        mto_autpag: null,
+                        cod_estcuo: "EN_TRAMITE",
+                        cod_estdet: "EN_PROCESO",
+                        evidencias: evs
+                    };
+                });
+
+                // Remove existing if any
+                dbState.solicitudes_pago = dbState.solicitudes_pago.filter(s => s.nro_solpag !== nro_solpag);
+
+                const newRequest = {
+                    nro_solpag: nro_solpag,
+                    nro_solpds: selectedRes.nro_solpds,
+                    resolucion: selectedRes.resolucion,
+                    cod_estsol: "EN_TRAMITE",
+                    detalles: detalles
+                };
+
+                dbState.solicitudes_pago.push(newRequest);
+                saveLocalDB(dbState);
+
+                showToast('success', 'Envío Exitoso', `La solicitud de pago ${nro_solpag} fue enviada a la DGDP.`);
+                
+                setTimeout(() => {
+                    location.href = `02_vista_dgdp_pago.html?nro_solici=${nro_solpag}`;
+                }, 1200);
+            }, 1500);
+        };
+
+        function renderPDFAnexo() {
+            const container = document.getElementById('pdf_anexo_container');
+            container.innerHTML = `
+                <h6 class="font-weight-bold text-dark text-center mb-3 text-uppercase small" style="letter-spacing: 0.5px; font-family:'Outfit';">ANEXO DE PRESTACIÓN DE SERVICIOS</h6>
+                <table class="pdf-annex-table">
+                    <thead>
+                        <tr>
+                            <th>RUT</th>
+                            <th>Nombre del Prestador</th>
+                            <th>Cargo / Estamento</th>
+                            <th>CC Imputación</th>
+                            <th>Monto Mensual Bruto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${selectedRes.funcionarios.map(fun => `
+                            <tr>
+                                <td class="font-weight-bold">${fun.rut}</td>
+                                <td>${fun.nombre}</td>
+                                <td>${fun.cargo.split('|')[0]}</td>
+                                <td>${selectedRes.centro_costo.codigo}</td>
+                                <td class="font-weight-bold text-success">$${fun.monto_bruto_aprobado.toLocaleString('es-CL')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        const formatCLP = (val) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(val);
+
         function showToast(type, title, message) {
             const container = document.getElementById('ufro-toast-container');
+            if (!container) return;
             const toast = document.createElement('div');
             toast.className = `ufro-toast ufro-toast-${type}`;
-
+            
             let iconClass = 'fa-info-circle';
             if (type === 'success') iconClass = 'fa-check-circle';
             if (type === 'warning') iconClass = 'fa-exclamation-triangle';
             if (type === 'danger') iconClass = 'fa-ban';
 
             toast.innerHTML = `
-            <div class="ufro-toast-icon"><i class="fas ${iconClass}"></i></div>
-            <div class="ufro-toast-content">
-                <div class="ufro-toast-title">${title}</div>
-                <div class="ufro-toast-message">${message}</div>
-            </div>
-            <button class="ufro-toast-close" onclick="this.parentElement.remove()">&times;</button>
-        `;
+                <div class="ufro-toast-icon"><i class="fas ${iconClass}"></i></div>
+                <div class="ufro-toast-content">
+                    <div class="ufro-toast-title">${title}</div>
+                    <div class="ufro-toast-message">${message}</div>
+                </div>
+                <button class="ufro-toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
             container.appendChild(toast);
             setTimeout(() => toast.classList.add('show'), 100);
             setTimeout(() => {
@@ -2055,80 +2257,6 @@
                 setTimeout(() => toast.remove(), 400);
             }, 5000);
         }
-
-        function saveAsDraft() {
-            if (!selectedRes) {
-                showToast('danger', 'Error de guardado', 'Seleccione una prestación de servicios primero.');
-                return;
-            }
-            showToast('success', 'Borrador de Pago Guardado', `La solicitud de pago para el periodo ${selectedMonth} 2026 fue respaldada como borrador en Sybase.`);
-        }
-
-        function submitPaymentRequest() {
-            if (!selectedRes) {
-                showToast('danger', 'Error de envío', 'Debe seleccionar una prestación primero.');
-                return;
-            }
-            if (activeEmployeesChecked.length === 0) {
-                showToast('danger', 'Error de envío', 'Debe seleccionar al menos un funcionario para cobrar.');
-                return;
-            }
-
-            // Validar que se hayan cargado todas las evidencias para los funcionarios activos
-            let total = 0;
-            let loaded = 0;
-            activeEmployeesChecked.forEach(fIdx => {
-                const fun = selectedRes.funcionarios[fIdx];
-                fun.evidencias.forEach(ev => {
-                    total++;
-                    if (ev.loaded) loaded++;
-                });
-            });
-
-            if (loaded < total) {
-                showToast('warning', 'Respaldos Físicos Obligatorios Faltantes', `Debe subir la totalidad de las evidencias físicas de ejecución para el cobro mensual (${loaded}/${total} cargados).`);
-                return;
-            }
-
-            $('#modalConfirm').modal('show');
-        }
-
-        function confirmSubmit() {
-            $('#modalConfirm').modal('hide');
-
-            showToast('info', 'Ejecutando sp_pago_validar_restricciones', 'Chequeando incompatibilidades contractuales y vigencias de CC en SISPER...');
-
-            setTimeout(() => {
-                showToast('success', 'Filtro Normativo Superado', 'Cruce de bases de datos SISPER exitoso. El expediente fue despachado al circuito de control normativo de la DGDP.');
-                // Actualizar estado visual
-                document.getElementById('pago_estado_badge').className = "badge-status status-2 shadow-xs";
-                document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-clock"></i> EN REVISIÓN DGDP';
-
-                // Deshabilitar controles de la pantalla
-                document.getElementById('btn_guardar').disabled = true;
-                document.getElementById('btn_enviar').disabled = true;
-                document.querySelector('.sticky-actions').classList.add('hidden');
-
-                // Deshabilitar checkboxes e inputs de carga
-                activeEmployeesChecked.forEach(idx => {
-                    document.getElementById(`chk_fun_${idx}`).disabled = true;
-                    selectedRes.funcionarios[idx].evidencias.forEach((ev, evIdx) => {
-                        const btn = document.getElementById(`btn_upload_${idx}_${evIdx}`);
-                        if (btn) btn.disabled = true;
-                    });
-                });
-
-                // Desmarcar botones de mes
-                const monthBtns = document.querySelectorAll('.month-status-pill.month-status-process');
-                monthBtns.forEach(btn => btn.disabled = true);
-            }, 2200);
-        }
-
-        // Toggle menu responsivo
-        $("#menu-toggle").click(function (e) {
-            e.preventDefault();
-            $("#wrapper").toggleClass("toggled");
-        });
     </script>
 </body>
 

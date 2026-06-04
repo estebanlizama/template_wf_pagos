@@ -35,6 +35,37 @@ En el workflow de pago, DGDP valida si un funcionario ya aprobado **puede recibi
 
 Regla base: DGDP no modifica la PDS original ni los montos aprobados. Solo resuelve la procedencia del pago solicitado.
 
+## 2.1 Relación con Solicitud PDS Formalizada
+
+- El pago nace desde una PDS formalizada y con resolución/documento firmado.
+- `sg_prse` y `sg_fups` son la fuente de datos aprobados.
+- `sg_fume` contiene los meses aprobados por funcionario.
+- `sg_fucu` contiene las cuotas generadas desde esos meses aprobados.
+- `sg_paso` crea la solicitud formal de pago asociada a la PDS.
+- `sg_pade` registra qué cuotas se solicitan pagar.
+- `sg_fuev` registra las evidencias/constancias por funcionario/mes/pago.
+- El pago no modifica la PDS, funcionarios, meses ni topes aprobados.
+- Un rechazo de pago no debe usar `sg_fups.ind_retfun`.
+
+### Matriz de Validaciones de Pago
+
+| Regla | Resuelta en PDS | Revalidar en Pago |
+| :--- | :--- | :--- |
+| Cargo inhabilitado | Sí | Solo mostrar antecedente |
+| Asignación directiva | Sí | Solo mostrar antecedente |
+| Formación continua | Sí | Solo mostrar antecedente |
+| Tope mensual | Sí | Revalidar si cambia monto solicitado |
+| Máximo 2 meses | Sí | Validar cuota generada coherente |
+| SEA | Sí | Mostrar antecedente |
+| Compensación | Sí | Mostrar y exigir si falta respaldo |
+| Licencia médica | Puede haber sido evaluada | Sí, por mes ejecutado |
+| Permiso sin goce | Puede haber sido evaluado | Sí, por mes ejecutado |
+| Receso | No siempre | Sí, requiere constancia |
+| Deudas 2027 | Puede haber sido evaluada | Sí, si fecha aplica |
+| Ausencias | No estática | Sí, ajuste proporcional |
+| Saldo CC | Informativo/aprobado PDS | Sí, final en Finanzas |
+| Evidencia | Planificada | Carga real obligatoria |
+
 ---
 
 # 3. Identificacion general de la pantalla
@@ -431,7 +462,8 @@ Una vez revisados todos los funcionarios/periodos, DGDP debe resolver globalment
 
 - No se puede aprobar globalmente si quedan funcionarios/periodos pendientes de decision.
 - No se puede aprobar globalmente si todos los funcionarios/periodos fueron rechazados.
-- Si hay observaciones corregibles, la solicitud debe devolverse, no aprobarse parcialmente, salvo que el negocio permita aprobacion parcial.
+- **La aprobacion parcial está habilitada:** si existen detalles aprobados junto a detalles observados o rechazados, los detalles aprobados (`sg_pade.cod_estdet = 'APROBADO_DGDP'`) avanzan a Finanzas. Los observados vuelven al solicitante para corrección sin modificar la PDS. Los rechazados quedan cerrados con causal.
+- El monto global que avanza a Finanzas se calcula automáticamente sumando los `sg_pade.mto_solpag` de los detalles con `cod_estdet = 'APROBADO_DGDP'`. No se digita manualmente.
 - La accion global debe registrar usuario, fecha, estado anterior, estado nuevo y comentario.
 
 ### D. Declaracion de responsabilidad DGDP
@@ -593,7 +625,81 @@ La pantalla debe incluir una declaracion visible que recuerde que DGDP certifica
 
 ---
 
-# 11. Requerimientos no funcionales
+# 11. Especificaciones de Modelo Normalizado para PP02
+
+## 11.1 Revision por funcionario/cuota
+
+DGDP debe revisar la solicitud de pago a nivel de detalle, no solo a nivel global.
+
+| Elemento | Regla |
+| :--- | :--- |
+| Solicitud de pago | Se identifica por `sg_paso.nro_solici`. |
+| PDS origen | Se consulta mediante `sg_paso.nro_solpds`. |
+| Detalle revisado | Cada funcionario/cuota incluida vive en `sg_pade`. |
+| Cuota base | La cuota proviene de `sg_fucu`. |
+| Evidencia | Se consulta en `sg_fuev` por funcionario, mes y solicitud de pago. |
+
+## 11.2 Aprobacion parcial
+
+La pantalla soporta la aprobación parcial por detalle. Solo los registros de `sg_pade.cod_estdet = 'APROBADO_DGDP'` avanzarán a la Dirección de Finanzas para su revisión presupuestaria y pago.
+
+| Caso | Comportamiento esperado |
+| :--- | :--- |
+| Todos los detalles cumplen | Solicitud avanza completa a Finanzas con estado `EN_REVISION_FINANZAS` en `sg_soli`. |
+| Algunos detalles cumplen | Los detalles aprobados avanzan a Finanzas. Los detalles observados se devuelven al solicitante para corrección. La solicitud cambia a estado `PAGO_PARCIAL` o similar para trazabilidad, pero la derivación opera a nivel de detalle. |
+| Un detalle no cumple | Se actualiza `sg_pade.cod_estdet` para ese detalle (ej. `OBSERVADO` o `RECHAZADO`). |
+| Ningun detalle cumple | La solicitud global se rechaza o se devuelve completa a corrección según aplique. |
+
+Regla: un rechazo o devolución de un detalle de pago por DGDP nunca modifica la PDS original ni marca `sg_fups.ind_retfun` (el prestador no es retirado definitivamente del proyecto).
+
+## 11.3 Estados y causales
+
+DGDP debe registrar la decision por detalle usando los siguientes estados normalizados:
+
+| Estado `cod_estdet` | Significado |
+| :--- | :--- |
+| `EN_PROCESO` | El detalle fue recibido y está pendiente de revisión DGDP. |
+| `APROBADO_DGDP` | El detalle fue revisado y puede avanzar a Finanzas. |
+| `OBSERVADO` | El detalle presenta observaciones; vuelve al solicitante para correción. No modifica la PDS. |
+| `RECHAZADO` | El detalle no procede por causal normativa; se cierra con trazabilidad. No modifica la PDS. |
+
+| Decision | Efecto esperado |
+| :--- | :--- |
+| Aprobar detalle | `sg_pade.cod_estdet = 'APROBADO_DGDP'`. Avanza a Finanzas. |
+| Devolver detalle | `sg_pade.cod_estdet = 'OBSERVADO'`. Vuelve al solicitante para corrección. |
+| Rechazar detalle | `sg_pade.cod_estdet = 'RECHAZADO'` con causal trazable. |
+| Bloquear por condicion normativa | La cuota puede quedar rechazada o pendiente según regla de `sg_fucu.cod_estcuo`. |
+
+Si el rechazo solo aplica al intento de pago, debe quedar en `sg_pade`. Si afecta la cuota base y su posibilidad de reintento, debe reflejarse también en `sg_fucu`.
+
+## 11.4 Evidencias y constancias
+
+DGDP debe revisar evidencias por funcionario y periodo.
+
+| Regla | Descripcion |
+| :--- | :--- |
+| Evidencia obligatoria | No se puede aprobar detalle sin evidencia requerida. |
+| Constancia especial | Licencia, permiso, receso o ausencia deben tener constancia cuando la regla lo exija. |
+| Asociacion minima | Toda evidencia debe apuntar a `id_funprse`. |
+| Asociacion mensual | Si respalda un periodo, debe apuntar a `id_funmes`. |
+| Solicitud de pago | Si fue cargada en el pago, debe informar `nro_solpag`. |
+
+## 11.5 Alertas por rol DGDP
+
+La bandeja DGDP debe calcular el tiempo pendiente desde que la solicitud o detalle quedo asignado a DGDP.
+
+| Caso | Regla |
+| :--- | :--- |
+| Entra a revision DGDP | Inicia contador para rol DGDP. |
+| Pasa mas de 3 dias sin revision | Marcar en rojo para DGDP. |
+| DGDP resuelve y deriva a Finanzas | Se cierra contador DGDP e inicia contador de Finanzas. |
+| DGDP devuelve al solicitante | Se cierra contador DGDP e inicia contador del solicitante. |
+
+El calculo debe salir de `sg_hist` si registra el tramo de asignacion suficiente. Si no permite identificar rol destino, se debe evaluar una tabla satelite de tramos.
+
+---
+
+# 12. Requerimientos no funcionales
 
 | Codigo | Requerimiento | Descripcion |
 | :--- | :--- | :--- |
@@ -606,13 +712,20 @@ La pantalla debe incluir una declaracion visible que recuerde que DGDP certifica
 
 ---
 
-# 12. Pendientes por confirmar
+# 13. Pendientes por confirmar
 
-| Punto pendiente | Por que importa |
+| Punto pendiente | Por qué importa |
 | :--- | :--- |
-| Si DGDP puede aprobar parcialmente una solicitud con algunos funcionarios rechazados. | Define si se deriva a Finanzas solo el monto aprobado o si se devuelve todo. |
-| Si licencia medica/permiso sin goce rechaza automaticamente o queda para decision DGDP. | Define severidad de validaciones. |
-| Si deudas institucionales aplican desde 2027 como bloqueo absoluto o alerta previa. | Define regla temporal. |
-| Si receso universitario puede ser autorizado en esta misma pantalla o debe venir autorizado desde solicitud PDS. | Define acciones DGDP. |
-| Si DGDP revisa disponibilidad presupuestaria o solo Finanzas. | Evita duplicar controles de Finanzas. |
-| Cual sera el repositorio definitivo de evidencias y documento firmado. | Define integracion documental. |
+| Si licencia médica/permiso sin goce rechaza automáticamente o queda para decisión DGDP. | Define severidad de la validación y si es bloqueante o requiere confirmación. |
+| Si deudas institucionales aplican desde 2027 como bloqueo absoluto o alerta previa a DGDP. | Define la regla temporal y nivel de bloqueo. |
+| Si receso universitario puede ser autorizado en esta pantalla o debe venir autorizado desde la solicitud PDS. | Define las acciones disponibles en DGDP. |
+| Cuál será el repositorio definitivo de evidencias y documento firmado. | Define la integración documental. |
+
+> [!NOTE]
+> **Decisiones ya tomadas (no son pendientes):**
+> - DGDP **puede aprobar parcialmente** por detalle (`sg_pade`). Solo los detalles con `cod_estdet = 'APROBADO_DGDP'` avanzan a Finanzas.
+> - Los detalles observados vuelven al solicitante para corrección, sin modificar la PDS original.
+> - Los detalles rechazados quedan cerrados con causal; no usan `sg_fups.ind_retfun`.
+> - El monto global a Finanzas se calcula automáticamente desde `sum(sg_pade.mto_solpag)` de detalles `APROBADO_DGDP`.
+> - Los estados válidos de `sg_pade.cod_estdet` son: `EN_PROCESO`, `APROBADO_DGDP`, `OBSERVADO`, `RECHAZADO`.
+> - Los estados globales de solicitud derivados son: `EN_TRAMITE`, `APROBADO_DGDP`, `PAGO_PARCIAL`, `PENDIENTE_SALDO`, `RECHAZADA`.

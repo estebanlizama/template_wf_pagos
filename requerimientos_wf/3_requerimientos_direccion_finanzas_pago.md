@@ -26,9 +26,9 @@ La pantalla se documenta a partir de:
 | **Nombre** | Revisión Presupuestaria y Ejecución de Pago Finanzas |
 | **Perfil principal** | Analista de Finanzas Central / Tesorería |
 | **Etapa del flujo** | Etapa 03 — Control Presupuestario Final y Liquidación |
-| **Estado de entrada esperado** | Solicitud aprobada por DGDP / En revisión Finanzas (`cod_estpago = 3`) |
-| **Objetivo principal** | Validar el saldo disponible en el Centro de Costo, verificar financiamiento compatible, auditar las evidencias documentales cargadas, autorizar formalmente el desembolso e ingresar la transacción de pago para archivar la cuota. |
-| **Resultado posible** | Solicitud Aprobada y Pagada (`cod_estpago = 8`); o Rechazada por motivos presupuestarios (`cod_estpago = 4`). |
+| **Estado de entrada esperado** | Solicitud aprobada por DGDP — `sg_soli.cod_estsol = 'EN_REVISION_FINANZAS'` |
+| **Objetivo principal** | Validar el saldo disponible en el Centro de Costo, verificar financiamiento compatible, auditar las evidencias documentales cargadas, autorizar formalmente el desembolso e ingresar la transacción de pago por detalle (`sg_pade.nro_transac`) para cerrar la cuota. |
+| **Resultado posible** | Solicitud `PAGADA` (todos los detalles liquidados); `PAGO_PARCIAL` (algunos detalles liquidados, otros `PENDIENTE_SALDO`); `PENDIENTE_SALDO` (ninguno liquidado por falta de fondos); `RECHAZADA` (causal financiera definitiva). |
 
 ---
 
@@ -39,6 +39,37 @@ La Pantalla PP03 debe operar como una **consola de control financiero y egreso d
 * **Cero Sobregiros**: Inhabilita la aprobación si el Centro de Costo no cuenta con fondos líquidos suficientes.
 * **No permite editar** labores, deudas ni los datos contractuales del beneficiario.
 * Registra el número de transacción contable de egreso (`nro_transac`) antes de cerrar la solicitud.
+
+## 3.1 Relación con Solicitud PDS Formalizada
+
+- El pago nace desde una PDS formalizada y con resolución/documento firmado.
+- `sg_prse` y `sg_fups` son la fuente de datos aprobados.
+- `sg_fume` contiene los meses aprobados por funcionario.
+- `sg_fucu` contiene las cuotas generadas desde esos meses aprobados.
+- `sg_paso` crea la solicitud formal de pago asociada a la PDS.
+- `sg_pade` registra qué cuotas se solicitan pagar.
+- `sg_fuev` registra las evidencias/constancias por funcionario/mes/pago.
+- El pago no modifica la PDS, funcionarios, meses ni topes aprobados.
+- Un rechazo de pago no debe usar `sg_fups.ind_retfun`.
+
+### Matriz de Validaciones de Pago
+
+| Regla | Resuelta en PDS | Revalidar en Pago |
+| :--- | :--- | :--- |
+| Cargo inhabilitado | Sí | Solo mostrar antecedente |
+| Asignación directiva | Sí | Solo mostrar antecedente |
+| Formación continua | Sí | Solo mostrar antecedente |
+| Tope mensual | Sí | Revalidar si cambia monto solicitado |
+| Máximo 2 meses | Sí | Validar cuota generada coherente |
+| SEA | Sí | Mostrar antecedente |
+| Compensación | Sí | Mostrar y exigir si falta respaldo |
+| Licencia médica | Puede haber sido evaluada | Sí, por mes ejecutado |
+| Permiso sin goce | Puede haber sido evaluado | Sí, por mes ejecutado |
+| Receso | No siempre | Sí, requiere constancia |
+| Deudas 2027 | Puede haber sido evaluada | Sí, si fecha aplica |
+| Ausencias | No estática | Sí, ajuste proporcional |
+| Saldo CC | Informativo/aprobado PDS | Sí, final en Finanzas |
+| Evidencia | Planificada | Carga real obligatoria |
 
 ---
 
@@ -55,8 +86,8 @@ La pantalla debe permitir que la Dirección de Finanzas:
    * Corroborar que el monto solicitado no exceda el saldo disponible.
 6. Audite la **ficha de labores y funciones específicas pre-cargadas** de solo lectura.
 7. Acceda a la **descarga e inspección visual de los documentos de respaldo** (archivos cargados por el solicitante en cada evidencia).
-8. Registre la decisión financiera (Aprobar Pago / Rechazar Solicitud).
-9. Ingrese el **Número de transacción bancaria / Código contable de egreso** (`nro_transac`) y registre la fecha del depósito bancario para archivar la solicitud mensual con estado **"Pagada" (8)**.
+8. Registre la decisión financiera: Aprobar y Pagar / Marcar Pendiente por Saldo / Rechazar por causal definitiva.
+9. Ingrese el **número de transacción bancaria / código contable de egreso** (`sg_pade.nro_transac`) por cada detalle pagado, junto a la fecha efectiva de pago (`sg_pade.f_pago`), para cerrar el ciclo de la cuota correspondiente (`sg_fucu.cod_estcuo = 'PAGADA'`).
 
 ---
 
@@ -75,6 +106,66 @@ La Pantalla PP03 se organiza en los siguientes bloques funcionales:
 ---
 
 # 6. Desglose detallado por bloque y funcionalidad
+
+---
+
+# 7. Especificaciones de Modelo Normalizado para PP03
+
+## 7.1 Revision financiera por detalle de pago
+
+Finanzas debe revisar la disponibilidad presupuestaria sobre los detalles incluidos en la solicitud de pago.
+
+| Elemento | Regla |
+| :--- | :--- |
+| Solicitud de pago | Se identifica por `sg_paso.nro_solici`. |
+| PDS origen | Se consulta mediante `sg_paso.nro_solpds`. |
+| Detalle financiero | Cada cuota/persona a pagar se registra en `sg_pade`. |
+| Cuota base | La cuota se obtiene desde `sg_fucu`. |
+| Monto solicitado | Se lee desde `sg_pade.mto_solpag`. |
+| Monto autorizado | Se registra en `sg_pade.mto_autpag` si Finanzas autoriza un monto distinto. |
+
+## 7.2 Pago parcial dentro de una solicitud
+
+La pantalla soporta que la Dirección de Finanzas autorice y pague de manera parcial e individual a nivel de detalle (`sg_pade`).
+
+| Caso | Comportamiento esperado |
+| :--- | :--- |
+| Hay saldo para todos los detalles | Se autorizan todos los detalles (`sg_pade.cod_estdet = 'PAGADO'`), se registran las transacciones y la solicitud pasa a `PAGADA` globalmente. Las cuotas base pasan a `PAGADA` (`sg_fucu.cod_estcuo`). |
+| Hay saldo solo para algunos detalles | Se autorizan y pagan solo los detalles seleccionados con fondos. La solicitud pasa globalmente al estado mixto `PAGO_PARCIAL`. Los detalles no pagados por falta temporal de saldo quedan como `PENDIENTE_SALDO`. |
+| No hay saldo para un funcionario/cuota | Se marca el detalle en `sg_pade.cod_estdet = 'PENDIENTE_SALDO'`. Esto no cierra la cuota de forma definitiva: la cuota base en `sg_fucu.cod_estcuo` vuelve a quedar `DISPONIBLE` o `PENDIENTE_SALDO` para ser reintentada en una posterior solicitud cuando se inyecte presupuesto. |
+| No hay saldo para ningun detalle | La solicitud pasa a estado global `PENDIENTE_SALDO` o `RECHAZADA` si aplica otra causal, liberando las cuotas asociadas para nuevos intentos. |
+
+Regla: un rechazo o retraso presupuestario temporal en Finanzas nunca modifica la PDS ni retira permanentemente al personal.
+
+## 7.3 Estados de cuota y detalle
+
+| Nivel | Campo | Uso |
+| :--- | :--- | :--- |
+| Cuota base | `sg_fucu.cod_estcuo` | Controla el ciclo de vida de la cuota: `DISPONIBLE`, `EN_TRAMITE`, `PAGADA`, `PENDIENTE_SALDO`. |
+| Detalle de solicitud | `sg_pade.cod_estdet` | Controla el resultado del detalle en esta solicitud: `EN_PROCESO`, `APROBADO_DGDP`, `PAGADO`, `PENDIENTE_SALDO`, `RECHAZADO`. |
+
+Recomendación de reintento:
+1. Si un detalle queda `PAGADO`, la cuota en `sg_fucu` pasa a `PAGADA` permanentemente.
+2. Si un detalle queda `PENDIENTE_SALDO` (falta temporal de fondos), la cuota se libera a `DISPONIBLE` para posterior reenvío.
+
+## 7.4 Registro contable por Detalle (`sg_pade.nro_transac`)
+
+Para permitir múltiples transferencias bancarias y egresos independientes en una misma solicitud de pago, el número de transacción bancaria / referencia contable (`nro_transac`) y la fecha de pago (`f_pago`) **deben quedar almacenados directamente en cada registro de detalle (`sg_pade`)**, no en la cabecera `sg_paso`.
+
+Esto independiza la contabilidad de cada funcionario, permitiendo que algunos detalles sean pagados en momentos distintos cuando existe disponibilidad presupuestaria parcial.
+
+## 7.5 Alertas por rol Finanzas
+
+La bandeja de Finanzas debe calcular el tiempo pendiente desde que la solicitud quedo asignada a este rol.
+
+| Caso | Regla |
+| :--- | :--- |
+| Solicitud entra a Finanzas | Inicia contador para rol Finanzas. |
+| Pasa mas de 3 dias sin revision | Marcar en rojo para Finanzas. |
+| Finanzas aprueba o rechaza | Se cierra el tramo de Finanzas. |
+| Finanzas deja detalles pendientes | Debe quedar trazabilidad del detalle y del motivo financiero. |
+
+El contador se debe calcular dinamicamente desde historial o desde una tabla de tramos/asignacion, segun lo que finalmente permita `sg_hist`.
 
 ---
 
@@ -201,23 +292,42 @@ Habilita los controles finales para que el analista apruebe presupuestariamente,
 Analista de Finanzas Central / Tesorería.
 
 ### C. Datos de entrada
-* Selección de la acción:
-  * **APROBAR Y PAGAR**: Registra la aprobación y habilita la entrada contable.
-  * **RECHAZAR PAGO**: Rechaza el cobro del mes debido a inconsistencias o falta de presupuesto.
-* Comentarios del analista (Obligatorio en Rechazo).
-* Número de transacción bancaria / Código contable de egreso (`nro_transac`) (Obligatorio en Aprobación).
+* Selección de la acción por detalle de pago (`sg_pade`):
+  * **PAGAR DETALLE**: Registra la aprobación del detalle y habilita la entrada del código contable.
+  * **PENDIENTE POR SALDO**: Marca el detalle sin fondos para reintento posterior; la cuota base (`sg_fucu`) vuelve a `DISPONIBLE`.
+  * **RECHAZAR PAGO**: Rechaza el detalle por causal financiera definitiva.
+* Comentarios del analista (Obligatorio en Rechazo y en Pendiente por Saldo).
+* Número de transacción bancaria / Código contable de egreso (`sg_pade.nro_transac`) — Obligatorio al pagar.
+* Fecha efectiva de pago (`sg_pade.f_pago`) — Obligatorio al pagar.
 
-### D. Datos o cambios que debe mostrar el sistema
-* Al registrar y ejecutar:
-  * El estado de la solicitud de pago cambia a **"Resolución Pagada" (8)**.
-  * Se almacena el `nro_transac` y la fecha/hora efectiva del pago en `sg_pago_soli`.
-  * Se descuenta físicamente el saldo en el Centro de Costo contable.
-  * Se genera e imprime el comprobante de liquidación del pago PDS mensual.
-* Notificación automática por correo electrónico al Solicitante/Beneficiario informando que el pago ha sido depositado exitosamente.
+### D. Datos o cambios que debe registrar el sistema
+* Al pagar un detalle:
+  * `sg_pade.cod_estdet = 'PAGADO'`.
+  * Se almacena `sg_pade.nro_transac` y `sg_pade.f_pago`.
+  * La cuota base pasa a `sg_fucu.cod_estcuo = 'PAGADA'`.
+  * Se descuenta el saldo en el Centro de Costo contable.
+* Al marcar detalle como pendiente por saldo:
+  * `sg_pade.cod_estdet = 'PENDIENTE_SALDO'`.
+  * La cuota base vuelve a `sg_fucu.cod_estcuo = 'DISPONIBLE'` para reintento posterior.
+* Al rechazar un detalle:
+  * `sg_pade.cod_estdet = 'RECHAZADO'` con causal registrada.
+  * La cuota base puede quedar `PENDIENTE_SALDO` o `RECHAZADA` según regla de negocio.
+* El estado global de la solicitud (`sg_soli`) se deriva automáticamente:
+
+| Estado global derivado | Condición |
+| :--- | :--- |
+| `PAGADA` | Todos los detalles quedan `PAGADO`. |
+| `PAGO_PARCIAL` | Al menos un detalle `PAGADO` y al menos uno `PENDIENTE_SALDO` o `RECHAZADO`. |
+| `PENDIENTE_SALDO` | Ningún detalle pagado, quedan pendientes por fondos. |
+| `RECHAZADA` | Ningún detalle pagado y existe causal definitiva de rechazo. |
+
+* Se genera comprobante de liquidación por detalle pagado.
+* Notificación automática al Solicitante/Beneficiario informando resultado del pago.
 
 ### F. Validaciones
 
 | Código | Validación | Efecto esperado |
 | :--- | :--- | :--- |
-| **VAL-PP03-DEC-01** | Motivo obligatorio de rechazo. | Exige un comentario de mínimo 20 caracteres detallando el motivo financiero del rechazo. |
-| **VAL-PP03-REG-01** | Código de transacción no vacío. | Impide archivar el expediente de pago mensual en aprobación si no se ha ingresado la referencia contable/bancaria. |
+| **VAL-PP03-DEC-01** | Motivo obligatorio de rechazo o de pendiente por saldo. | Exige comentario de mínimo 20 caracteres. |
+| **VAL-PP03-REG-01** | `sg_pade.nro_transac` no vacío al pagar. | Impide cerrar el detalle sin referencia contable/bancaria. |
+| **VAL-PP03-REG-02** | `sg_pade.f_pago` no vacía al pagar. | Impide cerrar el detalle sin fecha efectiva de pago. |

@@ -3,268 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Normativo DGDP - Universidad de La Frontera</title>
-    <!-- Bootstrap 4 & Font Awesome -->
+    <title>Control Normativo DGDP — Solicitud de Pago PDS</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
         body { font-family: 'Outfit', 'Inter', sans-serif; background-color: #f1f5f9; }
-        
-        /* Visor A4 PDF Premium */
-        .card-minimal {
-            background: #ffffff;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-        }
-        
-        .nav-tabs-premium {
-            border-bottom: 1px solid #e2e8f0;
-            padding-left: 1rem;
-            background: #f8fafc;
-        }
 
-        .nav-tabs-premium .nav-link {
-            border: none;
-            color: #64748b;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 0.9rem 1.25rem;
-            background: transparent;
-            margin-bottom: -1px;
-            border-bottom: 2px solid transparent;
-            transition: all 0.15s ease;
-        }
+        /* ====== PDF Visor ====== */
+        .card-minimal { background:#fff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 4px 15px rgba(0,0,0,.03); margin-bottom:1.5rem; overflow:hidden; }
+        .nav-tabs-premium { border-bottom:1px solid #e2e8f0; padding-left:1rem; background:#f8fafc; }
+        .nav-tabs-premium .nav-link { border:none; color:#64748b; font-size:.78rem; font-weight:600; padding:.9rem 1.25rem; background:transparent; margin-bottom:-1px; border-bottom:2px solid transparent; transition:all .15s ease; }
+        .nav-tabs-premium .nav-link:hover { color:var(--ufro-blue); border-bottom-color:#cbd5e1; }
+        .nav-tabs-premium .nav-link.active { color:var(--ufro-blue); font-weight:700; background:#fff; border-bottom:2.5px solid var(--ufro-blue); }
+        .document-wrapper { background:#fff; padding:1.5rem; }
+        .pdf-canvas { background-color:#cbd5e1; border-radius:8px; padding:1.5rem; display:flex; justify-content:center; max-height:480px; overflow-y:auto; box-shadow:inset 0 2px 8px rgba(0,0,0,.08); }
+        .pdf-page-sheet { background:#fff; width:100%; max-width:720px; padding:2.5rem 3rem; box-shadow:0 4px 15px rgba(0,0,0,.15); border-radius:4px; font-family:'Times New Roman',Times,serif; color:#000; line-height:1.4; }
+        .pdf-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:6px; margin-bottom:15px; }
+        .pdf-header-title { font-family:'Outfit',sans-serif; font-size:.75rem; font-weight:800; color:var(--ufro-blue); text-transform:uppercase; }
+        .pdf-header-subtitle { font-family:'Inter',sans-serif; font-size:.55rem; color:#475569; font-weight:700; }
+        .pdf-res-number { font-weight:bold; font-size:.85rem; text-align:right; }
+        .pdf-body-title { text-align:center; font-size:.9rem; font-weight:bold; text-transform:uppercase; margin:15px 0; }
+        .pdf-section-text { text-align:justify; text-indent:30px; margin-bottom:8px; font-size:.8rem; }
+        .pdf-bold-tag { font-weight:bold; text-transform:uppercase; display:inline-block; text-indent:0; margin-right:8px; }
+        .pdf-annex-table { width:100%; border-collapse:collapse; font-size:.75rem; margin:10px 0; }
+        .pdf-annex-table th,.pdf-annex-table td { border:1px solid #000; padding:6px 8px; text-align:center; }
+        .pdf-annex-table th { background-color:#f1f5f9; font-weight:bold; }
+        .pdf-signatures { margin-top:30px; display:flex; justify-content:space-around; text-align:center; }
+        .pdf-signature-box { width:45%; }
+        .pdf-signature-line { border-top:1px solid #000; margin-top:30px; padding-top:4px; font-size:.65rem; font-weight:bold; }
+        .pdf-distrib { margin-top:20px; font-size:.55rem; border-top:1px solid #ddd; padding-top:4px; color:#555; font-family:'Inter',sans-serif; }
 
-        .nav-tabs-premium .nav-link:hover {
-            color: var(--ufro-blue);
-            border-bottom-color: #cbd5e1;
-        }
+        /* ====== Toggle switch ====== */
+        .toggle-switch-custom { position:relative; display:inline-block; width:46px; height:24px; }
+        .toggle-switch-custom input { opacity:0; width:0; height:0; }
+        .slider-custom { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#cbd5e1; transition:.3s; border-radius:24px; }
+        .slider-custom:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background-color:white; transition:.3s; border-radius:50%; }
+        input:checked + .slider-custom { background-color:var(--ufro-green); }
+        input:checked + .slider-custom:before { transform:translateX(22px); }
 
-        .nav-tabs-premium .nav-link.active {
-            color: var(--ufro-blue);
-            font-weight: 700;
-            background: #ffffff;
-            border-bottom: 2.5px solid var(--ufro-blue);
-        }
+        /* ====== Cards, ficha, bandeja ====== */
+        .employee-audit-card { border:1px solid #e2e8f0; border-radius:8px; padding:.75rem; background:#f8fafc; margin-bottom:.75rem; cursor:pointer; transition:all .2s ease; }
+        .employee-audit-card:hover { border-color:var(--ufro-blue); background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.02); }
+        .employee-audit-card.active { border-color:var(--ufro-blue); background:#fff; box-shadow:0 4px 12px rgba(0,75,141,.04); }
+        .restriction-row { padding:10px 12px; background:#f8fafc; border:1px solid #edf2f9; border-radius:8px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+        .summary-item-ext { background:#f8fafc; border:1px solid #edf2f9; border-radius:8px; padding:.75rem 1rem; }
+        .summary-item-ext .data-label { font-size:.65rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px; }
+        .summary-item-ext .data-value { font-size:.82rem; font-weight:700; color:#1e293b; }
+        .evidence-btn-download { font-size:.72rem; font-weight:700; padding:3px 10px; border-radius:6px; }
 
-        .document-wrapper {
-            background-color: #ffffff;
-            padding: 1.5rem;
-        }
+        /* ====== Cabecera solicitud de pago ====== */
+        .sol-pago-header { background:linear-gradient(135deg,#004b8d 0%,#0066cc 100%); border-radius:12px; padding:1.25rem 1.5rem; color:#fff; margin-bottom:1.5rem; }
+        .sol-pago-header .sol-title { font-size:.65rem; font-weight:700; letter-spacing:.8px; text-transform:uppercase; opacity:.8; }
+        .sol-pago-header .sol-value { font-size:.92rem; font-weight:700; }
+        .sol-pago-header .sol-badge { font-size:.62rem; font-weight:700; padding:3px 10px; border-radius:20px; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.3); }
 
-        .pdf-canvas {
-            background-color: #cbd5e1;
-            border-radius: 8px;
-            padding: 1.5rem;
-            display: flex;
-            justify-content: center;
-            max-height: 520px;
-            overflow-y: auto;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
-        }
+        /* ====== Detalle sg_pade subpanel ====== */
+        .pade-subpanel { background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%); border:1px solid #bae6fd; border-radius:8px; padding:1rem; }
+        .pade-subpanel .pade-label { font-size:.62rem; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:.4px; }
+        .pade-subpanel .pade-value { font-size:.82rem; font-weight:700; color:#0c4a6e; }
 
-        .pdf-page-sheet {
-            background: #ffffff;
-            width: 100%;
-            max-width: 720px;
-            padding: 2.5rem 3rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            border-radius: 4px;
-            font-family: 'Times New Roman', Times, serif;
-            color: #000;
-            line-height: 1.4;
-        }
+        /* ====== Estado badges de cuota ====== */
+        .badge-estcuo-pagada   { background:#6b7280; color:#fff; }
+        .badge-estcuo-en_tramite { background:#f59e0b; color:#fff; }
+        .badge-estcuo-disponible { background:#10b981; color:#fff; }
+        .badge-estcuo-aprobado_dgdp { background:#3b82f6; color:#fff; }
+        .badge-estcuo-pendiente_saldo { background:#8b5cf6; color:#fff; }
+        .badge-estcuo-rechazada { background:#ef4444; color:#fff; }
 
-        .pdf-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #000;
-            padding-bottom: 6px;
-            margin-bottom: 15px;
-        }
-
-        .pdf-header-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: var(--ufro-blue);
-            text-transform: uppercase;
-        }
-
-        .pdf-header-subtitle {
-            font-family: 'Inter', sans-serif;
-            font-size: 0.55rem;
-            color: #475569;
-            font-weight: 700;
-        }
-
-        .pdf-res-number {
-            font-weight: bold;
-            font-size: 0.85rem;
-            text-align: right;
-        }
-
-        .pdf-body-title {
-            text-align: center;
-            font-size: 0.9rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: 15px 0;
-        }
-
-        .pdf-section-text {
-            text-align: justify;
-            text-indent: 30px;
-            margin-bottom: 8px;
-            font-size: 0.8rem;
-        }
-
-        .pdf-bold-tag {
-            font-weight: bold;
-            text-transform: uppercase;
-            display: inline-block;
-            text-indent: 0;
-            margin-right: 8px;
-        }
-
-        .pdf-annex-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.75rem;
-            margin: 10px 0;
-        }
-
-        .pdf-annex-table th, .pdf-annex-table td {
-            border: 1px solid #000;
-            padding: 6px 8px;
-            text-align: center;
-        }
-
-        .pdf-annex-table th {
-            background-color: #f1f5f9;
-            font-weight: bold;
-        }
-
-        .pdf-signatures {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-around;
-            text-align: center;
-        }
-
-        .pdf-signature-box {
-            width: 45%;
-        }
-
-        .pdf-signature-line {
-            border-top: 1px solid #000;
-            margin-top: 30px;
-            padding-top: 4px;
-            font-size: 0.65rem;
-            font-weight: bold;
-        }
-
-        .pdf-distrib {
-            margin-top: 20px;
-            font-size: 0.55rem;
-            border-top: 1px solid #ddd;
-            padding-top: 4px;
-            color: #555;
-            font-family: 'Inter', sans-serif;
-        }
-
-        /* Estilos Ficha y Controles */
-        .restriction-row {
-            padding: 10px 12px;
-            background: #f8fafc;
-            border: 1px solid #edf2f9;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .toggle-switch-custom {
-            position: relative;
-            display: inline-block;
-            width: 46px;
-            height: 24px;
-        }
-        .toggle-switch-custom input { opacity: 0; width: 0; height: 0; }
-        .slider-custom {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1;
-            transition: .3s;
-            border-radius: 24px;
-        }
-        .slider-custom:before {
-            position: absolute;
-            content: "";
-            height: 18px; width: 18px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-        input:checked + .slider-custom { background-color: var(--ufro-green); }
-        input:checked + .slider-custom:before { transform: translateX(22px); }
-
-        .evidence-btn-download {
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 6px;
-        }
-
-        /* Estilos Ficha y Decisiones */
-        .summary-item-ext {
-            background: #f8fafc;
-            border: 1px solid #edf2f9;
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-        }
-        .summary-item-ext .data-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
-        }
-        .summary-item-ext .data-value {
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .employee-audit-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 0.75rem;
-            background: #f8fafc;
-            margin-bottom: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .employee-audit-card:hover {
-            border-color: var(--ufro-blue);
-            background: #ffffff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-        }
-        .employee-audit-card.active {
-            border-color: var(--ufro-blue);
-            background: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 75, 141, 0.04);
-        }
+        /* ====== Cuota card en bandeja ====== */
+        .cuota-bandeja-card { border-left:4px solid var(--ufro-blue) !important; transition:all .2s; }
+        .cuota-bandeja-card:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,75,141,.08) !important; }
+        .cuota-bandeja-card.active { background:#fff !important; border-color:var(--ufro-blue) !important; }
     </style>
 </head>
 <body>
@@ -295,482 +106,538 @@
                 <img class="topbar-logo mr-3" src="https://intranet.ufro.cl/estilo/img/logo_bl.png" alt="UFRO">
                 <h5 class="topbar-title m-0 d-none d-sm-inline-block">AUDITORÍA NORMATIVA DGDP</h5>
             </div>
-            
             <div class="d-flex align-items-center ml-auto">
                 <div class="user-details text-right mr-3">
                     <span class="user-name d-block">MARCELA MORALES G.</span>
                     <span class="user-role small">ANALISTA DE PERSONAS — DGDP</span>
                 </div>
-                <div class="topbar-icon-circle mr-2">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <div class="topbar-icon-circle">
-                    <i class="fas fa-bell"></i>
-                </div>
+                <div class="topbar-icon-circle mr-2"><i class="fas fa-user-shield"></i></div>
+                <div class="topbar-icon-circle"><i class="fas fa-bell"></i></div>
             </div>
             <div class="topbar-rainbow-bar"></div>
         </nav>
 
         <!-- Main Content -->
         <div class="container-fluid py-4 px-lg-5">
-            <div class="row">
-                <div class="col-xl-12">
-                    
-                    <!-- Encabezado de la solicitud -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h4 class="font-weight-bold text-dark mb-1" style="font-family: 'Outfit';">Revisión Normativa y Excepciones de Pago (DGDP)</h4>
-                            <p class="text-muted small mb-0">Expediente mensual: <strong id="lbl_top_id_pago">SP-2026-39402</strong> | Mes de cobro: <strong>Junio 2026</strong> | Solicitante: <strong>Franco Valdebenito</strong></p>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <!-- Selector de simulación rápida de resoluciones -->
-                            <div class="mr-3 text-right">
-                                <span class="small text-muted font-weight-bold d-block">EXPEDIENTE A EVALUAR:</span>
-                                <select class="form-control form-control-sm border-primary" id="expediente_selector" onchange="switchExpediente()" style="font-size:0.75rem; font-weight:700; color:var(--ufro-blue);">
-                                    <option value="RE-009/2026">Resolución RE-009/2026 (2 Prestadores)</option>
-                                    <option value="RE-114/2026">Resolución RE-114/2026 (1 Prestador)</option>
-                                </select>
-                            </div>
-                            <span class="badge-status status-2 shadow-xs" id="pago_estado_badge">
-                                <i class="fas fa-clock"></i> EN REVISIÓN DGDP
-                            </span>
-                        </div>
-                    </div>
 
-                    <!-- RESUMEN EJECUTIVO DE MONTOS (PP02-B01) -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 mb-0 py-2" style="border-left: 4px solid var(--ufro-blue) !important;">
-                                <div class="card-body py-2 px-3">
-                                    <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:0.62rem; letter-spacing:0.5px;">Monto Total Solicitado</span>
-                                    <strong class="text-dark" style="font-size:1.15rem;" id="sum_total_sol">$0</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 mb-0 py-2" style="border-left: 4px solid var(--ufro-green) !important;">
-                                <div class="card-body py-2 px-3">
-                                    <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:0.62rem; letter-spacing:0.5px;">Habilitado para Finanzas</span>
-                                    <strong class="text-success" style="font-size:1.15rem;" id="sum_total_hab">$0</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 mb-0 py-2" style="border-left: 4px solid var(--ufro-orange) !important;">
-                                <div class="card-body py-2 px-3">
-                                    <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:0.62rem; letter-spacing:0.5px;">Monto Observado</span>
-                                    <strong class="text-warning" style="font-size:1.15rem;" id="sum_total_obs">$0</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 mb-0 py-2" style="border-left: 4px solid #dc2626 !important;">
-                                <div class="card-body py-2 px-3">
-                                    <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:0.62rem; letter-spacing:0.5px;">Monto Rechazado</span>
-                                    <strong class="text-danger" style="font-size:1.15rem;" id="sum_total_rech">$0</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- DETALLE COMPLETO DEL EXPEDIENTE Y BANDEJA DE AUDITORÍA -->
-                    <div class="row">
-                        <!-- COLUMNA IZQUIERDA: BANDEJA DE PERSONAL Y EXPEDIENTE DE ORIGEN -->
-                        <div class="col-lg-4">
-                            <!-- B02: Datos Base PDS y Imputación -->
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                <div class="card-header bg-white py-3">
-                                    <h6 class="m-0 font-weight-bold text-dark" style="font-size: 0.75rem;"><i class="fas fa-file-contract mr-2 text-primary"></i> Antecedentes Generales de PDS</h6>
-                                </div>
-                                <div class="card-body p-3 small text-dark">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Resolución Origen:</span>
-                                        <span class="font-weight-bold" id="lbl_pds_nro">RE-009/2026</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Centro de Costo:</span>
-                                        <span class="font-weight-bold text-right" id="lbl_pds_cenco">4050.21 - INST. AGROINDUSTRIA</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Unidad Financiera:</span>
-                                        <span class="font-weight-bold" id="lbl_pds_unifin">UNIFIN-AGRO</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Tipo de Financiamiento:</span>
-                                        <span class="badge badge-outline text-primary font-weight-bold" id="lbl_pds_fondo">21 - FONDOS PROPIOS</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Jefe de Proyecto:</span>
-                                        <span class="font-weight-bold text-truncate" style="max-width: 160px;" id="lbl_pds_jefe">DR. ARTURO GÓMEZ</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-muted">Saldo CC Disponible:</span>
-                                        <span class="font-weight-bold text-success" id="lbl_pds_saldocc">$12.500.000</span>
-                                    </div>
-                                    <hr class="my-2">
-                                    <div class="small p-2 bg-light rounded text-dark border-left" style="border-left-color: var(--ufro-blue) !important; font-size: 0.65rem;" id="lbl_pds_obs_finan">
-                                        <i class="fas fa-info-circle text-primary mr-1"></i> Sin alertas presupuestarias.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PP02-B03: Bandeja de Personal a Auditar -->
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                <div class="card-header bg-white py-3">
-                                    <h6 class="m-0 font-weight-bold text-dark" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-users mr-2 text-primary"></i> 3. Bandeja de Prestadores a Auditar</h6>
-                                </div>
-                                <div class="card-body p-2" id="bandeja_personal_container">
-                                    <!-- Cargado dinámicamente en JS -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- COLUMNA DERECHA: FICHA NORMATIVA, EVIDENCIAS Y DICTAMEN DE PRESTADOR -->
-                        <div class="col-lg-8" id="ficha_auditoria_seccion">
-                            <!-- PP02-B04: Ficha Normativa del Prestador -->
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-id-card mr-2"></i> 4. Ficha Contractual del Prestador (SISPER)</h6>
-                                    <span class="badge badge-light text-muted font-weight-bold small" id="lbl_prestador_rut">15.845.221-K</span>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row no-gutters mb-3 pb-3 border-bottom">
-                                        <div class="col-md-6">
-                                            <div class="data-label">Funcionario</div>
-                                            <div class="data-value text-dark" style="font-size:0.92rem;" id="lbl_prestador_nombre">Carlos Fuentes Rivera</div>
-                                        </div>
-                                        <div class="col-md-6 text-md-right mt-2 mt-md-0">
-                                            <div class="data-label">Estamento / Cargo</div>
-                                            <div class="data-value text-muted font-weight-normal" style="font-size:0.8rem;" id="lbl_prestador_cargo">Académico | Regular Contrata | Grado 4</div>
-                                        </div>
-                                    </div>
-                                    <div class="row no-gutters mb-3 pb-3 border-bottom">
-                                        <div class="col-md-6">
-                                            <div class="data-label">Actividad Contractual Aprobada</div>
-                                            <p class="text-dark small font-weight-normal mb-0" id="lbl_prestador_actividad">"Desarrollo e implementación del módulo analítico de bioprocesos en reactores..."</p>
-                                        </div>
-                                        <div class="col-md-6 text-md-right mt-2 mt-md-0">
-                                            <div class="data-label">Modalidad / Compensación</div>
-                                            <div class="small" id="lbl_prestador_compensacion">
-                                                <div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row no-gutters mb-3">
-                                        <div class="col-6 col-md-3">
-                                            <div class="data-label">Renta Bruta SISPER</div>
-                                            <div class="data-value text-muted font-weight-normal" style="font-size:0.8rem;" id="lbl_prestador_renta">$3.700.000</div>
-                                        </div>
-                                        <div class="col-6 col-md-3 text-right text-md-left">
-                                            <div class="data-label">Monto Solicitado Cuota</div>
-                                            <div class="data-value text-primary font-weight-bold" style="font-size:0.85rem;" id="lbl_prestador_mensual">$1.850.000</div>
-                                        </div>
-                                        <div class="col-6 col-md-3 mt-3 mt-md-0">
-                                            <div class="data-label">Condición SEA</div>
-                                            <span class="badge badge-success font-weight-bold px-2 py-1" style="font-size:0.65rem;" id="lbl_prestador_sea"><i class="fas fa-check-circle mr-1"></i> CUMPLE</span>
-                                        </div>
-                                        <div class="col-6 col-md-3 mt-3 mt-md-0 text-right">
-                                            <div class="data-label">Saldo Pendiente PDS</div>
-                                            <div class="data-value text-dark" style="font-size:0.8rem;" id="lbl_prestador_saldo">$1.850.000</div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Tope del 50% Renta Bruta (PP02-B04) -->
-                                    <div class="p-3 bg-light rounded border mt-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="small font-weight-bold text-dark">Control Límite Renta Bruta de Prestación (Máximo 50%)</span>
-                                            <span class="small font-weight-bold text-success" id="lbl_porcentaje_renta">50% exacto</span>
-                                        </div>
-                                        <div class="progress" style="height: 10px; border-radius: 6px;" id="progress_parent">
-                                            <div class="progress-bar bg-success animate-all" role="progressbar" style="width: 50%" id="lbl_progress_bar"></div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mt-2 small text-muted">
-                                            <span id="lbl_monto_cuota_txt">Monto PDS: $1.850.000</span>
-                                            <span id="lbl_tope_txt">Tope legal (50% Renta): $1.850.000</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PP02-B05: Auditoría de Evidencias Físicas por Prestador -->
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                <div class="card-header bg-white border-bottom py-3">
-                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-cloud-download-alt mr-2"></i> 5. Auditoría de Evidencias y Entregables Físicos del Mes</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-sm small text-dark mb-0">
-                                            <thead class="bg-light text-muted font-weight-bold">
-                                                <tr>
-                                                    <th>Evidencia Comprometida</th>
-                                                    <th>Documento Subido</th>
-                                                    <th class="text-center">Estado</th>
-                                                    <th class="text-center">Acción</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="evidencias_table_body">
-                                                <!-- Se genera de forma interactiva en JS -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PP02-B06: Panel de Restricciones Automáticas SISPER -->
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                        <div class="card-header bg-white border-bottom py-3">
-                                            <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-shield-alt mr-2"></i> Restricciones Automáticas (SISPER)</h6>
-                                        </div>
-                                        <div class="card-body" id="restricciones_container">
-                                            <!-- Se genera dinámicamente -->
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Excepciones Especiales del Periodo -->
-                                <div class="col-md-6">
-                                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
-                                        <div class="card-header bg-white border-bottom py-3">
-                                            <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;"><i class="fas fa-exclamation-circle mr-2"></i> Excepciones Especiales del Periodo</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <p class="text-muted small mb-3">Habilite de forma fundada la excepción correspondiente para desbloquear el pago si existieran alertas de calendario.</p>
-                                            
-                                            <!-- Excepción por Receso Universitario -->
-                                            <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
-                                                <div>
-                                                    <div class="font-weight-bold small text-dark">Receso Universitario (Ene/Feb)</div>
-                                                    <div class="text-muted small">Requiere justificación técnica</div>
-                                                </div>
-                                                <label class="toggle-switch-custom mb-0">
-                                                    <input type="checkbox" id="chk_receso" onchange="toggleExcepcion('receso')">
-                                                    <span class="slider-custom"></span>
-                                                </label>
-                                            </div>
-
-                                            <!-- Excepción por Prorrateo -->
-                                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                                <div>
-                                                    <div class="font-weight-bold small text-dark">Sobre-Prorrateo Anual (>2 meses)</div>
-                                                    <div class="text-muted small">Habilita prórroga de asignación</div>
-                                                </div>
-                                                <label class="toggle-switch-custom mb-0">
-                                                    <input type="checkbox" id="chk_prorrateo" onchange="toggleExcepcion('prorrateo')">
-                                                    <span class="slider-custom"></span>
-                                                </label>
-                                            </div>
-
-                                            <!-- Campo de Justificación Excepcional -->
-                                            <div class="form-group mb-0 mt-2 hidden" id="justificacion_seccion">
-                                                <label class="small text-danger font-weight-bold">Justificación técnica de la excepción autorizada (Mínimo 15 caracteres)</label>
-                                                <textarea class="form-control" id="excepcion_comentario" rows="2" placeholder="Describa el trabajo extraordinario ejecutado por el proyecto..."></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PP02-B07: Dictamen Individual del Funcionario -->
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg bg-light" id="dictamen_individual_card">
-                                <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h6 class="small font-weight-bold text-muted text-uppercase m-0" style="letter-spacing:0.5px;"><i class="fas fa-gavel mr-1"></i> Dictamen Normativo sobre el Prestador Seleccionado</h6>
-                                        <div id="prestador_dictamen_badge">
-                                            <span class="badge badge-secondary">Revisión pendiente</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row no-gutters">
-                                        <div class="col-md-4 pr-md-1">
-                                            <button class="btn-ufro-success btn-block font-weight-bold text-center py-2" style="font-size:0.75rem !important;" onclick="dictaminarPrestador('CUMPLE')">
-                                                <i class="fas fa-check-circle mr-1"></i> Aprobar Prestador
-                                            </button>
-                                        </div>
-                                        <div class="col-md-4 px-md-1 my-2 my-md-0">
-                                            <button class="btn-ufro-secondary btn-block font-weight-bold text-center py-2" style="font-size:0.75rem !important; border: 1.5px solid var(--ufro-orange) !important; color:var(--ufro-orange) !important;" onclick="dictaminarPrestador('OBSERVADO')">
-                                                <i class="fas fa-reply mr-1"></i> Observar / Devolver
-                                            </button>
-                                        </div>
-                                        <div class="col-md-4 pl-md-1">
-                                            <button class="btn-ufro-danger btn-block font-weight-bold text-center py-2" style="font-size:0.75rem !important;" onclick="dictaminarPrestador('RECHAZADO')">
-                                                <i class="fas fa-ban mr-1"></i> Rechazar Prestador
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- VISTA DE RESOLUCIÓN Y DECISIÓN GLOBAL (PP02-B02, PP02-B08) -->
-                    <div class="row">
-                        <!-- Columna Izquierda: Visor PDF A4 de la Resolución decretada y firmada -->
-                        <div class="col-lg-7">
-                            <div class="card-minimal">
-                                <ul class="nav nav-tabs nav-tabs-premium" id="documentTabs" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="formato-tab" data-toggle="tab" data-target="#formato" type="button" role="tab" aria-controls="formato" aria-selected="true">
-                                            <i class="fas fa-file-invoice mr-1 text-danger"></i> Formato de resolución
-                                        </button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="anexo-tab" data-toggle="tab" data-target="#anexo" type="button" role="tab" aria-controls="anexo" aria-selected="false">
-                                            <i class="fas fa-table mr-1 text-primary"></i> Anexo
-                                        </button>
-                                    </li>
-                                </ul>
-
-                                <div class="tab-content document-wrapper" id="documentTabsContent">
-                                    
-                                    <!-- TAB 1: Formato de Resolución (PDF Canvas) -->
-                                    <div class="tab-pane fade show active" id="formato" role="tabpanel" aria-labelledby="formato-tab">
-                                        <div class="pdf-canvas">
-                                            <div class="pdf-page-sheet shadow">
-                                                <!-- Header PDF -->
-                                                <div class="pdf-header">
-                                                    <div>
-                                                        <span class="pdf-header-title">Universidad de La Frontera</span>
-                                                        <div class="pdf-header-subtitle">Secretaría General</div>
-                                                    </div>
-                                                    <div class="pdf-res-number" id="pdf_nro_reso">
-                                                        RESOLUCIÓN EXENTA Nº 009/2026
-                                                    </div>
-                                                </div>
-
-                                                <div class="pdf-body-title">
-                                                    TEMUCO, 15 de Enero de 2026
-                                                </div>
-
-                                                <!-- Vistos -->
-                                                <div class="pdf-section-text">
-                                                    <span class="pdf-bold-tag">VISTO:</span> El Estatuto de la Universidad de La Frontera, aprobado por D.F.L. Nº 156 de 1981 de Educación; la Ley Nº 19.886 de Bases sobre Contratos Administrativos de Suministro y Prestación de Servicios; el Reglamento de Prestación de Servicios de la Universidad formalizado en el Decreto Universitario Nº 009/2026; y las atribuciones que me confiere la normativa interna vigente.
-                                                </div>
-
-                                                <!-- Considerandos -->
-                                                <div class="pdf-section-text">
-                                                    <span class="pdf-bold-tag">CONSIDERANDO:</span>
-                                                    1. Que, en conformidad con los objetivos de la prestación de servicios, se requiere encomendar la ejecución de labores de prestación de servicios profesionales de carácter transitorio e independiente.
-                                                    2. Que la propuesta ha sido debidamente visada y decretada por los organismos competentes bajo las normas del Decreto Universitario 009/2026.
-                                                    3. Que existe saldo disponible y financiamiento compatible en la cuenta presupuestaria correspondiente.
-                                                </div>
-
-                                                <!-- Resuelvo -->
-                                                <div class="pdf-section-text" style="text-indent: 0;">
-                                                    <span class="pdf-bold-tag">RESUELVO:</span>
-                                                </div>
-                                                <div class="pdf-section-text">
-                                                    1. AUTORÍZASE la prestación de servicios del profesional individualizado en el anexo de la presente resolución, bajo las condiciones y sueldos brutas mensuales indicados.
-                                                </div>
-                                                <div class="pdf-section-text">
-                                                    2. ESTABLÉCESE que los cobros mensuales se tramitarán previa carga y verificación física de las evidencias comprometidas de la prestación.
-                                                </div>
-
-                                                <!-- Signatures -->
-                                                <div class="pdf-signatures">
-                                                    <div class="pdf-signature-box">
-                                                        <div class="pdf-signature-line">
-                                                            GONZALO OPORTO VENEGAS<br>
-                                                            Secretario General
-                                                        </div>
-                                                    </div>
-                                                    <div class="pdf-signature-box">
-                                                        <div class="pdf-signature-line">
-                                                            DR. EDUARDO HEBEL WEISS<br>
-                                                            Rector
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Distribution -->
-                                                <div class="pdf-distrib">
-                                                    <strong>DISTRIBUCIÓN:</strong> Solicitante, Dirección de Finanzas, DGDP, Control Contable.
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- TAB 2: Anexo -->
-                                    <div class="tab-pane fade" id="anexo" role="tabpanel" aria-labelledby="anexo-tab">
-                                        <div class="pdf-canvas">
-                                            <div class="pdf-page-sheet shadow" id="pdf_anexo_container">
-                                                <!-- Se genera dinámicamente -->
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Columna Derecha: Panel de Decisión Global de la Solicitud (PP02-B08) -->
-                        <div class="col-lg-5">
-                            <div class="card shadow-sm border-0 mb-4 rounded-lg bg-light" style="border-top: 5px solid var(--ufro-blue) !important;">
-                                <div class="card-body">
-                                    <h6 class="small font-weight-bold text-dark text-uppercase mb-3" style="letter-spacing:0.5px;"><i class="fas fa-clipboard-check mr-2"></i> 6. Dictamen Global del Expediente</h6>
-                                    
-                                    <div class="alert alert-warning py-2 mb-3" style="font-size:0.7rem; border-radius:6px;" id="global_status_alert">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i> <strong>Auditoría Incompleta:</strong> Debe resolver individualmente cada uno de los prestadores en la nómina (Auditados: 0 de 2).
-                                    </div>
-
-                                    <div class="mb-3 p-3 bg-white rounded border small text-dark">
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Prestadores en Solicitud:</span>
-                                            <span class="font-weight-bold" id="lbl_glob_total">2</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-success"><i class="fas fa-check-circle mr-1"></i> Aprobados (CUMPLE):</span>
-                                            <span class="font-weight-bold" id="lbl_glob_aprob">0</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-warning"><i class="fas fa-reply mr-1"></i> Observados (CORREGIR):</span>
-                                            <span class="font-weight-bold" id="lbl_glob_obs">0</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-danger"><i class="fas fa-ban mr-1"></i> Rechazados (NO PROCEDE):</span>
-                                            <span class="font-weight-bold" id="lbl_glob_rech">0</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Declaración de Responsabilidad (RF-PP02-044) -->
-                                    <div class="p-2 mb-3 bg-white rounded border text-muted italic" style="font-size:0.62rem; line-height:1.35;">
-                                        <i class="fas fa-info-circle mr-1"></i> <strong>Declaración DGDP:</strong> Certifico que he auditado la procedencia de la nómina y sus evidencias conforme a las reglas del Decreto Universitario N° 009/2026. La institución conserva el derecho de auditar a posteriori los antecedentes y veracidad de lo cargado.
-                                    </div>
-
-                                    <div class="dictamen-actions-container">
-                                        <button class="btn-ufro-success btn-block py-2 font-weight-bold text-center mb-2" id="btn_glob_aprobar" onclick="procesarAprobacionGlobal()" disabled>
-                                            <i class="fas fa-paper-plane mr-2"></i> Autorizar y Derivar a Finanzas
-                                        </button>
-                                        
-                                        <div class="row no-gutters">
-                                            <div class="col-6 pr-1">
-                                                <button class="btn-ufro-secondary btn-block font-weight-bold text-center py-2" id="btn_glob_devolver" style="font-size:0.75rem !important;" onclick="abrirDevolucionGlobal()" disabled>
-                                                    <i class="fas fa-reply mr-1"></i> Devolver para Corrección
-                                                </button>
-                                            </div>
-                                            <div class="col-6 pl-1">
-                                                <button class="btn-ufro-danger btn-block font-weight-bold text-center py-2" id="btn_glob_rechazar" style="font-size:0.75rem !important;" onclick="abrirRechazoGlobal()" disabled>
-                                                    <i class="fas fa-ban mr-1"></i> Rechazar Expediente
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+            <!-- ===== CABECERA DE CONTEXTO (solo lectura — sin selector) ===== -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="font-weight-bold text-dark mb-1" style="font-family:'Outfit';">Revisión Normativa y Excepciones de Pago</h4>
+                    <p class="text-muted small mb-0">Dirección de Gestión y Desarrollo de Personas (DGDP) — Etapa 02 del flujo PP</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge-status status-2 shadow-xs" id="pago_estado_badge">
+                        <i class="fas fa-clock"></i> EN REVISIÓN DGDP
+                    </span>
                 </div>
             </div>
+
+            <!-- Estado vacío: sin solicitud pendiente -->
+            <div id="empty_state_dgdp" class="d-none text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No existe solicitud pendiente para DGDP</h5>
+                <p class="text-muted small">Ninguna solicitud activa fue encontrada. <a href="01_vista_solicitante_pago.html">Volver a Solicitudes</a>.</p>
+            </div>
+
+            <div id="main_content_dgdp">
+
+            <!-- ===== PANEL CABECERA SOLICITUD DE PAGO (sg_soli / sg_paso) ===== -->
+            <div class="sol-pago-header mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <div class="sol-title">N° Solicitud Pago</div>
+                        <div class="sol-value" id="sp_nro_solpag">—</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="sol-title">PDS Origen</div>
+                        <div class="sol-value" id="sp_nro_solpds">—</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="sol-title">Resolución</div>
+                        <div class="sol-value" id="sp_resolucion">—</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="sol-title">Mes Pago Solicitado</div>
+                        <div class="sol-value" id="sp_mes_pago">—</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="sol-title">Total Solicitado</div>
+                        <div class="sol-value" id="sp_total_sol">—</div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <div class="sol-title">Solicitante</div>
+                        <div class="sol-value" id="sp_solicitante">—</div>
+                        <div class="mt-1">
+                            <span class="sol-badge" id="sp_detalles_count">— detalles</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TARJETAS RESUMEN MONTOS (PP02-B01) ===== -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 mb-0 py-2" style="border-left:4px solid var(--ufro-blue) !important;">
+                        <div class="card-body py-2 px-3">
+                            <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:.62rem; letter-spacing:.5px;">Monto Total Solicitado</span>
+                            <strong class="text-dark" style="font-size:1.15rem;" id="sum_total_sol">$0</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 mb-0 py-2" style="border-left:4px solid var(--ufro-green) !important;">
+                        <div class="card-body py-2 px-3">
+                            <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:.62rem; letter-spacing:.5px;">Habilitado para Finanzas</span>
+                            <strong class="text-success" style="font-size:1.15rem;" id="sum_total_hab">$0</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 mb-0 py-2" style="border-left:4px solid var(--ufro-orange) !important;">
+                        <div class="card-body py-2 px-3">
+                            <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:.62rem; letter-spacing:.5px;">Monto Observado</span>
+                            <strong class="text-warning" style="font-size:1.15rem;" id="sum_total_obs">$0</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 mb-0 py-2" style="border-left:4px solid #dc2626 !important;">
+                        <div class="card-body py-2 px-3">
+                            <span class="small text-muted font-weight-bold d-block text-uppercase" style="font-size:.62rem; letter-spacing:.5px;">Monto Rechazado</span>
+                            <strong class="text-danger" style="font-size:1.15rem;" id="sum_total_rech">$0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== LAYOUT PRINCIPAL: BANDEJA IZQ + FICHA DER ===== -->
+            <div class="row">
+
+                <!-- ===== COLUMNA IZQUIERDA ===== -->
+                <div class="col-lg-4">
+
+                    <!-- Antecedentes PDS (contexto secundario) -->
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                        <div class="card-header bg-white py-3 d-flex align-items-center">
+                            <i class="fas fa-file-contract mr-2 text-primary"></i>
+                            <h6 class="m-0 font-weight-bold text-dark" style="font-size:.75rem;">Antecedentes de la PDS Origen</h6>
+                        </div>
+                        <div class="card-body p-3 small text-dark">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Resolución Origen:</span>
+                                <span class="font-weight-bold" id="lbl_pds_nro">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Centro de Costo:</span>
+                                <span class="font-weight-bold text-right" id="lbl_pds_cenco">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Unidad Financiera:</span>
+                                <span class="font-weight-bold" id="lbl_pds_unifin">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Financiamiento:</span>
+                                <span class="badge badge-outline text-primary font-weight-bold" id="lbl_pds_fondo">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Jefe de Proyecto:</span>
+                                <span class="font-weight-bold text-truncate" style="max-width:160px;" id="lbl_pds_jefe">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Saldo CC Disponible:</span>
+                                <span class="font-weight-bold text-success" id="lbl_pds_saldocc">—</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="small p-2 bg-light rounded" style="font-size:.65rem; border-left:3px solid var(--ufro-blue);" id="lbl_pds_actividad">
+                                <i class="fas fa-info-circle text-primary mr-1"></i> —
+                            </div>
+                            <div class="small p-2 bg-light rounded border-left mt-2" style="border-left-color:var(--ufro-blue) !important; font-size:.65rem;" id="lbl_pds_obs_finan">
+                                <i class="fas fa-info-circle text-primary mr-1"></i> Sin alertas presupuestarias.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bandeja de Detalles/Prestadores a Auditar -->
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="m-0 font-weight-bold text-dark" style="font-size:.75rem; letter-spacing:.5px;">
+                                <i class="fas fa-users mr-2 text-primary"></i> Detalles a Auditar (sg_pade)
+                            </h6>
+                        </div>
+                        <div class="card-body p-2" id="bandeja_personal_container">
+                            <div class="text-center text-muted py-3 small">Cargando detalles...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== COLUMNA DERECHA: FICHA NORMATIVA ===== -->
+                <div class="col-lg-8" id="ficha_auditoria_seccion">
+
+                    <!-- Ficha Contractual del Prestador -->
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                <i class="fas fa-id-card mr-2"></i> Ficha Contractual del Prestador (SISPER)
+                            </h6>
+                            <span class="badge badge-light text-muted font-weight-bold small" id="lbl_prestador_rut">—</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row no-gutters mb-3 pb-3 border-bottom">
+                                <div class="col-md-6">
+                                    <div class="data-label">Funcionario</div>
+                                    <div class="data-value text-dark" style="font-size:.92rem;" id="lbl_prestador_nombre">—</div>
+                                </div>
+                                <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                                    <div class="data-label">Estamento / Cargo</div>
+                                    <div class="data-value text-muted font-weight-normal" style="font-size:.8rem;" id="lbl_prestador_cargo">—</div>
+                                </div>
+                            </div>
+                            <div class="row no-gutters mb-3 pb-3 border-bottom">
+                                <div class="col-md-6">
+                                    <div class="data-label">Actividad Contractual Aprobada</div>
+                                    <p class="text-dark small font-weight-normal mb-0" id="lbl_prestador_actividad">—</p>
+                                </div>
+                                <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                                    <div class="data-label">Modalidad / Compensación</div>
+                                    <div class="small" id="lbl_prestador_compensacion">—</div>
+                                </div>
+                            </div>
+                            <div class="row no-gutters mb-3">
+                                <div class="col-6 col-md-3">
+                                    <div class="data-label">Renta Bruta (base)</div>
+                                    <div class="data-value text-muted font-weight-normal" style="font-size:.8rem;" id="lbl_prestador_renta">—</div>
+                                </div>
+                                <div class="col-6 col-md-3 text-right text-md-left">
+                                    <div class="data-label">Monto Solicitado</div>
+                                    <div class="data-value text-primary font-weight-bold" style="font-size:.85rem;" id="lbl_prestador_mensual">—</div>
+                                </div>
+                                <div class="col-6 col-md-3 mt-3 mt-md-0">
+                                    <div class="data-label">Condición SEA</div>
+                                    <span class="badge badge-secondary font-weight-bold px-2 py-1" style="font-size:.65rem;" id="lbl_prestador_sea">—</span>
+                                </div>
+                                <div class="col-6 col-md-3 mt-3 mt-md-0 text-right">
+                                    <div class="data-label">Saldo Pendiente PDS</div>
+                                    <div class="data-value text-dark" style="font-size:.8rem;" id="lbl_prestador_saldo">—</div>
+                                </div>
+                            </div>
+
+                            <!-- Control Límite 50% Renta -->
+                            <div class="p-3 bg-light rounded border mt-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small font-weight-bold text-dark">Control Límite Renta Bruta (Máximo 50%)</span>
+                                    <span class="small font-weight-bold text-success" id="lbl_porcentaje_renta">—</span>
+                                </div>
+                                <div class="progress" style="height:10px; border-radius:6px;" id="progress_parent">
+                                    <div class="progress-bar bg-success animate-all" role="progressbar" style="width:0%;" id="lbl_progress_bar"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 small text-muted pb-3 border-bottom">
+                                    <span id="lbl_monto_cuota_txt">—</span>
+                                    <span id="lbl_tope_txt">—</span>
+                                </div>
+
+                                <!-- sg_pade: Detalle de Solicitud de Pago -->
+                                <div class="pade-subpanel mt-3">
+                                    <div class="mb-2">
+                                        <i class="fas fa-file-invoice-dollar text-primary mr-1" style="font-size:.75rem;"></i>
+                                        <span class="font-weight-bold text-primary text-uppercase" style="font-size:.65rem; letter-spacing:.5px;">Detalle de Solicitud de Pago (sg_pade)</span>
+                                    </div>
+                                    <div class="row no-gutters">
+                                        <div class="col-md-6 pr-md-3">
+                                            <div class="row no-gutters mb-2">
+                                                <div class="col-6">
+                                                    <div class="pade-label">Cuota</div>
+                                                    <div class="pade-value" id="sp_det_cuota">—</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="pade-label">Mes de Ejecución</div>
+                                                    <div class="pade-value" id="sp_det_mes_ejec">—</div>
+                                                </div>
+                                            </div>
+                                            <div class="row no-gutters mb-2">
+                                                <div class="col-6">
+                                                    <div class="pade-label">Mes Pago Solicitado</div>
+                                                    <div class="pade-value" id="sp_det_mes_sol">—</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="pade-label">Tipo de Cobro</div>
+                                                    <div class="pade-value" id="sp_det_tipo_cobro">—</div>
+                                                </div>
+                                            </div>
+                                            <div class="row no-gutters">
+                                                <div class="col-6">
+                                                    <div class="pade-label">Monto Base Cuota</div>
+                                                    <div class="pade-value" id="sp_det_mto_cuota">—</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="pade-label">Monto Solicitado</div>
+                                                    <div class="pade-value text-primary" id="sp_det_mto_sol">—</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 pl-md-3 mt-3 mt-md-0 border-left">
+                                            <div class="pade-label mb-1">
+                                                <i class="fas fa-history mr-1"></i> Historial de Cuotas PDS
+                                            </div>
+                                            <div id="lbl_historial_cuotas_container" style="max-height:110px; overflow-y:auto; font-size:.72rem;">
+                                                <!-- generado dinámicamente -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auditoría de Evidencias -->
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                        <div class="card-header bg-white border-bottom py-3">
+                            <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                <i class="fas fa-cloud-download-alt mr-2"></i> Auditoría de Evidencias Físicas del Mes
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm small text-dark mb-0">
+                                    <thead class="bg-light text-muted font-weight-bold">
+                                        <tr>
+                                            <th>Evidencia Comprometida</th>
+                                            <th>Archivo</th>
+                                            <th class="text-center">Estado</th>
+                                            <th class="text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="evidencias_table_body">
+                                        <tr><td colspan="4" class="text-center text-muted py-3">Seleccione un prestador.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Restricciones SISPER + Excepciones -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                <div class="card-header bg-white border-bottom py-3">
+                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                        <i class="fas fa-shield-alt mr-2"></i> Restricciones Automáticas (SISPER)
+                                    </h6>
+                                </div>
+                                <div class="card-body" id="restricciones_container">
+                                    <div class="text-center text-muted small py-2">Sin datos cargados.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4 rounded-lg">
+                                <div class="card-header bg-white border-bottom py-3">
+                                    <h6 class="m-0 font-weight-bold text-ufro-blue text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                        <i class="fas fa-exclamation-circle mr-2"></i> Excepciones del Periodo
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">Habilite de forma fundada la excepción para desbloquear el pago si existen alertas de calendario.</p>
+                                    <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                                        <div>
+                                            <div class="font-weight-bold small text-dark">Receso Universitario (Ene/Feb)</div>
+                                            <div class="text-muted small">Requiere justificación técnica</div>
+                                        </div>
+                                        <label class="toggle-switch-custom mb-0">
+                                            <input type="checkbox" id="chk_receso" onchange="toggleExcepcion('receso')">
+                                            <span class="slider-custom"></span>
+                                        </label>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <div>
+                                            <div class="font-weight-bold small text-dark">Sobre-Prorrateo Anual (&gt;2 meses)</div>
+                                            <div class="text-muted small">Habilita prórroga de asignación</div>
+                                        </div>
+                                        <label class="toggle-switch-custom mb-0">
+                                            <input type="checkbox" id="chk_prorrateo" onchange="toggleExcepcion('prorrateo')">
+                                            <span class="slider-custom"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group mb-0 mt-2 d-none" id="justificacion_seccion">
+                                        <label class="small text-danger font-weight-bold">Justificación técnica (mín. 15 caracteres)</label>
+                                        <textarea class="form-control" id="excepcion_comentario" rows="2" placeholder="Describa el trabajo extraordinario ejecutado..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dictamen Individual -->
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg bg-light" id="dictamen_individual_card">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="small font-weight-bold text-muted text-uppercase m-0" style="letter-spacing:.5px;">
+                                    <i class="fas fa-gavel mr-1"></i> Dictamen Normativo sobre el Detalle Seleccionado
+                                </h6>
+                                <div id="prestador_dictamen_badge">
+                                    <span class="badge badge-secondary">Revisión pendiente</span>
+                                </div>
+                            </div>
+                            <div class="row no-gutters">
+                                <div class="col-md-4 pr-md-1">
+                                    <button class="btn-ufro-success btn-block font-weight-bold text-center py-2" style="font-size:.75rem !important;" onclick="dictaminarPrestador('APROBADO')">
+                                        <i class="fas fa-check-circle mr-1"></i> Aprobar Detalle
+                                    </button>
+                                </div>
+                                <div class="col-md-4 px-md-1 my-2 my-md-0">
+                                    <button class="btn-ufro-secondary btn-block font-weight-bold text-center py-2" style="font-size:.75rem !important; border:1.5px solid var(--ufro-orange) !important; color:var(--ufro-orange) !important;" onclick="dictaminarPrestador('OBSERVADO')">
+                                        <i class="fas fa-reply mr-1"></i> Observar / Devolver
+                                    </button>
+                                </div>
+                                <div class="col-md-4 pl-md-1">
+                                    <button class="btn-ufro-danger btn-block font-weight-bold text-center py-2" style="font-size:.75rem !important;" onclick="dictaminarPrestador('RECHAZADO')">
+                                        <i class="fas fa-ban mr-1"></i> Rechazar Detalle
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== SEGUNDA FILA: PDF + DECISIÓN GLOBAL ===== -->
+            <div class="row">
+                <!-- Visor PDF A4 -->
+                <div class="col-lg-7">
+                    <div class="card-minimal">
+                        <ul class="nav nav-tabs nav-tabs-premium" id="documentTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="formato-tab" data-toggle="tab" data-target="#formato" type="button" role="tab">
+                                    <i class="fas fa-file-invoice mr-1 text-danger"></i> Formato de resolución
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="anexo-tab" data-toggle="tab" data-target="#anexo" type="button" role="tab">
+                                    <i class="fas fa-table mr-1 text-primary"></i> Anexo Nómina
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content document-wrapper" id="documentTabsContent">
+                            <div class="tab-pane fade show active" id="formato" role="tabpanel">
+                                <div class="pdf-canvas">
+                                    <div class="pdf-page-sheet shadow">
+                                        <div class="pdf-header">
+                                            <div>
+                                                <span class="pdf-header-title">Universidad de La Frontera</span>
+                                                <div class="pdf-header-subtitle">Secretaría General</div>
+                                            </div>
+                                            <div class="pdf-res-number" id="pdf_nro_reso">RESOLUCIÓN EXENTA Nº —</div>
+                                        </div>
+                                        <div class="pdf-body-title" id="pdf_resol_fecha">TEMUCO, —</div>
+                                        <div class="pdf-section-text">
+                                            <span class="pdf-bold-tag">VISTO:</span> El Estatuto de la Universidad de La Frontera, aprobado por D.F.L. Nº 156 de 1981 de Educación; la Ley Nº 19.886 de Bases sobre Contratos Administrativos de Suministro y Prestación de Servicios; el Reglamento de Prestación de Servicios de la Universidad formalizado en el Decreto Universitario Nº 288/2026; y las atribuciones que me confiere la normativa interna vigente.
+                                        </div>
+                                        <div class="pdf-section-text">
+                                            <span class="pdf-bold-tag">CONSIDERANDO:</span>
+                                            1. Que, en conformidad con los objetivos de la prestación de servicios, se requiere encomendar la ejecución de labores de carácter transitorio e independiente.
+                                            2. Que la propuesta ha sido debidamente visada y decretada por los organismos competentes bajo las normas del Decreto Universitario 288/2026.
+                                            3. Que existe saldo disponible y financiamiento compatible en la cuenta presupuestaria correspondiente.
+                                        </div>
+                                        <div class="pdf-section-text" style="text-indent:0;">
+                                            <span class="pdf-bold-tag">RESUELVO:</span>
+                                        </div>
+                                        <div class="pdf-section-text">
+                                            1. AUTORÍZASE la prestación de servicios del personal individualizado en el anexo, bajo las condiciones y sueldos brutos mensuales indicados.
+                                        </div>
+                                        <div class="pdf-section-text">
+                                            2. ESTABLÉCESE que los cobros mensuales se tramitarán previa carga y verificación física de las evidencias comprometidas de la prestación.
+                                        </div>
+                                        <div class="pdf-signatures">
+                                            <div class="pdf-signature-box">
+                                                <div class="pdf-signature-line">GONZALO OPORTO VENEGAS<br>Secretario General</div>
+                                            </div>
+                                            <div class="pdf-signature-box">
+                                                <div class="pdf-signature-line">DR. EDUARDO HEBEL WEISS<br>Rector</div>
+                                            </div>
+                                        </div>
+                                        <div class="pdf-distrib">
+                                            <strong>DISTRIBUCIÓN:</strong> Solicitante, Dirección de Finanzas, DGDP, Control Contable.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="anexo" role="tabpanel">
+                                <div class="pdf-canvas">
+                                    <div class="pdf-page-sheet shadow" id="pdf_anexo_container">
+                                        <!-- generado dinámicamente -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dictamen Global -->
+                <div class="col-lg-5">
+                    <div class="card shadow-sm border-0 mb-4 rounded-lg bg-light" style="border-top:5px solid var(--ufro-blue) !important;">
+                        <div class="card-body">
+                            <h6 class="small font-weight-bold text-dark text-uppercase mb-3" style="letter-spacing:.5px;">
+                                <i class="fas fa-clipboard-check mr-2"></i> Dictamen Global del Expediente
+                            </h6>
+
+                            <div class="alert alert-warning py-2 mb-3" style="font-size:.7rem; border-radius:6px;" id="global_status_alert">
+                                <i class="fas fa-exclamation-triangle mr-1"></i> <strong>Auditoría Incompleta:</strong> Dictamine individualmente cada detalle.
+                            </div>
+
+                            <div class="mb-3 p-3 bg-white rounded border small text-dark">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Total detalles en solicitud:</span>
+                                    <span class="font-weight-bold" id="lbl_glob_total">—</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-success"><i class="fas fa-check-circle mr-1"></i> Aprobados:</span>
+                                    <span class="font-weight-bold" id="lbl_glob_aprob">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-warning"><i class="fas fa-reply mr-1"></i> Observados:</span>
+                                    <span class="font-weight-bold" id="lbl_glob_obs">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-danger"><i class="fas fa-ban mr-1"></i> Rechazados:</span>
+                                    <span class="font-weight-bold" id="lbl_glob_rech">0</span>
+                                </div>
+                            </div>
+
+                            <div class="p-2 mb-3 bg-white rounded border text-muted" style="font-size:.62rem; line-height:1.35;">
+                                <i class="fas fa-info-circle mr-1"></i> <strong>Declaración DGDP:</strong> Certifico que he auditado la procedencia de la nómina y sus evidencias conforme al DU N° 288/2026. La institución conserva el derecho de auditar a posteriori los antecedentes.
+                            </div>
+
+                            <div class="dictamen-actions-container">
+                                <button class="btn-ufro-success btn-block py-2 font-weight-bold text-center mb-2" id="btn_glob_aprobar" onclick="procesarAprobacionGlobal()" disabled>
+                                    <i class="fas fa-paper-plane mr-2"></i> Derivar detalles aprobados a Finanzas
+                                </button>
+                                <div class="row no-gutters">
+                                    <div class="col-6 pr-1">
+                                        <button class="btn-ufro-secondary btn-block font-weight-bold text-center py-2" id="btn_glob_devolver" style="font-size:.75rem !important;" onclick="abrirDevolucionGlobal()" disabled>
+                                            <i class="fas fa-reply mr-1"></i> Devolver para Corrección
+                                        </button>
+                                    </div>
+                                    <div class="col-6 pl-1">
+                                        <button class="btn-ufro-danger btn-block font-weight-bold text-center py-2" id="btn_glob_rechazar" style="font-size:.75rem !important;" onclick="abrirRechazoGlobal()" disabled>
+                                            <i class="fas fa-ban mr-1"></i> Rechazar Todo
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div> <!-- /.row -->
+
+            </div> <!-- /#main_content_dgdp -->
+
         </div>
     </div>
 </div>
 
-<!-- Contenedor global de Toasts -->
+<!-- Toast container -->
 <div id="ufro-toast-container"></div>
 
-<!-- Modal Aprobación y Derivación Global -->
+<!-- Modal Aprobación Global -->
 <div class="modal fade" id="modalAprobar" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered ufro-confirm-modal" role="document">
         <div class="modal-content">
@@ -778,8 +645,9 @@
                 <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i> Confirmar Derivación a Finanzas</h5>
             </div>
             <div class="modal-body text-dark">
-                ¿Está seguro que desea **Aprobar y Derivar** esta solicitud mensual a la Dirección de Finanzas para su posterior pago? 
-                Se ha verificado el cumplimiento normativo en SISPER y la validez de los entregables de evidencias para los prestadores autorizados. El monto habilitado que avanzará a Finanzas será <strong id="lbl_monto_hab_modal">$0</strong>.
+                <p>Se derivarán a Finanzas los detalles marcados como <strong>Aprobados</strong>. Los detalles observados o rechazados no avanzan.</p>
+                <p>Monto total habilitado que avanzará: <strong class="text-success" id="lbl_monto_hab_modal">$0</strong></p>
+                <div id="modal_resumen_parcial" class="small text-muted"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-ufro-secondary" data-dismiss="modal">Cancelar</button>
@@ -792,15 +660,15 @@
 <!-- Modal Devolución Global -->
 <div class="modal fade" id="modalDevolver" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered ufro-confirm-modal" role="document">
-        <div class="modal-content" style="border-top: 5px solid var(--ufro-orange) !important;">
-            <div class="modal-header" style="background-color: var(--ufro-orange) !important;">
+        <div class="modal-content" style="border-top:5px solid var(--ufro-orange) !important;">
+            <div class="modal-header" style="background-color:var(--ufro-orange) !important;">
                 <h5 class="modal-title"><i class="fas fa-reply mr-2"></i> Devolver Expediente a Corrección</h5>
             </div>
             <div class="modal-body text-dark">
-                <p>Indique con precisión el motivo de la devolución global. El solicitante recibirá estas observaciones consolidadas y todos los prestadores marcados como "Observados" volverán a Borrador para corregir sus evidencias.</p>
+                <p>Indique el motivo de la devolución. Los detalles marcados como <em>Observados</em> volverán a Borrador para que el solicitante corrija sus evidencias.</p>
                 <div class="form-group mb-0">
-                    <label class="font-weight-bold text-dark">Observaciones Consolidadas para el Solicitante (Mínimo 30 caracteres)</label>
-                    <textarea class="form-control" id="devolver_comentario" rows="3" placeholder="Ej: Se devuelve la solicitud de cobro ya que faltan firmas obligatorias en las actas de conformidad de los prestadores seleccionados..."></textarea>
+                    <label class="font-weight-bold text-dark">Observaciones Consolidadas (mín. 30 caracteres)</label>
+                    <textarea class="form-control" id="devolver_comentario" rows="3" placeholder="Ej: Se devuelve la solicitud ya que faltan firmas obligatorias en las actas de conformidad..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -814,234 +682,152 @@
 <!-- Modal Rechazo Global -->
 <div class="modal fade" id="modalRechazar" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered ufro-confirm-modal" role="document">
-        <div class="modal-content" style="border-top: 5px solid #dc2626 !important;">
-            <div class="modal-header" style="background-color: #dc2626 !important;">
-                <h5 class="modal-title"><i class="fas fa-ban mr-2"></i> Rechazar Expediente Completo</h5>
+        <div class="modal-content" style="border-top:5px solid #dc2626 !important;">
+            <div class="modal-header" style="background-color:#dc2626 !important;">
+                <h5 class="modal-title"><i class="fas fa-ban mr-2"></i> Rechazar Todos los Detalles</h5>
             </div>
             <div class="modal-body text-dark">
-                <p class="font-weight-bold text-danger">¡ATENCIÓN! Esta acción cancelará y anulará el cobro de este mes calendario en forma DEFINITIVA para todos los prestadores del expediente en la base de datos.</p>
+                <p class="font-weight-bold text-danger">Esta acción clausura la solicitud completa de forma definitiva. Solo corresponde cuando TODOS los detalles son rechazados.</p>
                 <div class="form-group mb-0">
-                    <label class="font-weight-bold text-dark">Justificación del rechazo permanente (Mínimo 30 caracteres)</label>
-                    <textarea class="form-control" id="rechazar_comentario" rows="3" placeholder="Ej: Se rechaza de forma definitiva debido a irregularidades detectadas en las evidencias adjuntas o cruce de datos incompatible..."></textarea>
+                    <label class="font-weight-bold text-dark">Justificación del rechazo permanente (mín. 30 caracteres)</label>
+                    <textarea class="form-control" id="rechazar_comentario" rows="3" placeholder="Ej: Se rechaza de forma definitiva debido a irregularidades detectadas en las evidencias adjuntas..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-ufro-secondary" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn-ufro-danger" onclick="confirmarRechazoGlobal()">Rechazar Permanentemente</button>
+                <button type="button" class="btn-ufro-danger" onclick="confirmarRechazoGlobal()">Confirmar Rechazo Total</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- SCRIPTS INTERACTIVOS MOCKUP -->
+<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="mock_data_pagos.js"></script>
 
 <script>
-    // Datos mockup idénticos a 01 para consistencia total en BDD
-    const expedientesMock = {
-        'RE-009/2026': {
-            id_pago: 'SP-2026-39402',
-            nro: 'RE-009/2026', 
-            cenco: '4050.21', 
-            cenco_nombre: 'INST. AGROINDUSTRIA',
-            unifin: 'UNIFIN-AGRO',
-            fondo: '21 - FONDOS PROPIOS',
-            proyecto: 'ANID Fondecyt 1240398', 
-            jefe: 'DR. ARTURO GÓMEZ', 
-            saldo_cc: 12500000,
-            obs_finan: '<i class="fas fa-info-circle text-primary mr-1"></i> Sin alertas de vigencia ni restricciones presupuestarias.',
-            actividad_general: 'Desarrollo e implementación del módulo analítico de bioprocesos en reactores para el Instituto de Agroindustria.',
-            funcionarios: [
-                {
-                    nombre: 'Carlos Fuentes Rivera',
-                    rut: '15.845.221-K',
-                    estamento: 'Académico',
-                    cargo: 'Regular Contrata | Grado 4 | Antigüedad: 10 Años',
-                    actividad: 'Desarrollo e implementación del módulo analítico de bioprocesos en reactores...',
-                    tipo_prestacion: 'Investigación Científica',
-                    modalidad: 'Fuera de jornada',
-                    sea: 'Sí',
-                    compensacion_html: `<div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación (SEA Académico fuera de jornada).</div>`,
-                    monto_mensual: 1850000,
-                    renta_bruta: 3700000,
-                    saldo_pendiente: 1850000,
-                    receso: false,
-                    prorrateo: false,
-                    comentario_excep: '',
-                    dictamen: 'PENDIENTE',
-                    evidencias: [
-                        { label: 'Acta de Conformidad de la Jefatura (PDF)', file: 'acta_conformidad_carlos_f.pdf', loaded: true, size: '1.2 MB' },
-                        { label: 'Informe Técnico Mensual de Actividades (PDF)', file: 'informe_tecnico_mensual_bioprocesos.pdf', loaded: true, size: '4.8 MB' },
-                        { label: 'Base de Datos entregada con mediciones (XLSX)', file: 'bd_bioprocesos_reactores_depurada.xlsx', loaded: true, size: '520 KB' }
-                    ],
-                    validaciones: [
-                        { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
-                        { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
-                        { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
-                        { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
-                    ]
-                },
-                {
-                    nombre: 'Julio Cortázar Prado',
-                    rut: '12.345.678-9',
-                    estamento: 'Profesional',
-                    cargo: 'Honorarios Externos | Grado 8 | Antigüedad: 3 Años',
-                    actividad: 'Análisis y modelación matemática de fluidos térmicos en reactores...',
-                    tipo_prestacion: 'Asesoría Profesional de Datos',
-                    modalidad: 'Jornada Completa',
-                    sea: 'No',
-                    compensacion_html: `<div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación (Honorarios).</div>`,
-                    monto_mensual: 1200000,
-                    renta_bruta: 2400000,
-                    saldo_pendiente: 1200000,
-                    receso: false,
-                    prorrateo: false,
-                    comentario_excep: '',
-                    dictamen: 'PENDIENTE',
-                    evidencias: [
-                        { label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_julio_c.pdf', loaded: true, size: '980 KB' },
-                        { label: 'Informe Técnico de Modelación de Fluidos (PDF)', file: 'informe_tecnico_modelacion_julio_c.pdf', loaded: true, size: '2.5 MB' }
-                    ],
-                    validaciones: [
-                        { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
-                        { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
-                        { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
-                        { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
-                    ]
-                }
-            ]
-        },
-        'RE-114/2026': {
-            id_pago: 'SP-2026-39501',
-            nro: 'RE-114/2026', 
-            cenco: '4112.21', 
-            cenco_nombre: 'INST. AGROINDUSTRIA (FLUIDOS)',
-            unifin: 'UNIFIN-AGRO',
-            fondo: '21 - FONDOS PROPIOS',
-            proyecto: 'DIUFRO 2026 - Investigación Fluidos', 
-            jefe: 'DRA. ELENA TRONCOSO', 
-            saldo_cc: 4200000,
-            obs_finan: '<i class="fas fa-exclamation-triangle text-warning mr-1"></i> Alerta: Centro de costo vence el 31/07/2026.',
-            actividad_general: 'Apoyo administrativo en levantamiento de procesos y gestión de documentación técnica de fluidos.',
-            funcionarios: [
-                {
-                    nombre: 'María Elena Soto Figueroa',
-                    rut: '16.452.891-2',
-                    estamento: 'Administrativo',
-                    cargo: 'Planta Estamento | Grado 12 | Antigüedad: 8 Años',
-                    actividad: 'Apoyo administrativo en levantamiento de procesos y gestión de documentación técnica de fluidos.',
-                    tipo_prestacion: 'Apoyo Administrativo Técnico',
-                    modalidad: 'Dentro de jornada',
-                    sea: 'No',
-                    compensacion_html: `<div class="bg-light p-2 rounded border text-left" style="font-size: 0.65rem; margin-top: 5px;">
-                                            <div class="font-weight-bold text-ufro-blue mb-1" style="font-size: 0.62rem;"><i class="fas fa-history mr-1"></i> Compensación Horaria (Dentro Jornada):</div>
-                                            <div class="row no-gutters text-dark">
-                                                <div class="col-6 pr-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Lunes:</span>
-                                                        <span class="font-weight-bold">2 Hrs</span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6 pl-1">
-                                                    <div class="d-flex justify-content-between border-bottom pb-1 mb-1" style="font-size: 0.58rem;">
-                                                        <span style="opacity: 0.85;">Miér.:</span>
-                                                        <span class="font-weight-bold">2 Hrs</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="text-muted text-right font-weight-bold" style="font-size: 0.58rem;">Total: 4 Hrs / Semanales</div>
-                                        </div>`,
-                    monto_mensual: 280000,
-                    renta_bruta: 580000,
-                    saldo_pendiente: 280000,
-                    receso: false,
-                    prorrateo: false,
-                    comentario_excep: '',
-                    dictamen: 'PENDIENTE',
-                    evidencias: [
-                        { label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_maria_s.pdf', loaded: true, size: '750 KB' },
-                        { label: 'Informe mensual de avance administrativo (PDF)', file: 'informe_avance_maria_s.pdf', loaded: true, size: '1.8 MB' }
-                    ],
-                    validaciones: [
-                        { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
-                        { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
-                        { label: 'Vigencia Proyecto y CC', badge: 'CC Vence 31/07 (Alerta)', status: 'warning' },
-                        { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
-                    ]
-                }
-            ]
-        }
-    };
+    let dbState = null;
+    let selectedSol = null;
+    let selectedDetailIdx = 0;
 
-    let activeResId = 'RE-009/2026';
-    let currentExp = null;
-    let selectedEmployeeIdx = 0;
+    const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-    // Inicialización de la pantalla
+    const formatCLP = v => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',minimumFractionDigits:0}).format(v);
+
+    // ===== INIT: carga automática sin selector =====
     window.addEventListener('load', () => {
-        switchExpediente();
+        dbState = getLocalDB();
+
+        // Prioridad: 1) ?nro_solici= en URL  2) ACTIVE_SOLPAG  3) primera EN_TRAMITE del mock
+        const params    = new URLSearchParams(window.location.search);
+        const urlSol    = params.get('nro_solici');
+        const activeSol = localStorage.getItem('ACTIVE_SOLPAG');
+
+        let nroTarget = null;
+        if (urlSol && dbState.solicitudes_pago.some(s => s.nro_solpag === urlSol)) {
+            nroTarget = urlSol;
+        } else if (activeSol && dbState.solicitudes_pago.some(s => s.nro_solpag === activeSol)) {
+            nroTarget = activeSol;
+        } else {
+            const primera = dbState.solicitudes_pago.find(s => s.cod_estsol === 'EN_TRAMITE');
+            if (primera) nroTarget = primera.nro_solpag;
+        }
+
+        if (nroTarget) {
+            cargarSolicitudActiva(nroTarget);
+        } else {
+            document.getElementById('empty_state_dgdp').classList.remove('d-none');
+            document.getElementById('main_content_dgdp').classList.add('d-none');
+        }
     });
 
-    function switchExpediente() {
-        activeResId = document.getElementById('expediente_selector').value;
-        currentExp = JSON.parse(JSON.stringify(expedientesMock[activeResId])); // Deep copy para mantener estados locales del uploader
+    // ===== CARGAR SOLICITUD ACTIVA (reemplaza switchExpediente) =====
+    function cargarSolicitudActiva(nro_solpag) {
+        selectedSol = dbState.solicitudes_pago.find(s => s.nro_solpag === nro_solpag);
+        if (!selectedSol) return;
 
-        selectedEmployeeIdx = 0;
+        const prestacion = dbState.prestaciones.find(p => p.nro_solpds === selectedSol.nro_solpds);
+        selectedDetailIdx = 0;
 
-        // Cargar Metadatos
-        document.getElementById('lbl_top_id_pago').textContent = currentExp.id_pago;
-        document.getElementById('lbl_pds_nro').textContent = currentExp.nro;
-        document.getElementById('lbl_pds_cenco').textContent = `${currentExp.cenco} - ${currentExp.cenco_nombre}`;
-        document.getElementById('lbl_pds_unifin').textContent = currentExp.unifin;
-        document.getElementById('lbl_pds_fondo').textContent = currentExp.fondo;
-        document.getElementById('lbl_pds_jefe').textContent = currentExp.jefe;
-        document.getElementById('lbl_pds_saldocc').textContent = `$${currentExp.saldo_cc.toLocaleString('es-CL')}`;
-        document.getElementById('lbl_pds_obs_finan').innerHTML = currentExp.obs_finan;
-        document.getElementById('lbl_actividad_general').textContent = `"${currentExp.actividad_general}"`;
+        // Cabecera solicitud de pago
+        const totalSol = selectedSol.detalles.reduce((a,d) => a + d.mto_solpag, 0);
+        const mesPago = selectedSol.detalles[0]
+            ? `${MESES[(selectedSol.detalles[0].nro_mespag || selectedSol.detalles[0].mes_ejecucion) - 1]} ${selectedSol.detalles[0].anio_pag || selectedSol.detalles[0].anio_ejecucion}`
+            : '—';
+        document.getElementById('sp_nro_solpag').textContent = selectedSol.nro_solpag;
+        document.getElementById('sp_nro_solpds').textContent = selectedSol.nro_solpds;
+        document.getElementById('sp_resolucion').textContent = selectedSol.resolucion;
+        document.getElementById('sp_mes_pago').textContent = mesPago;
+        document.getElementById('sp_total_sol').textContent = formatCLP(totalSol);
+        document.getElementById('sp_solicitante').textContent = prestacion ? prestacion.solicitante : '—';
+        document.getElementById('sp_detalles_count').textContent = `${selectedSol.detalles.length} detalles`;
 
-        // PDF Exenta Nro
-        document.getElementById('pdf_nro_reso').textContent = `RESOLUCIÓN EXENTA Nº ${currentExp.nro.replace('RE-', '')}`;
-        renderPDFAnexo();
+        // Antecedentes PDS
+        if (prestacion) {
+            document.getElementById('lbl_pds_nro').textContent = selectedSol.resolucion;
+            document.getElementById('lbl_pds_cenco').textContent = `${prestacion.centro_costo.codigo} — ${prestacion.centro_costo.nombre}`;
+            document.getElementById('lbl_pds_unifin').textContent = prestacion.centro_costo.unifin;
+            document.getElementById('lbl_pds_fondo').textContent = prestacion.centro_costo.financiamiento;
+            document.getElementById('lbl_pds_jefe').textContent = prestacion.jefe_proyecto;
+            document.getElementById('lbl_pds_saldocc').textContent = formatCLP(prestacion.centro_costo.saldo_cc);
+            document.getElementById('lbl_pds_actividad').innerHTML = `<i class="fas fa-tasks text-primary mr-1"></i> ${prestacion.actividad_general}`;
+            if (prestacion.centro_costo.saldo_cc < 500000) {
+                document.getElementById('lbl_pds_obs_finan').innerHTML = `<i class="fas fa-exclamation-triangle text-warning mr-1"></i> Alerta: CC con saldo bajo.`;
+            } else {
+                document.getElementById('lbl_pds_obs_finan').innerHTML = `<i class="fas fa-info-circle text-primary mr-1"></i> Sin alertas presupuestarias.`;
+            }
 
-        // Renderizar Lista lateral de Prestadores (Bandeja)
+            // PDF
+            document.getElementById('pdf_nro_reso').textContent = `RESOLUCIÓN EXENTA Nº ${selectedSol.resolucion.replace('RE-','')}`;
+            document.getElementById('pdf_resol_fecha').textContent = `TEMUCO, ${prestacion.fecha_decretacion}`;
+            renderPDFAnexo(prestacion);
+        }
+
+        updateGlobalStateBadge(selectedSol.cod_estsol);
         renderBandejaPersonal();
-
-        // Cargar Ficha del primer prestador
-        cargarPrestadorActivo();
-
-        // Recalcular montos globales
+        cargarDetalle(0);
         recalcularMontosGlobales();
-        
-        // Reset botones globales
-        document.getElementById('pago_estado_badge').className = "badge-status status-2 shadow-xs";
-        document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-clock"></i> EN REVISIÓN DGDP';
     }
 
-    function renderPDFAnexo() {
+    // Alias por compatibilidad (por si queda alguna llamada desde el HTML)
+    window.switchExpediente = function() {};
+
+    // ===== BADGE DE ESTADO GLOBAL =====
+    function updateGlobalStateBadge(state) {
+        const badge = document.getElementById('pago_estado_badge');
+        badge.className = 'badge-status shadow-xs';
+        const map = {
+            'EN_TRAMITE':     ['status-2', '<i class="fas fa-clock"></i> EN REVISIÓN DGDP'],
+            'APROBADO_DGDP':  ['status-3', '<i class="fas fa-receipt"></i> EN REVISIÓN FINANZAS'],
+            'DEVUELTA_DGDP':  ['status-6', '<i class="fas fa-reply"></i> DEVUELTA A CORRECCIÓN'],
+            'RECHAZADA':      ['status-4', '<i class="fas fa-ban"></i> RECHAZADA'],
+            'PAGADA':         ['status-8', '<i class="fas fa-check-circle"></i> PAGADA'],
+            'PAGO_PARCIAL':   ['status-5', '<i class="fas fa-adjust"></i> PAGO PARCIAL'],
+        };
+        const entry = map[state] || ['status-1', `<i class="fas fa-question"></i> ${state}`];
+        badge.classList.add(entry[0]);
+        badge.innerHTML = entry[1];
+    }
+
+    // ===== ANEXO PDF =====
+    function renderPDFAnexo(prestacion) {
         const container = document.getElementById('pdf_anexo_container');
         container.innerHTML = `
-            <h6 class="font-weight-bold text-dark text-center mb-3 text-uppercase small" style="letter-spacing: 0.5px; font-family:'Outfit';">ANEXO DE PRESTACIÓN DE SERVICIOS</h6>
-            
+            <h6 class="font-weight-bold text-dark text-center mb-3 text-uppercase small" style="letter-spacing:.5px; font-family:'Outfit';">ANEXO DE PRESTACIÓN DE SERVICIOS</h6>
             <table class="pdf-annex-table">
                 <thead>
-                    <tr>
-                        <th>RUT</th>
-                        <th>Nombre del Prestador</th>
-                        <th>Tipo Contrato / Prestación</th>
-                        <th>CC Imputación</th>
-                        <th>Monto Mensual Bruto</th>
-                    </tr>
+                    <tr><th>RUT</th><th>Nombre del Prestador</th><th>Estamento / Contrato</th><th>CC Imputación</th><th>Monto Mensual Bruto</th></tr>
                 </thead>
                 <tbody>
-                    ${currentExp.funcionarios.map(fun => `
+                    ${prestacion.funcionarios.map(fun => `
                         <tr>
                             <td class="font-weight-bold">${fun.rut}</td>
                             <td>${fun.nombre}</td>
-                            <td>${fun.estamento} / ${fun.tipo_prestacion}</td>
-                            <td>${currentExp.cenco}</td>
-                            <td class="font-weight-bold text-success">$${fun.monto_mensual.toLocaleString('es-CL')}</td>
+                            <td>${fun.estamento} / ${fun.contrato_pds.split('—')[0].trim()}</td>
+                            <td>${prestacion.centro_costo.codigo}</td>
+                            <td class="font-weight-bold text-success">${formatCLP(fun.cuotas[0].mto_cuota)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1049,401 +835,432 @@
         `;
     }
 
+    // ===== BANDEJA DE DETALLES =====
     function renderBandejaPersonal() {
         const container = document.getElementById('bandeja_personal_container');
         container.innerHTML = '';
 
-        currentExp.funcionarios.forEach((fun, idx) => {
+        selectedSol.detalles.forEach((det, idx) => {
             const card = document.createElement('div');
-            card.className = `p-2 rounded border mb-2 cursor-pointer transition-all ${selectedEmployeeIdx === idx ? 'border-primary bg-white shadow-sm active' : 'bg-light'}`;
-            card.style.borderLeft = '4px solid var(--ufro-blue) !important';
+            card.className = `p-2 rounded border mb-2 cuota-bandeja-card ${idx === selectedDetailIdx ? 'active bg-white shadow-sm' : 'bg-light'}`;
+            card.style.cursor = 'pointer';
             card.addEventListener('click', () => {
-                selectedEmployeeIdx = idx;
-                cargarPrestadorActivo();
-                // Actualizar selección visual
-                document.querySelectorAll('#bandeja_personal_container > div').forEach((d, i) => {
-                    if (i === idx) {
-                        d.className = 'p-2 rounded border mb-2 cursor-pointer transition-all border-primary bg-white shadow-sm active';
-                    } else {
-                        d.className = 'p-2 rounded border mb-2 cursor-pointer transition-all bg-light';
-                    }
-                    d.style.borderLeft = '4px solid var(--ufro-blue) !important';
-                });
+                selectedDetailIdx = idx;
+                renderBandejaPersonal();
+                cargarDetalle(idx);
             });
 
-            let badgeHtml = '<span class="badge badge-secondary">Pendiente</span>';
-            if (fun.dictamen === 'CUMPLE') badgeHtml = '<span class="badge badge-success"><i class="fas fa-check"></i> Cumple</span>';
-            if (fun.dictamen === 'OBSERVADO') badgeHtml = '<span class="badge badge-warning text-white"><i class="fas fa-reply"></i> Devuelto</span>';
-            if (fun.dictamen === 'RECHAZADO') badgeHtml = '<span class="badge badge-danger"><i class="fas fa-ban"></i> Rechazado</span>';
+            const badgeMap = {
+                'EN_PROCESO':   '<span class="badge badge-secondary" style="font-size:.6rem;">Pendiente</span>',
+                'APROBADO':     '<span class="badge badge-success" style="font-size:.6rem;"><i class="fas fa-check"></i> Cumple</span>',
+                'APROBADO_DGDP':'<span class="badge badge-primary" style="font-size:.6rem;"><i class="fas fa-check"></i> Aprobado DGDP</span>',
+                'OBSERVADO':    '<span class="badge badge-warning text-white" style="font-size:.6rem;"><i class="fas fa-reply"></i> Observado</span>',
+                'RECHAZADO':    '<span class="badge badge-danger" style="font-size:.6rem;"><i class="fas fa-ban"></i> Rechazado</span>',
+                'PAGADO':       '<span class="badge badge-secondary" style="font-size:.6rem;"><i class="fas fa-check-circle"></i> Pagado</span>',
+                'PENDIENTE_SALDO': '<span class="badge badge-info" style="font-size:.6rem;">Pendiente Saldo</span>',
+            };
+            const estBadge = badgeMap[det.cod_estdet] || `<span class="badge badge-dark" style="font-size:.6rem;">${det.cod_estdet}</span>`;
+            const estCuoBadge = badgeMap[det.cod_estcuo] || `<span class="badge badge-dark" style="font-size:.6rem;">${det.cod_estcuo}</span>`;
+            const mesEjec = MESES[det.mes_ejecucion - 1];
+            const mesSol  = MESES[(det.nro_mespag || det.mes_ejecucion) - 1];
 
             card.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <strong class="text-dark small">${fun.nombre.split(' ')[0]} ${fun.nombre.split(' ').slice(-2, -1)}</strong>
-                    ${badgeHtml}
+                    <strong class="text-dark small">${det.nombre}</strong>
+                    ${estBadge}
                 </div>
-                <div class="d-flex justify-content-between align-items-center small text-muted" style="font-size:0.65rem;">
-                    <span>RUT: ${fun.rut}</span>
-                    <span class="font-weight-bold text-primary">$${fun.monto_mensual.toLocaleString('es-CL')}</span>
+                <div class="d-flex justify-content-between small text-muted" style="font-size:.63rem;">
+                    <span>RUT: ${det.rut}</span>
+                    <span class="font-weight-bold text-primary">${formatCLP(det.mto_solpag)}</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1" style="font-size:.62rem;">
+                    <span>Cuota ${det.nro_cuota}/${det.tot_cuotas} &bull; Ejec: ${mesEjec} ${det.anio_ejecucion}</span>
+                    <span>Pago: ${mesSol} ${det.anio_pag || det.anio_ejecucion}</span>
+                </div>
+                <div class="d-flex justify-content-end mt-1" style="font-size:.6rem;">
+                    <span class="text-muted mr-1">Cuota:</span>${estCuoBadge}
                 </div>
             `;
             container.appendChild(card);
         });
     }
 
-    function cargarPrestadorActivo() {
-        const fun = currentExp.funcionarios[selectedEmployeeIdx];
+    // ===== CARGAR DETALLE ACTIVO =====
+    function cargarDetalle(idx) {
+        selectedDetailIdx = idx;
+        const det = selectedSol.detalles[idx];
+        if (!det) return;
 
-        // 1. Cargar metadatos
-        document.getElementById('lbl_prestador_rut').textContent = fun.rut;
-        document.getElementById('lbl_prestador_nombre').textContent = fun.nombre;
-        document.getElementById('lbl_prestador_cargo').textContent = `${fun.estamento} | ${fun.cargo}`;
-        document.getElementById('lbl_prestador_actividad').textContent = `"${fun.actividad}"`;
-        document.getElementById('lbl_prestador_compensacion').innerHTML = fun.compensacion_html;
-        document.getElementById('lbl_prestador_renta').textContent = `$${fun.renta_bruta.toLocaleString('es-CL')}`;
-        document.getElementById('lbl_prestador_mensual').textContent = `$${fun.monto_mensual.toLocaleString('es-CL')}`;
-        document.getElementById('lbl_prestador_saldo').textContent = `$${fun.saldo_pendiente.toLocaleString('es-CL')}`;
+        const prestacion = dbState.prestaciones.find(p => p.nro_solpds === selectedSol.nro_solpds);
+        const fun = prestacion ? prestacion.funcionarios.find(f => f.id_funprse === det.id_funprse) : null;
 
-        if (fun.sea === 'Sí') {
-            document.getElementById('lbl_prestador_sea').className = "badge badge-success font-weight-bold px-2 py-1";
-            document.getElementById('lbl_prestador_sea').innerHTML = '<i class="fas fa-check-circle mr-1"></i> CUMPLE';
+        // Ficha contractual
+        document.getElementById('lbl_prestador_rut').textContent = det.rut;
+        document.getElementById('lbl_prestador_nombre').textContent = det.nombre;
+        if (fun) {
+            document.getElementById('lbl_prestador_cargo').textContent = `${fun.estamento} | ${fun.cargo}`;
+            document.getElementById('lbl_prestador_actividad').textContent = `"${fun.actividad}"`;
+            document.getElementById('lbl_prestador_compensacion').innerHTML = fun.compensacion_html;
+
+            const rentaBase = fun.monto_bruto_aprobado;
+            document.getElementById('lbl_prestador_renta').textContent = formatCLP(rentaBase);
+            document.getElementById('lbl_prestador_saldo').textContent = formatCLP(fun.saldo_pendiente);
+
+            const seaVal = fun.sea === 'Sí';
+            const seaEl = document.getElementById('lbl_prestador_sea');
+            seaEl.className = `badge ${seaVal ? 'badge-success' : 'badge-secondary'} font-weight-bold px-2 py-1`;
+            seaEl.innerHTML = seaVal ? '<i class="fas fa-check-circle mr-1"></i> CUMPLE' : 'NO APLICA';
+
+            // Barra 50%
+            const porcentaje = Math.round((det.mto_solpag / rentaBase) * 100);
+            document.getElementById('lbl_porcentaje_renta').textContent = `${porcentaje}% de Renta`;
+            const bar = document.getElementById('lbl_progress_bar');
+            bar.style.width = `${Math.min(porcentaje, 100)}%`;
+            bar.className = `progress-bar ${porcentaje > 50 ? 'bg-danger' : 'bg-success'} animate-all`;
+            document.getElementById('lbl_monto_cuota_txt').textContent = `Monto Solicitado: ${formatCLP(det.mto_solpag)}`;
+            document.getElementById('lbl_tope_txt').textContent = `Límite Legal (50%): ${formatCLP(rentaBase * 0.5)}`;
+
+            // Historial cuotas
+            const histContainer = document.getElementById('lbl_historial_cuotas_container');
+            histContainer.innerHTML = '';
+            fun.cuotas.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'd-flex justify-content-between align-items-center mb-1 pb-1 border-bottom';
+                const bMap = { PAGADA:'badge-secondary', EN_TRAMITE:'badge-warning text-white', DISPONIBLE:'badge-success', APROBADO_DGDP:'badge-primary', PENDIENTE_SALDO:'badge-info', RECHAZADA:'badge-danger' };
+                const bc = bMap[c.cod_estcuo] || 'badge-dark';
+                div.innerHTML = `
+                    <span>C${c.nro_cuota} (${MESES[c.mes_ejecucion-1]} ${c.anio_ejecucion}):</span>
+                    <div class="d-flex align-items-center">
+                        <span class="font-weight-bold text-dark mr-2">${formatCLP(c.mto_cuota)}</span>
+                        <span class="badge ${bc}" style="font-size:.58rem;">${c.cod_estcuo}</span>
+                    </div>`;
+                histContainer.appendChild(div);
+            });
         } else {
-            document.getElementById('lbl_prestador_sea').className = "badge badge-secondary font-weight-bold px-2 py-1";
-            document.getElementById('lbl_prestador_sea').innerHTML = 'NO APLICA';
+            document.getElementById('lbl_prestador_cargo').textContent = '—';
+            document.getElementById('lbl_prestador_actividad').textContent = '—';
+            document.getElementById('lbl_prestador_compensacion').innerHTML = '—';
+            document.getElementById('lbl_prestador_renta').textContent = '—';
+            document.getElementById('lbl_prestador_saldo').textContent = '—';
         }
 
-        // 2. Control Límite Renta Bruta (50%)
-        const porcentaje = Math.round((fun.monto_mensual / fun.renta_bruta) * 100);
-        document.getElementById('lbl_porcentaje_renta').textContent = `${porcentaje}% de Renta`;
-        const bar = document.getElementById('lbl_progress_bar');
-        bar.style.width = `${porcentaje}%`;
-        bar.className = porcentaje > 50 ? "progress-bar bg-danger animate-all" : "progress-bar bg-success animate-all";
+        document.getElementById('lbl_prestador_mensual').textContent = formatCLP(det.mto_solpag);
 
-        document.getElementById('lbl_monto_cuota_txt').textContent = `Monto Cuota: $${fun.monto_mensual.toLocaleString('es-CL')}`;
-        document.getElementById('lbl_tope_txt').textContent = `Límite Legal (50%): $${(fun.renta_bruta * 0.5).toLocaleString('es-CL')}`;
+        // sg_pade subpanel
+        const mesEjec = `${MESES[det.mes_ejecucion-1]} ${det.anio_ejecucion}`;
+        const mesSolN = det.nro_mespag || det.mes_ejecucion;
+        const anioSolN = det.anio_pag || det.anio_ejecucion;
+        const mesSol = `${MESES[mesSolN-1]} ${anioSolN}`;
+        const isPosterior = (mesSolN > det.mes_ejecucion || anioSolN > det.anio_ejecucion);
 
-        // 3. Renderizar Evidencias
-        renderEvidenciasTabla(fun);
+        document.getElementById('sp_det_cuota').textContent = `${det.nro_cuota} / ${det.tot_cuotas}`;
+        document.getElementById('sp_det_mes_ejec').textContent = mesEjec;
+        document.getElementById('sp_det_mes_sol').textContent = mesSol;
+        document.getElementById('sp_det_tipo_cobro').innerHTML = isPosterior
+            ? `<span class="badge badge-warning text-white" style="font-size:.62rem;"><i class="fas fa-history mr-1"></i> Pago posterior al periodo trabajado</span>`
+            : `<span class="badge badge-success" style="font-size:.62rem;"><i class="fas fa-check-circle mr-1"></i> Normal</span>`;
+        document.getElementById('sp_det_mto_cuota').textContent = formatCLP(det.mto_cuota);
+        document.getElementById('sp_det_mto_sol').textContent = formatCLP(det.mto_solpag);
 
-        // 4. Renderizar Restricciones SISPER
-        renderRestricciones(fun);
+        // Evidencias
+        renderEvidenciasTabla(det);
 
-        // 5. Excepciones
-        document.getElementById('chk_receso').checked = fun.receso;
-        document.getElementById('chk_prorrateo').checked = fun.prorrateo;
-        document.getElementById('excepcion_comentario').value = fun.comentario_excep;
-        if (fun.receso || fun.prorrateo) {
-            document.getElementById('justificacion_seccion').classList.remove('hidden');
+        // Restricciones
+        renderRestricciones(det);
+
+        // Excepciones
+        document.getElementById('chk_receso').checked = det.receso || false;
+        document.getElementById('chk_prorrateo').checked = det.prorrateo || false;
+        document.getElementById('excepcion_comentario').value = det.comentario_excep || '';
+        if (det.receso || det.prorrateo) {
+            document.getElementById('justificacion_seccion').classList.remove('d-none');
         } else {
-            document.getElementById('justificacion_seccion').classList.add('hidden');
+            document.getElementById('justificacion_seccion').classList.add('d-none');
         }
 
-        // 6. Dictamen individual
-        actualizarDictamenIndividualBadge(fun);
+        // Dictamen individual badge
+        actualizarDictamenIndividualBadge(det);
+
+        // Toggle editabilidad
+        const isEditable = selectedSol.cod_estsol === 'EN_TRAMITE';
+        document.querySelectorAll('#dictamen_individual_card button').forEach(b => b.disabled = !isEditable);
+        document.getElementById('chk_receso').disabled = !isEditable;
+        document.getElementById('chk_prorrateo').disabled = !isEditable;
+        document.getElementById('excepcion_comentario').disabled = !isEditable;
     }
 
-    function renderEvidenciasTabla(fun) {
+    // ===== EVIDENCIAS =====
+    function renderEvidenciasTabla(det) {
         const tbody = document.getElementById('evidencias_table_body');
         tbody.innerHTML = '';
-
-        fun.evidencias.forEach(ev => {
+        if (!det.evidencias || det.evidencias.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2 small">Sin evidencias en este detalle.</td></tr>';
+            return;
+        }
+        det.evidencias.forEach(ev => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="font-weight-bold align-middle">${ev.label}</td>
-                <td class="text-muted align-middle"><i class="fas fa-file-pdf text-danger mr-1"></i> ${ev.file}</td>
-                <td class="text-center align-middle"><span class="badge badge-success"><i class="fas fa-check"></i> Subido (${ev.size})</span></td>
+                <td class="text-muted align-middle"><i class="fas fa-file-pdf text-danger mr-1"></i> ${ev.file || 'No subido'}</td>
                 <td class="text-center align-middle">
-                    <button class="btn btn-xs btn-outline-primary evidence-btn-download border-0 py-1" onclick="downloadSimulation('${ev.file}')"><i class="fas fa-download"></i></button>
+                    <span class="badge ${ev.loaded ? 'badge-success' : 'badge-warning'}">
+                        <i class="fas ${ev.loaded ? 'fa-check' : 'fa-clock'}"></i>
+                        ${ev.loaded ? 'Subido' : 'Pendiente'} ${ev.size ? `(${ev.size})` : ''}
+                    </span>
                 </td>
-            `;
+                <td class="text-center align-middle">
+                    <button class="btn btn-xs btn-outline-primary border-0 py-1" ${ev.loaded ? '' : 'disabled'} onclick="downloadSimulation('${ev.file}')">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </td>`;
             tbody.appendChild(tr);
         });
     }
 
-    function renderRestricciones(fun) {
+    // ===== RESTRICCIONES SISPER =====
+    function renderRestricciones(det) {
         const container = document.getElementById('restricciones_container');
         container.innerHTML = '';
-
-        fun.validaciones.forEach(val => {
+        if (!det.validaciones || det.validaciones.length === 0) {
+            container.innerHTML = '<div class="text-muted small text-center py-2">Sin restricciones registradas.</div>';
+            return;
+        }
+        det.validaciones.forEach(val => {
             const row = document.createElement('div');
-            row.className = "restriction-row py-2 mb-2";
-
-            let iconClass = 'status-badge-success';
-            let icon = 'fa-check';
-            if (val.status === 'warning') {
-                iconClass = 'status-badge-pending bg-warning text-white';
-                icon = 'fa-exclamation-triangle';
-            }
-
+            row.className = 'restriction-row py-2 mb-2';
+            const isWarn = val.status === 'warning';
             row.innerHTML = `
                 <div class="d-flex align-items-center">
-                    <div class="status-badge-custom ${iconClass} mr-2 text-center" style="width:22px; height:22px; font-size:0.65rem; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">
-                        <i class="fas ${icon}"></i>
+                    <div class="${isWarn ? 'status-badge-pending bg-warning text-white' : 'status-badge-success'} mr-2 text-center" style="width:22px;height:22px;font-size:.65rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">
+                        <i class="fas ${isWarn ? 'fa-exclamation-triangle' : 'fa-check'}"></i>
                     </div>
                     <span class="small font-weight-bold text-dark">${val.label}</span>
                 </div>
-                <span class="badge ${val.status === 'success' ? 'badge-success' : 'badge-warning'} badge-outline px-2 py-1" style="font-size:0.62rem;">${val.badge}</span>
-            `;
+                <span class="badge ${isWarn ? 'badge-warning' : 'badge-success'} px-2 py-1" style="font-size:.62rem;">${val.badge}</span>`;
             container.appendChild(row);
         });
     }
 
-    function toggleExcepcion(tipo) {
+    // ===== EXCEPCIONES =====
+    window.toggleExcepcion = function(tipo) {
         const receso = document.getElementById('chk_receso').checked;
         const prorrateo = document.getElementById('chk_prorrateo').checked;
-        const justiBox = document.getElementById('justificacion_seccion');
-        
-        currentExp.funcionarios[selectedEmployeeIdx].receso = receso;
-        currentExp.funcionarios[selectedEmployeeIdx].prorrateo = prorrateo;
-
+        const det = selectedSol.detalles[selectedDetailIdx];
+        det.receso = receso;
+        det.prorrateo = prorrateo;
         if (receso || prorrateo) {
-            justiBox.classList.remove('hidden');
-            showToast('warning', 'Excepción Activada', `Habilitó la excepción por ${tipo === 'receso' ? 'Receso' : 'Sobre-Prorrateo'}. Ingrese justificación técnica.`);
+            document.getElementById('justificacion_seccion').classList.remove('d-none');
+            showToast('warning','Excepción Activada',`Habilitó la excepción por ${tipo === 'receso' ? 'Receso' : 'Sobre-Prorrateo'}. Ingrese justificación técnica.`);
         } else {
-            justiBox.classList.add('hidden');
+            document.getElementById('justificacion_seccion').classList.add('d-none');
         }
-    }
+        saveLocalDB(dbState);
+    };
 
-    // Escuchar cambios en la justificación excepcional para guardarlo en memoria del prestador
     document.addEventListener('input', function(e) {
         if (e.target && e.target.id === 'excepcion_comentario') {
-            currentExp.funcionarios[selectedEmployeeIdx].comentario_excep = e.target.value;
+            selectedSol.detalles[selectedDetailIdx].comentario_excep = e.target.value;
+            saveLocalDB(dbState);
         }
     });
 
-    function dictaminarPrestador(estado) {
-        const fun = currentExp.funcionarios[selectedEmployeeIdx];
-
-        // Validar si tiene excepciones activas y comentario válido
-        if (estado === 'CUMPLE' && (fun.receso || fun.prorrateo)) {
+    // ===== DICTAMEN INDIVIDUAL =====
+    window.dictaminarPrestador = function(estado) {
+        const det = selectedSol.detalles[selectedDetailIdx];
+        if (estado === 'APROBADO' && (det.receso || det.prorrateo)) {
             const comment = document.getElementById('excepcion_comentario').value.trim();
             if (comment.length < 15) {
-                showToast('danger', 'Justificación Requerida', 'La justificación excepcional del prestador debe tener al menos 15 caracteres.');
+                showToast('danger','Justificación Requerida','La justificación excepcional debe tener al menos 15 caracteres.');
                 return;
             }
         }
-
-        fun.dictamen = estado;
-        
-        // Actualizar bandeja
+        det.cod_estdet = estado;
+        saveLocalDB(dbState);
         renderBandejaPersonal();
-        
-        // Actualizar Ficha
-        cargarPrestadorActivo();
-        
-        // Recalcular montos y global dictamen
+        cargarDetalle(selectedDetailIdx);
         recalcularMontosGlobales();
-        showToast(estado === 'CUMPLE' ? 'success' : (estado === 'OBSERVADO' ? 'warning' : 'danger'), 'Prestador Auditado', `Se registró dictamen [${estado}] para ${fun.nombre}.`);
-    }
+        const typeMap = { APROBADO:'success', OBSERVADO:'warning', RECHAZADO:'danger' };
+        showToast(typeMap[estado] || 'info','Detalle Auditado',`Se registró dictamen [${estado}] para ${det.nombre}.`);
+    };
 
-    function actualizarDictamenIndividualBadge(fun) {
+    function actualizarDictamenIndividualBadge(det) {
         const badge = document.getElementById('prestador_dictamen_badge');
-        if (fun.dictamen === 'PENDING' || fun.dictamen === 'PENDIENTE') {
-            badge.innerHTML = '<span class="badge badge-secondary py-1 px-2 font-weight-bold" style="font-size:0.75rem;"><i class="fas fa-clock mr-1"></i> Revisión pendiente</span>';
-        } else if (fun.dictamen === 'CUMPLE') {
-            badge.innerHTML = '<span class="badge badge-success py-1 px-2 font-weight-bold" style="font-size:0.75rem;"><i class="fas fa-check mr-1"></i> Dictamen: Cumple</span>';
-        } else if (fun.dictamen === 'OBSERVADO') {
-            badge.innerHTML = '<span class="badge badge-warning text-white py-1 px-2 font-weight-bold" style="font-size:0.75rem;"><i class="fas fa-exclamation mr-1"></i> Dictamen: Observado</span>';
-        } else {
-            badge.innerHTML = '<span class="badge badge-danger py-1 px-2 font-weight-bold" style="font-size:0.75rem;"><i class="fas fa-ban mr-1"></i> Dictamen: Rechazado</span>';
-        }
+        const map = {
+            'EN_PROCESO':  '<span class="badge badge-secondary py-1 px-2 font-weight-bold" style="font-size:.75rem;"><i class="fas fa-clock mr-1"></i> Revisión pendiente</span>',
+            'APROBADO':    '<span class="badge badge-success py-1 px-2 font-weight-bold" style="font-size:.75rem;"><i class="fas fa-check mr-1"></i> Dictamen: Cumple</span>',
+            'APROBADO_DGDP':'<span class="badge badge-primary py-1 px-2 font-weight-bold" style="font-size:.75rem;"><i class="fas fa-check mr-1"></i> Aprobado DGDP</span>',
+            'OBSERVADO':   '<span class="badge badge-warning text-white py-1 px-2 font-weight-bold" style="font-size:.75rem;"><i class="fas fa-exclamation mr-1"></i> Dictamen: Observado</span>',
+            'RECHAZADO':   '<span class="badge badge-danger py-1 px-2 font-weight-bold" style="font-size:.75rem;"><i class="fas fa-ban mr-1"></i> Dictamen: Rechazado</span>',
+        };
+        badge.innerHTML = map[det.cod_estdet] || map['EN_PROCESO'];
     }
 
+    // ===== RECALCULO GLOBAL =====
     function recalcularMontosGlobales() {
-        let totalSolicitado = 0;
-        let totalHabilitado = 0;
-        let totalObservado = 0;
-        let totalRechazado = 0;
+        let totalSol = 0, totalHab = 0, totalObs = 0, totalRech = 0;
+        let auditados = 0, cumpleCount = 0, obsCount = 0, rechCount = 0;
 
-        let auditados = 0;
-        let cumpleCount = 0;
-        let obsCount = 0;
-        let rechCount = 0;
-
-        currentExp.funcionarios.forEach(fun => {
-            totalSolicitado += fun.monto_mensual;
-            if (fun.dictamen !== 'PENDIENTE') {
+        selectedSol.detalles.forEach(det => {
+            totalSol += det.mto_solpag;
+            if (det.cod_estdet !== 'EN_PROCESO') {
                 auditados++;
-                if (fun.dictamen === 'CUMPLE') {
-                    totalHabilitado += fun.monto_mensual;
-                    cumpleCount++;
-                } else if (fun.dictamen === 'OBSERVADO') {
-                    totalObservado += fun.monto_mensual;
-                    obsCount++;
-                } else if (fun.dictamen === 'RECHAZADO') {
-                    totalRechazado += fun.monto_mensual;
-                    rechCount++;
-                }
+                if (det.cod_estdet === 'APROBADO')   { totalHab  += det.mto_solpag; cumpleCount++; }
+                else if (det.cod_estdet === 'OBSERVADO') { totalObs  += det.mto_solpag; obsCount++; }
+                else if (det.cod_estdet === 'RECHAZADO') { totalRech += det.mto_solpag; rechCount++; }
             }
         });
 
-        // 1. Asignar en cabecera
-        document.getElementById('sum_total_sol').textContent = `$${totalSolicitado.toLocaleString('es-CL')}`;
-        document.getElementById('sum_total_hab').textContent = `$${totalHabilitado.toLocaleString('es-CL')}`;
-        document.getElementById('sum_total_obs').textContent = `$${totalObservado.toLocaleString('es-CL')}`;
-        document.getElementById('sum_total_rech').textContent = `$${totalRechazado.toLocaleString('es-CL')}`;
-
-        // 2. Asignar en global dictamen box
-        document.getElementById('lbl_glob_total').textContent = currentExp.funcionarios.length;
+        document.getElementById('sum_total_sol').textContent = formatCLP(totalSol);
+        document.getElementById('sum_total_hab').textContent = formatCLP(totalHab);
+        document.getElementById('sum_total_obs').textContent = formatCLP(totalObs);
+        document.getElementById('sum_total_rech').textContent = formatCLP(totalRech);
+        document.getElementById('lbl_glob_total').textContent = selectedSol.detalles.length;
         document.getElementById('lbl_glob_aprob').textContent = cumpleCount;
-        document.getElementById('lbl_glob_obs').textContent = obsCount;
-        document.getElementById('lbl_glob_rech').textContent = rechCount;
+        document.getElementById('lbl_glob_obs').textContent   = obsCount;
+        document.getElementById('lbl_glob_rech').textContent  = rechCount;
 
-        // 3. Alerta y botones globales
         const alertBox = document.getElementById('global_status_alert');
-        const btnAprobar = document.getElementById('btn_glob_aprobar');
+        const btnAprobar  = document.getElementById('btn_glob_aprobar');
         const btnDevolver = document.getElementById('btn_glob_devolver');
         const btnRechazar = document.getElementById('btn_glob_rechazar');
 
-        if (auditados < currentExp.funcionarios.length) {
-            alertBox.className = "alert alert-warning py-2 mb-3";
-            alertBox.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> <strong>Auditoría Incompleta:</strong> Debe dictaminar individualmente cada uno de los prestadores en la nómina (Auditados: ${auditados} de ${currentExp.funcionarios.length}).`;
-            
-            btnAprobar.disabled = true;
-            btnDevolver.disabled = true;
-            btnRechazar.disabled = true;
+        if (selectedSol.cod_estsol !== 'EN_TRAMITE') {
+            alertBox.className = 'alert alert-info py-2 mb-3';
+            alertBox.innerHTML = `<i class="fas fa-info-circle mr-1"></i> <strong>Expediente Despachado:</strong> Esta solicitud tiene estado final [${selectedSol.cod_estsol}].`;
+            [btnAprobar, btnDevolver, btnRechazar].forEach(b => b.disabled = true);
+            document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = true);
+            document.getElementById('dictamen_individual_card').classList.add('d-none');
+            return;
+        }
+
+        document.getElementById('dictamen_individual_card').classList.remove('d-none');
+
+        if (auditados < selectedSol.detalles.length) {
+            alertBox.className = 'alert alert-warning py-2 mb-3';
+            alertBox.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> <strong>Auditoría Incompleta:</strong> Dictaminados: ${auditados} de ${selectedSol.detalles.length}.`;
+            [btnAprobar, btnDevolver, btnRechazar].forEach(b => b.disabled = true);
         } else {
-            // Todos resueltos
-            alertBox.className = "alert alert-success py-2 mb-3";
-            alertBox.innerHTML = `<i class="fas fa-check-circle mr-1"></i> <strong>Auditoría Completa:</strong> Todos los prestadores en la nómina han sido dictaminados. Proceda a despachar la decisión global.`;
-
-            // Si hay al menos un aprobado y cero observados, habilitar aprobar y derivar
-            if (cumpleCount > 0 && obsCount === 0) {
-                btnAprobar.disabled = false;
-            } else {
-                btnAprobar.disabled = true;
-            }
-
-            // Si hay al menos un observado, la acción requerida es Devolver para Corrección
-            if (obsCount > 0) {
-                btnDevolver.disabled = false;
-            } else {
-                btnDevolver.disabled = true;
-            }
-
-            // Si todos son rechazados
-            if (rechCount === currentExp.funcionarios.length) {
-                btnRechazar.disabled = false;
-            } else {
-                btnRechazar.disabled = true;
-            }
+            alertBox.className = 'alert alert-success py-2 mb-3';
+            alertBox.innerHTML = `<i class="fas fa-check-circle mr-1"></i> <strong>Auditoría Completa:</strong> Todos los detalles dictaminados. Proceda a despachar.`;
+            // Lógica de aprobación parcial: avanza si hay al menos 1 aprobado
+            btnAprobar.disabled  = cumpleCount === 0;
+            btnDevolver.disabled = obsCount === 0;
+            btnRechazar.disabled = rechCount !== selectedSol.detalles.length;
         }
     }
 
-    function downloadSimulation(filename) {
-        showToast('info', 'Descargando Archivo', `Descargando evidencia física de respaldo: ${filename}`);
-    }
+    // ===== ACCIONES GLOBALES =====
+    window.downloadSimulation = function(filename) {
+        showToast('info','Descargando Archivo',`Descargando evidencia física: ${filename}`);
+    };
 
-    // Funciones globales de despacho
-    function procesarAprobacionGlobal() {
-        let totalHabilitado = 0;
-        currentExp.funcionarios.forEach(fun => {
-            if (fun.dictamen === 'CUMPLE') totalHabilitado += fun.monto_mensual;
+    window.procesarAprobacionGlobal = function() {
+        let totalHab = 0;
+        let aprobados = 0;
+        let observados = 0;
+        let rechazados = 0;
+        selectedSol.detalles.forEach(det => {
+            if (det.cod_estdet === 'APROBADO') { totalHab += det.mto_solpag; aprobados++; }
+            else if (det.cod_estdet === 'OBSERVADO') observados++;
+            else if (det.cod_estdet === 'RECHAZADO') rechazados++;
         });
-
-        document.getElementById('lbl_monto_hab_modal').textContent = `$${totalHabilitado.toLocaleString('es-CL')}`;
+        document.getElementById('lbl_monto_hab_modal').textContent = formatCLP(totalHab);
+        let resumen = '';
+        if (observados > 0) resumen += `<span class="text-warning"><i class="fas fa-reply mr-1"></i> ${observados} detalle(s) observado(s) NO avanzan.</span><br>`;
+        if (rechazados > 0) resumen += `<span class="text-danger"><i class="fas fa-ban mr-1"></i> ${rechazados} detalle(s) rechazado(s) quedan clausurados.</span>`;
+        document.getElementById('modal_resumen_parcial').innerHTML = resumen;
         $('#modalAprobar').modal('show');
-    }
+    };
 
-    function confirmarAprobacionGlobal() {
+    window.confirmarAprobacionGlobal = function() {
         $('#modalAprobar').modal('hide');
-        showToast('info', 'Registrando Visación', 'Firmando visación laboral digital y registrando en Sybase sp_pago_aprobar_dgdp...');
-        
+        showToast('info','Registrando Visación','Firmando visación laboral digital y registrando en Sybase sp_pago_aprobar_dgdp...');
         setTimeout(() => {
-            showToast('success', 'Expediente Despachado', 'El control normativo fue superado. El expediente se derivó a la Dirección de Finanzas para su posterior pago.');
-            
-            // Cambiar Badge superior
-            document.getElementById('pago_estado_badge').className = "badge-status status-3 shadow-xs";
-            document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-receipt"></i> EN REVISIÓN FINANZAS';
-            
-            // Inhabilitar controles
-            document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = true);
-            document.querySelector('.dictamen-actions-container').classList.add('hidden');
-            document.getElementById('dictamen_individual_card').classList.add('hidden');
-        }, 2200);
-    }
+            selectedSol.cod_estsol = 'APROBADO_DGDP';
+            selectedSol.detalles.forEach(det => {
+                if (det.cod_estdet === 'APROBADO') {
+                    det.cod_estdet = 'APROBADO_DGDP';
+                    dbState.prestaciones.forEach(p => p.funcionarios.forEach(fun => fun.cuotas.forEach(cuo => {
+                        if (cuo.id_funcuo === det.id_funcuo) cuo.cod_estcuo = 'APROBADO_DGDP';
+                    })));
+                }
+            });
+            saveLocalDB(dbState);
+            // Persiste la solicitud activa para PP03
+            localStorage.setItem('ACTIVE_SOLPAG', selectedSol.nro_solpag);
+            updateGlobalStateBadge('APROBADO_DGDP');
+            recalcularMontosGlobales();
+            showToast('success','Expediente Despachado','El control normativo fue superado. El expediente se derivó a la Dirección de Finanzas para su posterior pago.');
+            setTimeout(() => { location.href = `03_vista_direccion_finanzas_pago.html?nro_solici=${selectedSol.nro_solpag}`; }, 1500);
+        }, 1800);
+    };
 
-    function abrirDevolucionGlobal() {
-        $('#modalDevolver').modal('show');
-    }
+    window.abrirDevolucionGlobal  = () => $('#modalDevolver').modal('show');
+    window.abrirRechazoGlobal     = () => $('#modalRechazar').modal('show');
 
-    function confirmarDevolucionGlobal() {
+    window.confirmarDevolucionGlobal = function() {
         const comment = document.getElementById('devolver_comentario').value.trim();
         if (comment.length < 30) {
-            showToast('danger', 'Justificación Requerida', 'La justificación de la devolución debe tener al menos 30 caracteres para orientar al solicitante.');
+            showToast('danger','Justificación Requerida','La justificación de la devolución debe tener al menos 30 caracteres.');
             return;
         }
-
         $('#modalDevolver').modal('hide');
-        showToast('info', 'Devolviendo Solicitud', 'Retrocediendo expediente a Estado 6 ("Devuelta a corrección") con registro de glosa...');
-
+        showToast('info','Devolviendo Solicitud','Retrocediendo expediente a DEVUELTA_DGDP...');
         setTimeout(() => {
-            showToast('warning', 'Expediente Devuelto', 'El trámite se retrocedió al Solicitante de Origen en Borrador para corregir sus evidencias.');
-            
-            document.getElementById('pago_estado_badge').className = "badge-status status-6 shadow-xs";
-            document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-reply"></i> DEVUELTA A CORRECCIÓN';
-            
-            // Inhabilitar
-            document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = true);
-            document.querySelector('.dictamen-actions-container').classList.add('hidden');
-            document.getElementById('dictamen_individual_card').classList.add('hidden');
-        }, 2200);
-    }
+            selectedSol.cod_estsol = 'DEVUELTA_DGDP';
+            selectedSol.detalles.forEach(det => {
+                dbState.prestaciones.forEach(p => p.funcionarios.forEach(fun => fun.cuotas.forEach(cuo => {
+                    if (cuo.id_funcuo === det.id_funcuo) cuo.cod_estcuo = 'DISPONIBLE';
+                })));
+            });
+            saveLocalDB(dbState);
+            updateGlobalStateBadge('DEVUELTA_DGDP');
+            recalcularMontosGlobales();
+            showToast('warning','Expediente Devuelto','El trámite se retrocedió al Solicitante en Borrador para corregir sus evidencias.');
+        }, 1800);
+    };
 
-    function abrirRechazoGlobal() {
-        $('#modalRechazar').modal('show');
-    }
-
-    function confirmarRechazoGlobal() {
+    window.confirmarRechazoGlobal = function() {
         const comment = document.getElementById('rechazar_comentario').value.trim();
         if (comment.length < 30) {
-            showToast('danger', 'Justificación Requerida', 'Para rechazar un expediente completo de forma definitiva, debe ingresar un fundamento de al menos 30 caracteres.');
+            showToast('danger','Justificación Requerida','Para rechazar un expediente completo debe ingresar al menos 30 caracteres.');
             return;
         }
-
         $('#modalRechazar').modal('hide');
-        showToast('info', 'Rechazando Expediente', 'Registrando anulación total de la solicitud (Estado 4 - Rechazada)...');
-
+        showToast('info','Rechazando Expediente','Registrando anulación total de la solicitud...');
         setTimeout(() => {
-            showToast('danger', 'Expediente Rechazado', 'La solicitud de cobro de este mes calendario fue clausurada y archivada permanentemente.');
-            
-            document.getElementById('pago_estado_badge').className = "badge-status status-4 shadow-xs";
-            document.getElementById('pago_estado_badge').innerHTML = '<i class="fas fa-ban"></i> RECHAZADA';
-            
-            // Inhabilitar
-            document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = true);
-            document.querySelector('.dictamen-actions-container').classList.add('hidden');
-            document.getElementById('dictamen_individual_card').classList.add('hidden');
-        }, 2200);
-    }
+            selectedSol.cod_estsol = 'RECHAZADA';
+            selectedSol.detalles.forEach(det => {
+                det.cod_estdet = 'RECHAZADO';
+                dbState.prestaciones.forEach(p => p.funcionarios.forEach(fun => fun.cuotas.forEach(cuo => {
+                    if (cuo.id_funcuo === det.id_funcuo) cuo.cod_estcuo = 'RECHAZADA';
+                })));
+            });
+            saveLocalDB(dbState);
+            updateGlobalStateBadge('RECHAZADA');
+            recalcularMontosGlobales();
+            showToast('danger','Expediente Rechazado','La solicitud de cobro fue clausurada y archivada permanentemente.');
+        }, 1800);
+    };
 
-    // Toasts
+    // ===== TOASTS =====
     function showToast(type, title, message) {
         const container = document.getElementById('ufro-toast-container');
         const toast = document.createElement('div');
         toast.className = `ufro-toast ufro-toast-${type}`;
-        
-        let iconClass = 'fa-info-circle';
-        if (type === 'success') iconClass = 'fa-check-circle';
-        if (type === 'warning') iconClass = 'fa-exclamation-triangle';
-        if (type === 'danger') iconClass = 'fa-ban';
-
+        const icons = { success:'fa-check-circle', warning:'fa-exclamation-triangle', danger:'fa-ban', info:'fa-info-circle' };
         toast.innerHTML = `
-            <div class="ufro-toast-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="ufro-toast-icon"><i class="fas ${icons[type] || 'fa-info-circle'}"></i></div>
             <div class="ufro-toast-content">
                 <div class="ufro-toast-title">${title}</div>
                 <div class="ufro-toast-message">${message}</div>
             </div>
-            <button class="ufro-toast-close" onclick="this.parentElement.remove()">&times;</button>
-        `;
+            <button class="ufro-toast-close" onclick="this.parentElement.remove()">&times;</button>`;
         container.appendChild(toast);
         setTimeout(() => toast.classList.add('show'), 100);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 400);
-        }, 5000);
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 5000);
     }
 
-    // Toggle menu responsivo
     $("#menu-toggle").click(function(e) {
         e.preventDefault();
         $("#wrapper").toggleClass("toggled");
