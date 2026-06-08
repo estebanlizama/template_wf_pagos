@@ -288,22 +288,23 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h4 class="font-weight-bold text-dark mb-1" style="font-family: 'Outfit';">Revisión Presupuestaria y Cierre Contable de Egreso</h4>
-                            <p class="text-muted small mb-0">Expediente mensual: <strong id="lbl_top_id_pago">SP-2026-39402</strong> | Mes de cobro: <strong id="lbl_top_mes_cobro">Junio 2026</strong> | Solicitante: <strong id="lbl_top_solicitante">Franco Valdebenito</strong></p>
+                            <p class="text-muted small mb-0">Expediente mensual: <strong id="lbl_top_id_pago">—</strong> | Mes de cobro: <strong id="lbl_top_mes_cobro">—</strong> | Solicitante: <strong id="lbl_top_solicitante">—</strong></p>
                         </div>
                         <div class="d-flex align-items-center">
-                            <!-- Selector de simulación rápida de resoluciones -->
-                            <div class="mr-3 text-right">
-                                <span class="small text-muted font-weight-bold d-block">EXPEDIENTE A EVALUAR:</span>
-                                <select class="form-control form-control-sm border-primary" id="expediente_selector" onchange="switchExpediente()" style="font-size:0.75rem; font-weight:700; color:var(--ufro-blue);">
-                                    <option value="RE-009/2026">Resolución RE-009/2026 (2 Prestadores)</option>
-                                    <option value="RE-114/2026">Resolución RE-114/2026 (1 Prestador)</option>
-                                </select>
-                            </div>
                             <span class="badge-status status-3 shadow-xs" id="pago_estado_badge">
                                 <i class="fas fa-receipt"></i> EN REVISIÓN FINANZAS
                             </span>
                         </div>
                     </div>
+
+                    <!-- Estado vacío: sin solicitud para Finanzas -->
+                    <div id="empty_state_finanzas" class="d-none text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No existe solicitud pendiente para Finanzas</h5>
+                        <p class="text-muted small">Ninguna solicitud aprobada por DGDP fue encontrada. <a href="02_vista_dgdp_pago.html">Volver a DGDP</a>.</p>
+                    </div>
+
+                    <div id="main_content_finanzas">
 
                     <div class="row">
                         <!-- Columna Izquierda: Visor PDF A4 e Historial Completo -->
@@ -527,7 +528,8 @@
                             </div>
 
                         </div>
-                    </div>
+
+                    </div> <!-- /#main_content_finanzas -->
 
                 </div>
             </div>
@@ -626,34 +628,41 @@
         showToast('info', 'Descargando Archivo', `Descargando evidencia física de respaldo: ${filename}`);
     }
 
-    // Inicialización de la pantalla
+    // Inicialización sin selector — carga automática
     window.addEventListener('load', () => {
         dbState = getLocalDB();
-        
-        // Render request options in selector
-        const selector = document.getElementById('expediente_selector');
-        selector.innerHTML = '';
-        dbState.solicitudes_pago.forEach(sol => {
-            const opt = document.createElement('option');
-            opt.value = sol.nro_solpag;
-            opt.textContent = `${sol.nro_solpag} (${sol.resolucion}) - ${sol.cod_estsol}`;
-            selector.appendChild(opt);
-        });
 
-        // Determine request to load
-        const params = new URLSearchParams(window.location.search);
-        const urlSol = params.get('nro_solici');
+        // Prioridad: 1) ?nro_solici= URL  2) ACTIVE_SOLPAG  3) primera APROBADO_DGDP
+        const params    = new URLSearchParams(window.location.search);
+        const urlSol    = params.get('nro_solici');
+        const activeSol = localStorage.getItem('ACTIVE_SOLPAG');
+
+        let nroTarget = null;
         if (urlSol && dbState.solicitudes_pago.some(s => s.nro_solpag === urlSol)) {
-            selector.value = urlSol;
+            nroTarget = urlSol;
+        } else if (activeSol && dbState.solicitudes_pago.some(s => s.nro_solpag === activeSol)) {
+            nroTarget = activeSol;
+        } else {
+            const primera = dbState.solicitudes_pago.find(
+                s => s.cod_estsol === 'APROBADO_DGDP' || s.cod_estsol === 'EN_TRAMITE'
+            );
+            if (primera) nroTarget = primera.nro_solpag;
         }
 
-        switchExpediente();
+        if (nroTarget) {
+            cargarSolicitudFinanzas(nroTarget);
+        } else {
+            document.getElementById('empty_state_finanzas').classList.remove('d-none');
+            document.getElementById('main_content_finanzas').classList.add('d-none');
+        }
     });
 
-    window.switchExpediente = function() {
-        const nro_solpag = document.getElementById('expediente_selector').value;
+    // Alias por compatibilidad (selector ya no existe)
+    window.switchExpediente = function() {};
+
+    function cargarSolicitudFinanzas(nro_solpag) {
         selectedSol = dbState.solicitudes_pago.find(s => s.nro_solpag === nro_solpag);
-        
+        if (!selectedSol) return;
         // Find corresponding prestacion metadata
         const prestacion = dbState.prestaciones.find(p => p.nro_solpds === selectedSol.nro_solpds);
 
@@ -697,14 +706,12 @@
 
         updateGlobalStateBadge(selectedSol.cod_estsol);
 
-        // Cargar Metadatos
         document.getElementById('lbl_top_id_pago').textContent = selectedSol.nro_solpag;
 
-        // Make mes de cobro and solicitante dynamic
         const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        const mesCobro = selectedSol.detalles && selectedSol.detalles[0] ? `${monthNames[selectedSol.detalles[0].mes_ejecucion - 1]} ${selectedSol.detalles[0].anio_ejecucion}` : "Junio 2026";
+        const mesCobro = selectedSol.detalles && selectedSol.detalles[0] ? `${monthNames[selectedSol.detalles[0].mes_ejecucion - 1]} ${selectedSol.detalles[0].anio_ejecucion}` : "—";
         document.getElementById('lbl_top_mes_cobro').textContent = mesCobro;
-        document.getElementById('lbl_top_solicitante').textContent = prestacion.solicitante;
+        document.getElementById('lbl_top_solicitante').textContent = prestacion ? prestacion.solicitante : '—';
 
         // PDF Exenta Nro & Fecha
         document.getElementById('pdf_nro_reso').textContent = `RESOLUCIÓN EXENTA Nº ${selectedSol.resolucion.replace('RE-', '')}`;
@@ -714,25 +721,21 @@
         // Renderizar Trazabilidad
         renderTimeline();
 
-        // Render details table with checkboxes & editable amounts
-        // Select all approved by DGDP by default
+        // Render details table — solo detalles APROBADO_DGDP (o PENDIENTE_SALDO en reintento)
         selectedDetailsToPay = selectedSol.detalles
-            .filter(d => d.cod_estdet === 'APROBADO')
+            .filter(d => d.cod_estdet === 'APROBADO_DGDP' || d.cod_estdet === 'PENDIENTE_SALDO')
             .map(d => d.id_pagdet);
 
         renderDetallesPagoTable();
 
-        // Seleccionar CC por defecto según expediente
+        // Centro de Costo real desde el mock
         const ccSelector = document.getElementById('cc_selector');
-        if (selectedSol.resolucion === 'RE-009/2026') {
-            ccSelector.value = 'cc_normal';
-        } else {
-            ccSelector.value = 'cc_insuficiente';
-        }
+        const saldoCC = prestacion ? prestacion.centro_costo.saldo_cc : 0;
+        // Seleccionar cc_normal si saldo suficiente, cc_insuficiente si no
+        ccSelector.value = saldoCC >= (selectedSol.detalles.reduce((a,d) => a + d.mto_solpag, 0)) ? 'cc_normal' : 'cc_insuficiente';
 
-        // Actualizar Presupuesto
         actualizarCencoPresupuesto();
-    };
+    }
 
     function updateGlobalStateBadge(state) {
         const badge = document.getElementById('pago_estado_badge');
@@ -795,7 +798,9 @@
 
     function renderTimeline() {
         const container = document.getElementById('trace_timeline_container');
-        const isJune09 = selectedSol.resolucion === 'RE-009/2026';
+        // Recopilar transacciones ya registradas por detalle
+        const pagados = selectedSol.detalles.filter(d => d.cod_estdet === 'PAGADO');
+        const txRefs  = pagados.map(d => d.nro_transac).filter(Boolean).join(', ');
         
         container.innerHTML = `
             <!-- Paso 1 -->
@@ -823,10 +828,12 @@
                 </div>
             </div>
             <!-- Paso 4 -->
-            <div class="trace-item ${selectedSol.cod_estsol === 'PAGADA' ? 'completed' : 'active'}" id="trace_step_finanzas">
-                <div class="trace-time">${selectedSol.cod_estsol === 'PAGADA' ? 'Hoy (Completado)' : 'Hoy (Pendiente)'} &bull; DIRECCIÓN DE FINANZAS</div>
+            <div class="trace-item ${pagados.length > 0 ? 'completed' : 'active'}" id="trace_step_finanzas">
+                <div class="trace-time">${pagados.length > 0 ? 'Hoy (Completado)' : 'Hoy (Pendiente)'} &bull; DIRECCIÓN DE FINANZAS</div>
                 <div class="trace-content text-muted">
-                    ${selectedSol.cod_estsol === 'PAGADA' ? `Egreso contable autorizado y archivado con referencia <strong>${selectedSol.nro_transac}</strong>.` : 'Esperando verificación final de saldo contable en Centro de Costos e ingreso de referencia contable bancaria de egreso para archivar la cuota.'}
+                    ${pagados.length > 0
+                        ? `Egreso contable autorizado y archivado. Ref. bancarias: <strong>${txRefs || 'N/A'}</strong>.`
+                        : 'Esperando verificación final de saldo contable e ingreso de referencia contable bancaria por detalle.'}
                 </div>
             </div>
         `;
@@ -836,7 +843,17 @@
         const tbody = document.getElementById('detalles_pago_tbody');
         tbody.innerHTML = '';
 
-        selectedSol.detalles.forEach(det => {
+        // Solo mostrar detalles relevantes para Finanzas
+        const detallesToRender = selectedSol.detalles.filter(
+            d => ['APROBADO_DGDP', 'PENDIENTE_SALDO', 'PAGADO'].includes(d.cod_estdet)
+        );
+
+        if (detallesToRender.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3 small">Sin detalles aprobados por DGDP en esta solicitud.</td></tr>';
+            return;
+        }
+
+        detallesToRender.forEach(det => {
             const tr = document.createElement('tr');
             
             const isChecked = selectedDetailsToPay.includes(det.id_pagdet);

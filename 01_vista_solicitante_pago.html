@@ -2194,6 +2194,9 @@
 
                 showToast('success', 'Envío Exitoso', `La solicitud de pago ${nro_solpag} fue enviada a la DGDP.`);
                 
+                // Persiste solicitud activa para que PP02/PP03 la carguen automáticamente
+                localStorage.setItem('ACTIVE_SOLPAG', nro_solpag);
+
                 setTimeout(() => {
                     location.href = `02_vista_dgdp_pago.html?nro_solici=${nro_solpag}`;
                 }, 1200);

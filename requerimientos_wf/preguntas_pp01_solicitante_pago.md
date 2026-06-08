@@ -50,7 +50,7 @@ La busqueda debe devolver solo PDS que:
 1. esten formalizadas;
 2. tengan al menos una cuota disponible o pendiente de pago;
 3. pertenezcan al ambito autorizado del usuario;
-4. no correspondan a funcionarios retirados de la PDS (`sg_fups.ind_retfun = 'S'`).
+4. no correspondan a funcionarios rechazados o excluidos de la PDS (`sg_fups.cod_estfun` con valores `4` o `5`).
 
 ---
 
@@ -62,7 +62,7 @@ La busqueda debe devolver solo PDS que:
 | :--- | :--- | :--- |
 | Al seleccionar una PDS, se cargan todos los funcionarios o solo los que tienen cuotas disponibles? | Define grilla inicial. | `sg_fups`, `sg_fume`, `sg_fucu`. se cargan todos los funcionarios asociados a esa pds.  pero solo se marcan para pago los que esten vigentes y con cuotas impagas |
 | Se deben mostrar funcionarios ya pagados como historico? | Define contexto de usuario. | `sg_fucu.cod_estcuo`, `sg_pade.cod_estdet`. se debe mostrar como un tema historico, es decir con un color distint  y que no se pueda marcar para pago |
-| Se deben mostrar funcionarios rechazados de la PDS? | Evita confusion. | `sg_fups.ind_retfun`. se debe mostrar como un tema historico, es decir con un color distint  y que no se pueda marcar para pago |
+| Se deben mostrar funcionarios rechazados o excluidos de la PDS? | Evita confusion y seleccion indebida. | `sg_fups.cod_estfun`, `sg_efun`. Se deben mostrar solo como historico, con color distintivo y sin opcion de marcar para pago. |
 | Se debe mostrar monto total aprobado, pagado, en tramite y saldo pendiente?R: se debe mostrar todo lo que se pueda ver en los distintos estados que tenga la cuota por funcioanrio, lo que esta en tramite o pendiente de pago debe marcarse para pago. lo pagado no se puede tocar | Define resumen financiero. | `sg_fups.mto_total`, `sg_fucu`, `sg_pade`. |
 | La PDS puede tener meses distintos por funcionario y se deben mostrar separados? | Define estructura visual. | `sg_fume.nro_mes`, `sg_fume.anio`. R. la idae es ver por cada funcioarnio los meses que tiene aprobado y sus  meses pagados, ademas de si tiene algun saldo pendiente y toda la informacion posible de pagos.|
 

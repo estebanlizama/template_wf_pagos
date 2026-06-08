@@ -220,147 +220,186 @@ const DB_MOCK_PAGOS = {
   ],
   // Solicitudes de Pago en Trámite (sg_soli, sg_paso)
   solicitudes_pago: [
-    {
-      nro_solpag: "SP-2026-39402",
-      nro_solpds: "PDS-2026-0001",
-      resolucion: "RE-001/2026",
-      cod_estsol: "EN_TRAMITE",
-      detalles: [
         {
-          id_pagdet: 7001,
-          id_funcuo: 5002, // Cuota Julio Lizama
-          id_funmes: 3002,
-          id_funprse: 1001,
-          rut: "15.890.342-K",
-          nombre: "LIZAMA AILLAPAN ESTEBAN NICOLAS",
-          nro_cuota: 2,
-          tot_cuotas: 2,
-          mes_ejecucion: 7,
-          anio_ejecucion: 2026,
-          nro_mespag: 7,
-          anio_pag: 2026,
-          mto_cuota: 450000,
-          mto_solpag: 450000,
-          mto_autpag: null,
-          cod_estcuo: "EN_TRAMITE",
-          cod_estdet: "EN_PROCESO",
-          receso: false,
-          prorrateo: false,
-          comentario_excep: "",
-          nro_transac: null,
-          f_pago: null,
-          evidencias: [
-            { label: 'Acta de Conformidad de la Jefatura (PDF)', file: 'acta_conformidad_lizama.pdf', loaded: true, size: '1.2 MB' },
-            { label: 'Informe Técnico Mensual de Actividades (PDF)', file: 'informe_tecnico_mensual_lizama.pdf', loaded: true, size: '4.8 MB' }
-          ],
-          validaciones: [
-            { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
-            { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
-            { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
-            { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
+          nro_solpag: "SP-2026-39402",
+          nro_solpds: "PDS-2026-0001",
+          resolucion: "RE-001/2026",
+          cod_estsol: "EN_TRAMITE",
+          detalles: [
+            {
+              id_pagdet: 7001,
+              id_funcuo: 5002,
+              id_funmes: 3002,
+              id_funprse: 1001,
+              rut: "15.890.342-K",
+              nombre: "LIZAMA AILLAPAN ESTEBAN NICOLAS",
+              estamento: "Académico",
+              cargo: "Titular | Grado 4",
+              actividad: "Diseño de arquitectura de microservicios y validación de reglas de negocio para el proyecto D9.",
+              sea: "No",
+              compensacion: "No requiere compensación (fuera de jornada)",
+              monto_bruto_aprobado: 900000,
+              nro_cuota: 2,
+              tot_cuotas: 2,
+              mes_ejecucion: 7,
+              anio_ejecucion: 2026,
+              nro_mespag: 7,
+              anio_pag: 2026,
+              mto_cuota: 450000,
+              mto_solpag: 450000,
+              mto_autpag: null,
+              total_pagado_previo: 450000,
+              saldo_pendiente_pds: 450000,
+              cod_estcuo: "EN_TRAMITE",
+              cod_estdet: "EN_PROCESO",
+              receso: false,
+              prorrateo: false,
+              comentario_excep: "",
+              nro_transac: null,
+              f_pago: null,
+              evidencias: [
+                { id_fuev: 9003, label: 'Acta de Conformidad de la Jefatura (PDF)', file: 'acta_conformidad_lizama.pdf', loaded: true, size: '1.2 MB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:15', cod_estevi: 'CARGADA' },
+                { id_fuev: 9004, label: 'Informe Técnico Mensual de Actividades (PDF)', file: 'informe_tecnico_mensual_lizama.pdf', loaded: true, size: '4.8 MB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:18', cod_estevi: 'CARGADA' }
+              ],
+              validaciones: [
+                { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
+                { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
+                { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
+                { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
+              ],
+              sg_obre: []
+            },
+            {
+              id_pagdet: 7002,
+              id_funcuo: 5004,
+              id_funmes: 3004,
+              id_funprse: 1002,
+              rut: "16.452.891-2",
+              nombre: "SOTO FIGUEROA MARÍA ELENA",
+              estamento: "Administrativo",
+              cargo: "Secretaria Ejecutiva | Grado 14",
+              actividad: "Apoyo administrativo al proyecto, gestión documental y coordinación de actividades del equipo.",
+              sea: "No",
+              compensacion: "No requiere compensación (fuera de jornada)",
+              monto_bruto_aprobado: 560000,
+              nro_cuota: 2,
+              tot_cuotas: 2,
+              mes_ejecucion: 7,
+              anio_ejecucion: 2026,
+              nro_mespag: 7,
+              anio_pag: 2026,
+              mto_cuota: 280000,
+              mto_solpag: 280000,
+              mto_autpag: null,
+              total_pagado_previo: 280000,
+              saldo_pendiente_pds: 280000,
+              cod_estcuo: "EN_TRAMITE",
+              cod_estdet: "EN_PROCESO",
+              receso: false,
+              prorrateo: false,
+              comentario_excep: "",
+              nro_transac: null,
+              f_pago: null,
+              evidencias: [
+                { id_fuev: 9005, label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_soto.pdf', loaded: true, size: '980 KB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:25', cod_estevi: 'CARGADA' },
+                { id_fuev: 9006, label: 'Informe Técnico de Actividades (PDF)', file: 'informe_tecnico_soto.pdf', loaded: true, size: '2.5 MB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:27', cod_estevi: 'CARGADA' }
+              ],
+              validaciones: [
+                { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
+                { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
+                { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
+                { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
+              ],
+              sg_obre: []
+            }
           ]
         },
         {
-          id_pagdet: 7002,
-          id_funcuo: 5004, // Cuota Julio Soto
-          id_funmes: 3004,
-          id_funprse: 1002,
-          rut: "16.452.891-2",
-          nombre: "SOTO FIGUEROA MARÍA ELENA",
-          nro_cuota: 2,
-          tot_cuotas: 2,
-          mes_ejecucion: 7,
-          anio_ejecucion: 2026,
-          nro_mespag: 7,
-          anio_pag: 2026,
-          mto_cuota: 280000,
-          mto_solpag: 280000,
-          mto_autpag: null,
-          cod_estcuo: "EN_TRAMITE",
-          cod_estdet: "EN_PROCESO",
-          receso: false,
-          prorrateo: false,
-          comentario_excep: "",
-          nro_transac: null,
-          f_pago: null,
-          evidencias: [
-            { label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_soto.pdf', loaded: true, size: '980 KB' },
-            { label: 'Informe Técnico de Actividades (PDF)', file: 'informe_tecnico_soto.pdf', loaded: true, size: '2.5 MB' }
-          ],
-          validaciones: [
-            { label: 'Licencia Médica Activa', badge: 'Cero Licencias', status: 'success' },
-            { label: 'Permiso sin Goce de Sueldo', badge: 'Sin Suspensiones', status: 'success' },
-            { label: 'Vigencia Proyecto y CC', badge: 'Vigente Dic-2026', status: 'success' },
-            { label: 'Morosidad Centralizada', badge: 'Sin Deudas', status: 'success' }
+          nro_solpag: "SP-2026-MOCK-PARCIAL",
+          nro_solpds: "PDS-2026-0001",
+          resolucion: "RE-001/2026",
+          cod_estsol: "APROBADO_DGDP",
+          detalles: [
+            {
+              id_pagdet: 7004,
+              id_funcuo: 5002,
+              id_funmes: 3002,
+              id_funprse: 1001,
+              rut: "15.890.342-K",
+              nombre: "LIZAMA AILLAPAN ESTEBAN NICOLAS",
+              estamento: "Académico",
+              cargo: "Titular | Grado 4",
+              actividad: "Diseño de arquitectura de microservicios y validación de reglas de negocio para el proyecto D9.",
+              sea: "No",
+              compensacion: "No requiere compensación (fuera de jornada)",
+              monto_bruto_aprobado: 900000,
+              nro_cuota: 2,
+              tot_cuotas: 2,
+              mes_ejecucion: 7,
+              anio_ejecucion: 2026,
+              nro_mespag: 7,
+              anio_pag: 2026,
+              mto_cuota: 450000,
+              mto_solpag: 450000,
+              mto_autpag: 450000,
+              total_pagado_previo: 0,
+              saldo_pendiente_pds: 450000,
+              cod_estcuo: "APROBADO_DGDP",
+              cod_estdet: "APROBADO_DGDP",
+              receso: false,
+              prorrateo: false,
+              comentario_excep: "",
+              nro_transac: null,
+              f_pago: null,
+              evidencias: [
+                { id_fuev: 9007, label: 'Acta de Conformidad de la Jefatura (PDF)', file: 'acta_conformidad_lizama.pdf', loaded: true, size: '1.2 MB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:15', cod_estevi: 'APROBADA_DGDP' }
+              ],
+              validaciones: [],
+              sg_obre: [
+                { cod_estdet: 'APROBADO', comentario: 'Documentación completa. Cumple normativa D9/2026.', rut_usua: 'MARCELA.MORALES', f_registro: '03/06/2026 10:45' }
+              ]
+            },
+            {
+              id_pagdet: 7005,
+              id_funmes: 3004,
+              id_funprse: 1002,
+              rut: "16.452.891-2",
+              nombre: "SOTO FIGUEROA MARÍA ELENA",
+              estamento: "Administrativo",
+              cargo: "Secretaria Ejecutiva | Grado 14",
+              actividad: "Apoyo administrativo al proyecto, gestión documental y coordinación de actividades del equipo.",
+              sea: "No",
+              compensacion: "No requiere compensación (fuera de jornada)",
+              monto_bruto_aprobado: 560000,
+              nro_cuota: 2,
+              tot_cuotas: 2,
+              mes_ejecucion: 7,
+              anio_ejecucion: 2026,
+              nro_mespag: 7,
+              anio_pag: 2026,
+              mto_cuota: 280000,
+              mto_solpag: 280000,
+              mto_autpag: 280000,
+              total_pagado_previo: 0,
+              saldo_pendiente_pds: 280000,
+              cod_estcuo: "APROBADO_DGDP",
+              cod_estdet: "APROBADO_DGDP",
+              receso: false,
+              prorrateo: false,
+              comentario_excep: "",
+              nro_transac: null,
+              f_pago: null,
+              evidencias: [
+                { id_fuev: 9008, label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_soto.pdf', loaded: true, size: '980 KB', rut_carga: '12.345.678-9', f_carga: '01/06/2026 09:25', cod_estevi: 'APROBADA_DGDP' }
+              ],
+              validaciones: [],
+              sg_obre: [
+                { cod_estdet: 'APROBADO', comentario: 'Documentación en regla.', rut_usua: 'MARCELA.MORALES', f_registro: '03/06/2026 10:48' }
+              ]
+            }
           ]
         }
       ]
-    },
-    {
-      nro_solpag: "SP-2026-MOCK-PARCIAL",
-      nro_solpds: "PDS-2026-0001",
-      resolucion: "RE-001/2026",
-      cod_estsol: "PAGO_PARCIAL",
-      detalles: [
-        {
-          id_pagdet: 7004,
-          id_funcuo: 5002, // Cuota Julio Lizama (ya pagada)
-          id_funmes: 3002,
-          id_funprse: 1001,
-          rut: "15.890.342-K",
-          nombre: "LIZAMA AILLAPAN ESTEBAN NICOLAS",
-          nro_cuota: 2,
-          tot_cuotas: 2,
-          mes_ejecucion: 7,
-          anio_ejecucion: 2026,
-          nro_mespag: 7,
-          anio_pag: 2026,
-          mto_cuota: 450000,
-          mto_solpag: 450000,
-          mto_autpag: 450000,
-          cod_estcuo: "PAGADA",
-          cod_estdet: "PAGADO",
-          receso: false,
-          prorrateo: false,
-          comentario_excep: "",
-          nro_transac: "TE-99281-OK",
-          f_pago: "04/06/2026",
-          evidencias: [
-            { label: 'Acta de Conformidad de la Jefatura (PDF)', file: 'acta_conformidad_lizama.pdf', loaded: true }
-          ],
-          validaciones: []
-        },
-        {
-          id_pagdet: 7005,
-          id_funcuo: 5004, // Cuota Julio Soto (pendiente saldo)
-          id_funmes: 3004,
-          id_funprse: 1002,
-          rut: "16.452.891-2",
-          nombre: "SOTO FIGUEROA MARÍA ELENA",
-          nro_cuota: 2,
-          tot_cuotas: 2,
-          mes_ejecucion: 7,
-          anio_ejecucion: 2026,
-          nro_mespag: 7,
-          anio_pag: 2026,
-          mto_cuota: 280000,
-          mto_solpag: 280000,
-          mto_autpag: null,
-          cod_estcuo: "PENDIENTE_SALDO",
-          cod_estdet: "PENDIENTE_SALDO",
-          receso: false,
-          prorrateo: false,
-          comentario_excep: "Falta saldo líquido en el Centro de Costos temporalmente.",
-          nro_transac: null,
-          f_pago: null,
-          evidencias: [
-            { label: 'Acta de Conformidad firmada (PDF)', file: 'acta_conformidad_soto.pdf', loaded: true }
-          ],
-          validaciones: []
-        }
-      ]
-    }
-  ]
 };
 
 // Cargar y guardar estado local simulado
