@@ -21,6 +21,24 @@ const DB_PAGOS = {
     perfil: "Solicitante de pago / Jefe de proyecto",
   },
 
+  // Bandeja del solicitante: solicitudes de pago que requieren su acción
+  bandeja: [
+    {
+      tipo: "devuelta",
+      folio: "PAG-2026-0031",
+      funcionario: "JEANETTE DEL PILAR POZA ARAVENA",
+      detalle: "DGDP solicitó corregir el periodo cubierto por la cuota.",
+      fecha: "2026-08-28",
+    },
+    {
+      tipo: "borrador",
+      folio: null,
+      funcionario: "JEANETTE DEL PILAR POZA ARAVENA",
+      detalle: "Borrador sin enviar, sin evidencia adjunta.",
+      fecha: "2026-09-01",
+    },
+  ],
+
   expedientes: [
     {
       requestId: 205,

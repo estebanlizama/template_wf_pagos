@@ -21,14 +21,15 @@ Esta carpeta concentra el levantamiento, las decisiones y las maquetas del flujo
 
 ## Maquetas funcionales
 
-- `01_vista_solicitante_pago.html`: búsqueda de PDS, selección de funcionarios/cuotas, monto y evidencias.
+- `01_vista_solicitante_pago.html`: vista completa del solicitante. Bandeja de pendientes, búsqueda por funcionario o por resolución, y expediente con dos pestañas: generación de la solicitud de pago y archivo de la resolución. Usa el sistema visual real del proyecto (`sg-solicitudes-frontend/assets/css/pds-du288.css`) y los datos de `mock_data_pago_du288.js`.
 - `02_vista_dgdp_pago.html`: control normativo y resolución por detalle.
 - `03_vista_direccion_finanzas_pago.html`: saldo, autorización, transacción y cierre financiero.
-- `mock_data_pagos.js`: datos ficticios usados por las tres vistas.
-- `style.css`: identidad visual UFRO reutilizada en las maquetas.
+- `mock_data_pago_du288.js`: datos con la forma real de los payloads del backend, usados por la vista del solicitante.
+- `mock_data_pagos.js`: datos ficticios usados por las vistas de DGDP y Finanzas.
+- `style.css`: identidad visual usada por las vistas 02 y 03, pendientes de migrar al sistema visual del proyecto.
 - [Guía visual y de contenido](./GUIA_VISUAL_Y_CONTENIDO.md): colores, vocabulario, estados y componentes esperados.
 
-La paleta usa azul UFRO `#004b8d` como color principal, verde `#00875e` para resultados favorables, naranjo `#f47920` para advertencias y rojo para errores o bloqueos. Los estados no deben distinguirse únicamente por color: siempre deben incluir texto e icono.
+La vista del solicitante no define paleta propia: hereda los tokens `--pds-du288-*` del proyecto y cumple el [estándar visual obligatorio](../../estandar_visual/estandar_visual_obligatorio_du288.md). Los estados no deben distinguirse únicamente por color: siempre deben incluir texto e icono.
 
 ## Plantillas reutilizables
 
