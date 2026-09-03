@@ -77,7 +77,7 @@ const DB_MOCK_PAGOS = {
           sea: "No",
           compensacion_html: `<div class="alert alert-success p-1 mb-0" style="font-size: 0.6rem; border-radius: 4px; border-left: 2px solid var(--ufro-green) !important; margin-top: 5px;"><i class="fas fa-check-circle mr-1"></i> No requiere compensación (Académico fuera de jornada).</div>`,
           
-          // Cuotas generadas en Decretación (sg_fucu)
+          // Cuotas canónicas (sg_fume). Su momento de creación está pendiente de ratificación funcional.
           cuotas: [
             { 
               id_funcuo: 5001, 

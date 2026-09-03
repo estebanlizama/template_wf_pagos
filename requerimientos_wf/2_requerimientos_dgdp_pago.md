@@ -1,731 +1,145 @@
-# PDS Normativo D9 / DU288 / DU09
+# PP02 — Requerimientos de revisión DGDP
 
-## Flujo de Pago - Pantalla PP02: Revision DGDP
+**Estado:** levantamiento funcional  
+**Actor principal:** analista/revisor DGDP autorizado  
+**Entrada:** solicitud enviada con detalles vigentes  
+**Salida:** detalles aprobados para Finanzas, observados o rechazados
 
-### Requerimientos por pantalla, funcionalidad y casos de uso
+## 1. Objetivo
 
----
+Resolver la procedencia normativa y documental de cada funcionario/cuota sin alterar la PDS formalizada. La decisión global se deriva de los resultados individuales.
 
-# 1. Proposito de esta seccion
+## 2. Principios
 
-Este documento organiza la **Pantalla PP02: Revision DGDP de Solicitud de Pago PDS** para el workflow de pagos de Prestacion de Servicios.
+- DGDP decide por `sg_pade`, no modificando `sg_fups.cod_estfun`.
+- Un mismo expediente puede terminar con resultados mixtos.
+- Toda observación o rechazo exige causal y comentario según catálogo.
+- Una excepción debe identificar norma, autorizador, vigencia y evidencia.
+- Las validaciones dinámicas se recalculan con fecha/hora y fuente.
+- El monto que avanza a Finanzas es la suma de detalles aprobados.
 
-La pantalla corresponde a la primera etapa revisora posterior al envio realizado por el solicitante de pago. Su objetivo es que DGDP pueda **visualizar toda la informacion de la PDS, revisar el pago solicitado por funcionario y periodo, validar el cumplimiento normativo del Decreto 009/2026 / DU288, revisar las evidencias adjuntas y resolver si el pago puede avanzar a Finanzas, debe corregirse o debe rechazarse**.
+## 3. Precondiciones
 
-Se toma como referencia:
+- solicitud en estado de revisión DGDP;
+- tarea asignada a usuario/perfil vigente;
+- al menos un detalle enviado;
+- PDS y documento final visibles;
+- evidencias accesibles;
+- fuentes normativas disponibles o contingencia declarada.
 
-1. `reglas_restricciones_du288_d09.md`, para las reglas normativas aplicables.
-2. `template-du09/04_vista_visacion_dgdp.html`, por su enfoque de auditoria por funcionario, estado individual, alertas, causales y trazabilidad.
-3. `1_requerimientos_solicitante_pago.md`, como origen de la solicitud de pago enviada a revision.
+## 4. Funcionalidades
 
----
+### PP02-F01 — Bandeja
 
-# 2. Diferencia con DGDP del workflow de solicitud
+Mostrar solicitudes asignadas con antigüedad, prioridad, centro de costo, solicitante, cantidad de detalles, monto y alertas. Los filtros mínimos son número, resolución, funcionario, centro, estado y fecha.
 
-En el workflow de solicitud, DGDP valida si un funcionario puede ser incluido en una PDS.
+### PP02-F02 — Encabezado e historial
 
-En el workflow de pago, DGDP valida si un funcionario ya aprobado **puede recibir el pago de un periodo especifico**, considerando:
+Mostrar la cabecera de pago, PDS origen, resolución, solicitante/delegación, etapa, tiempo pendiente e historial completo. Los datos de origen son solo lectura.
 
-| Aspecto | Solicitud PDS | Solicitud de pago |
+### PP02-F03 — Revisar detalle
+
+Por cada detalle mostrar:
+
+- funcionario, cargo/estamento, actividad y modalidad;
+- cuota y cobertura;
+- monto aprobado PDS, solicitado, pagado y pendiente;
+- licencias, inhabilidades, permisos, sin goce y otras restricciones;
+- jornada/horario y compensación cuando aplique;
+- evidencias, constancias y versiones;
+- resultados de cada regla con fuente, fecha y severidad;
+- decisiones anteriores sobre el mismo detalle/cuota.
+
+### PP02-F04 — Gestionar observación
+
+Observar un detalle requiere causal, comentario accionable y responsable de corrección. Debe definirse si:
+
+- se devuelve inmediatamente toda la solicitud;
+- se permite resolver los demás detalles primero;
+- el retorno va a solicitante o Jefatura;
+- existe plazo y número máximo de devoluciones.
+
+### PP02-F05 — Aprobar o rechazar detalle
+
+Acciones mínimas:
+
+- aprobar;
+- aprobar con excepción formal;
+- observar;
+- rechazar este intento;
+- bloquear cuota por condición persistente, solo con autorización definida.
+
+Rechazar un intento no cierra necesariamente la cuota. Debe indicarse expresamente si la causal es temporal, corregible o definitiva.
+
+### PP02-F06 — Resolver solicitud
+
+La solicitud solo avanza cuando todos sus detalles vigentes tienen una resolución DGDP. Si existe al menos un aprobado, esos detalles avanzan a Finanzas. Si no existe ninguno, la cabecera se cierra o devuelve según los resultados.
+
+## 5. Matriz preliminar de validaciones
+
+| Código | Regla | Fuente esperada | Severidad pendiente |
+| :--- | :--- | :--- | :--- |
+| VAL-DGDP-001 | PDS y resolución formalizadas | SecGen/documental | Bloqueo |
+| VAL-DGDP-002 | Funcionario vigente en la PDS | `sg_fups` | Bloqueo |
+| VAL-DGDP-003 | Licencia médica en periodo cubierto | SISPER/constancia | Por definir |
+| VAL-DGDP-004 | Inhabilidad o incompatibilidad | fuente institucional | Bloqueo/excepción |
+| VAL-DGDP-005 | Permiso sin goce | SISPER | Por definir |
+| VAL-DGDP-006 | Cierre o incompatibilidad de centro de costo | FIN21/SecGen | Bloqueo |
+| VAL-DGDP-007 | Jornada y compensación | contrato, `sg_fuco`, `sg_fuc2` | Por definir |
+| VAL-DGDP-008 | Tope normativo | `sg_fups` + regla vigente | Bloqueo/excepción |
+| VAL-DGDP-009 | Evidencia obligatoria y vigente | documental | Bloqueo al aprobar |
+| VAL-DGDP-010 | Actividad/producto cumplido | evidencia/Jefatura | Por definir |
+
+Cada resultado debe persistir como dato auditable o quedar registrado en historial estructurado; los cuatro flags de `sg_fume` no bastan para explicar varias evaluaciones.
+
+## 6. Estados de detalle propuestos
+
+| Estado | Responsable | Salida permitida |
 | :--- | :--- | :--- |
-| Momento | Antes de formalizar la PDS. | Despues de formalizar la PDS. |
-| Objeto revisado | Incorporacion del funcionario a la PDS. | Pago de un periodo/mes de la PDS. |
-| Datos clave | Elegibilidad, contrato, tope, actividad, SEA, compensacion. | Evidencia, periodo pagado, licencia, permiso, cierre, receso, deuda, duplicidad. |
-| Resultado | Funcionario habilitado o excluido de la PDS. | Pago aprobado, devuelto o rechazado por funcionario/periodo. |
-
-Regla base: DGDP no modifica la PDS original ni los montos aprobados. Solo resuelve la procedencia del pago solicitado.
-
-## 2.1 Relación con Solicitud PDS Formalizada
-
-- El pago nace desde una PDS formalizada y con resolución/documento firmado.
-- `sg_prse` y `sg_fups` son la fuente de datos aprobados.
-- `sg_fume` contiene los meses aprobados por funcionario.
-- `sg_fucu` contiene las cuotas generadas desde esos meses aprobados.
-- `sg_paso` crea la solicitud formal de pago asociada a la PDS.
-- `sg_pade` registra qué cuotas se solicitan pagar.
-- `sg_fuev` registra las evidencias/constancias por funcionario/mes/pago.
-- El pago no modifica la PDS, funcionarios, meses ni topes aprobados.
-- Un rechazo de pago no debe usar `sg_fups.ind_retfun`.
-
-### Matriz de Validaciones de Pago
-
-| Regla | Resuelta en PDS | Revalidar en Pago |
-| :--- | :--- | :--- |
-| Cargo inhabilitado | Sí | Solo mostrar antecedente |
-| Asignación directiva | Sí | Solo mostrar antecedente |
-| Formación continua | Sí | Solo mostrar antecedente |
-| Tope mensual | Sí | Revalidar si cambia monto solicitado |
-| Máximo 2 meses | Sí | Validar cuota generada coherente |
-| SEA | Sí | Mostrar antecedente |
-| Compensación | Sí | Mostrar y exigir si falta respaldo |
-| Licencia médica | Puede haber sido evaluada | Sí, por mes ejecutado |
-| Permiso sin goce | Puede haber sido evaluado | Sí, por mes ejecutado |
-| Receso | No siempre | Sí, requiere constancia |
-| Deudas 2027 | Puede haber sido evaluada | Sí, si fecha aplica |
-| Ausencias | No estática | Sí, ajuste proporcional |
-| Saldo CC | Informativo/aprobado PDS | Sí, final en Finanzas |
-| Evidencia | Planificada | Carga real obligatoria |
-
----
-
-# 3. Identificacion general de la pantalla
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| **Codigo de pantalla** | PP02 |
-| **Nombre** | Revision DGDP de Solicitud de Pago PDS |
-| **Perfil principal** | Analista / Profesional DGDP autorizado |
-| **Flujo asociado** | Workflow de Pago PDS Normativo D9 / DU288 / DU09 |
-| **Estado de entrada** | En revision DGDP |
-| **Objetivo principal** | Revisar la procedencia normativa del pago por funcionario y periodo, con evidencia y validaciones a la vista. |
-| **Resultado esperado** | Solicitud aprobada y derivada a Finanzas, devuelta a correccion o rechazada con causal trazable. |
-
----
-
-# 4. Objetivo funcional de la Pantalla PP02
-
-La pantalla debe permitir que DGDP:
-
-1. Visualice la solicitud de pago enviada por el solicitante.
-2. Visualice la PDS de origen y su resolucion/documento firmado.
-3. Revise la nomina de funcionarios incluidos en el pago.
-4. Acceda al detalle por funcionario y periodo solicitado.
-5. Visualice montos, meses aprobados, pagados, en tramite y pendientes.
-6. Revise la evidencia cargada para acreditar el cumplimiento de la prestacion.
-7. Visualice las validaciones normativas del periodo de pago.
-8. Determine si cada funcionario/periodo cumple, requiere correccion o debe rechazarse.
-9. Registre causales y observaciones por funcionario.
-10. Resuelva globalmente la solicitud de pago y derive a Finanzas si corresponde.
-
----
-
-# 5. Estructura funcional general
-
-| Codigo | Bloque de pantalla | Proposito |
-| :--- | :--- | :--- |
-| **PP02-B01** | Encabezado y resumen ejecutivo | Mostrar datos principales del pago, PDS, estado y montos. |
-| **PP02-B02** | Expediente PDS de origen | Mostrar la PDS aprobada, centro de costo, funcionarios y resolucion firmada. |
-| **PP02-B03** | Panel de funcionarios a pagar | Listar funcionarios/periodos incluidos y su estado de revision DGDP. |
-| **PP02-B04** | Ficha normativa por funcionario | Mostrar datos contractuales, actividad, montos, topes, SEA y compensacion. |
-| **PP02-B05** | Evidencias de ejecucion | Revisar archivos cargados por funcionario/periodo. |
-| **PP02-B06** | Validaciones de pago | Mostrar controles de licencia, permiso, cierre, receso, deuda, duplicidad y otros. |
-| **PP02-B07** | Decision individual DGDP | Aprobar, observar/devolver o rechazar por funcionario/periodo. |
-| **PP02-B08** | Decision global y trazabilidad | Resolver la solicitud completa y registrar historial. |
-
----
-
-# 6. Desglose funcional
-
----
-
-# PP02-B01 - Encabezado y resumen ejecutivo
-
-## Funcionalidad PP02-F01 - Visualizar resumen de la solicitud de pago
-
-### A. Descripcion funcional
-
-El sistema debe mostrar un resumen ejecutivo para que DGDP identifique rapidamente que se esta pagando, a quien corresponde, en que periodo y con que monto.
-
-### B. Datos que debe mostrar el sistema
-
-- ID de solicitud de pago.
-- Estado actual: En revision DGDP.
-- Usuario solicitante de pago.
-- Fecha de envio.
-- PDS de origen.
-- Numero y anio de resolucion.
-- Centro de costo.
-- Jefe de proyecto.
-- Periodo(s) solicitados a pago.
-- Cantidad de funcionarios incluidos.
-- Monto total solicitado.
-- Monto observado, si existe.
-- Monto rechazado, si existe.
-- Monto habilitado para avanzar a Finanzas.
-
-### C. Reglas de negocio
-
-- El resumen debe actualizarse cuando DGDP apruebe, observe o rechace funcionarios.
-- Si todos los funcionarios/periodos son rechazados, no se puede aprobar globalmente la solicitud.
-
-### D. Historia de usuario
-
-**HU-PP02-01:** Como DGDP, quiero ver un resumen ejecutivo del pago solicitado, para entender rapidamente el alcance de la revision.
-
-### E. Requerimientos funcionales
-
-- **RF-PP02-001:** El sistema debe mostrar identificacion y estado de la solicitud de pago.
-- **RF-PP02-002:** El sistema debe mostrar monto total solicitado y monto vigente segun decisiones DGDP.
-- **RF-PP02-003:** El sistema debe mostrar cantidad de funcionarios incluidos, aprobados, observados y rechazados.
-
----
-
-# PP02-B02 - Expediente PDS de origen
-
-## Funcionalidad PP02-F02 - Visualizar PDS aprobada y documento firmado
-
-### A. Descripcion funcional
-
-DGDP debe acceder a la PDS formalizada que da origen al pago, incluyendo su resolucion/documento firmado y los datos aprobados en el workflow anterior.
-
-### B. Datos que debe mostrar el sistema
-
-- Numero de solicitud PDS.
-- Estado de la PDS de origen.
-- Actividad general aprobada.
-- Tipo(s) de prestacion.
-- Periodo general aprobado.
-- Centro de costo y financiamiento.
-- Jefe de proyecto.
-- Nomina original aprobada.
-- Funcionarios excluidos en la PDS, si existieron.
-- Documento de resolucion firmado en visor integrado.
-- Anexos o documentos asociados.
-
-### C. Reglas de negocio
-
-- La PDS de origen es de solo lectura.
-- El documento firmado debe estar disponible antes de aprobar un pago.
-- Si el documento no existe o no es accesible, DGDP debe poder devolver la solicitud a correccion/regularizacion documental.
-
-### D. Historia de usuario
-
-**HU-PP02-02:** Como DGDP, quiero revisar la PDS y su resolucion firmada, para verificar que el pago solicitado tiene respaldo formal.
-
-### E. Requerimientos funcionales
-
-- **RF-PP02-004:** El sistema debe mostrar la PDS de origen en modo solo lectura.
-- **RF-PP02-005:** El sistema debe mostrar la resolucion o documento firmado en un visor integrado.
-- **RF-PP02-006:** El sistema debe alertar si falta el documento formalizado.
-
----
-
-# PP02-B03 - Panel de funcionarios a pagar
-
-## Funcionalidad PP02-F03 - Visualizar funcionarios y periodos incluidos en el pago
-
-### A. Descripcion funcional
-
-La pantalla debe listar los funcionarios incluidos en la solicitud de pago, mostrando el periodo solicitado y el estado de revision individual.
-
-### B. Datos que debe mostrar el sistema
-
-Por cada funcionario/periodo:
-
-- RUT.
-- Nombre completo.
-- Estamento.
-- Cargo/jerarquia.
-- Periodo solicitado a pago.
-- Monto del periodo.
-- Actividad especifica.
-- Estado individual DGDP: pendiente, cumple, observado, rechazado.
-- Causal principal, si existe.
-- Indicador de evidencia cargada.
-- Indicador de alertas normativas.
-
-### C. Reglas de negocio
-
-- DGDP debe resolver todos los funcionarios/periodos antes de aprobar globalmente.
-- Un funcionario puede aprobarse para un periodo y rechazarse para otro, si la solicitud permite multiples periodos.
-- Los funcionarios rechazados no deben avanzar a Finanzas.
-
-### D. Historia de usuario
-
-**HU-PP02-03:** Como DGDP, quiero ver una lista clara de funcionarios y periodos a pagar, para revisar uno por uno su cumplimiento normativo.
-
-### E. Requerimientos funcionales
-
-- **RF-PP02-007:** El sistema debe listar funcionarios y periodos incluidos en el pago.
-- **RF-PP02-008:** El sistema debe mostrar estado individual de revision DGDP.
-- **RF-PP02-009:** El sistema debe permitir seleccionar un funcionario para ver su ficha completa.
-
----
-
-# PP02-B04 - Ficha normativa por funcionario
-
-## Funcionalidad PP02-F04 - Revisar antecedentes del funcionario evaluado a pago
-
-### A. Descripcion funcional
-
-Al seleccionar un funcionario, DGDP debe visualizar todos los antecedentes necesarios para determinar si el pago del periodo cumple con el Decreto 009/2026 / DU288.
-
-### B. Datos que debe mostrar el sistema
-
-- RUT y nombre.
-- Estamento: academico, administrativo, tecnico, auxiliar u otro.
-- Cargo/jerarquia.
-- Unidad de desempeno.
-- Contrato seleccionado para la PDS.
-- Jornada y horas contratadas.
-- Modalidad de ejecucion: dentro o fuera de jornada.
-- Actividad especifica aprobada.
-- Mes/periodo solicitado.
-- Monto bruto mensual aprobado.
-- Monto del periodo solicitado.
-- Total aprobado en la PDS para el funcionario.
-- Total pagado previamente.
-- Saldo pendiente.
-- Tope normativo calculado.
-- Porcentaje de uso del tope.
-- Condicion SEA, si aplica.
-- Compensacion horaria registrada, si aplica.
-- Excepcion ANID/DIUFRO/DITT, si aplica.
-- Observaciones previas del workflow de solicitud.
-
-### C. Reglas de negocio
-
-- La ficha debe distinguir datos originales de la PDS y datos del pago actual.
-- Los montos no deben ser editables por DGDP.
-- Si el funcionario fue excluido en el workflow de solicitud, no puede aprobarse pago.
-- Las alertas deben quedar visibles aunque no sean bloqueantes.
-
-### D. Historia de usuario
-
-**HU-PP02-04:** Como DGDP, quiero revisar la ficha normativa del funcionario evaluado a pago, para validar que el desembolso respeta las reglas del decreto.
-
-### E. Requerimientos funcionales
-
-- **RF-PP02-010:** El sistema debe mostrar datos contractuales y laborales del funcionario.
-- **RF-PP02-011:** El sistema debe mostrar montos, saldos y topes normativos.
-- **RF-PP02-012:** El sistema debe mostrar SEA, compensacion horaria y excepciones aplicables.
-- **RF-PP02-013:** El sistema debe mostrar observaciones previas del workflow de solicitud.
-
----
-
-# PP02-B05 - Evidencias de ejecucion
-
-## Funcionalidad PP02-F05 - Revisar evidencia cargada por funcionario y periodo
-
-### A. Descripcion funcional
-
-DGDP debe revisar los documentos adjuntos que acreditan la ejecucion efectiva de la prestacion durante el periodo solicitado.
-
-### B. Datos que debe mostrar el sistema
-
-- Tipo de evidencia comprometida en la PDS.
-- Descripcion esperada de la evidencia.
-- Periodo asociado.
-- Archivo cargado.
-- Formato, peso y fecha de carga.
-- Usuario que cargo el archivo.
-- Vista previa o descarga.
-- Estado DGDP de la evidencia: pendiente, aceptada, observada, rechazada.
-- Comentario asociado a la evidencia.
-
-### C. Reglas de negocio
-
-- Todo funcionario/periodo solicitado debe tener evidencia.
-- DGDP puede observar una evidencia y devolver la solicitud para correccion.
-- DGDP puede rechazar el pago si la evidencia no acredita la labor o presenta inconsistencia grave.
-- Si una evidencia es reemplazada en correccion, debe conservarse trazabilidad del archivo anterior.
-
-### D. Historia de usuario
-
-**HU-PP02-05:** Como DGDP, quiero revisar las evidencias cargadas por funcionario y periodo, para determinar si respaldan efectivamente el pago solicitado.
-
-### E. Requerimientos funcionales
-
-- **RF-PP02-014:** El sistema debe mostrar evidencias por funcionario y periodo.
-- **RF-PP02-015:** El sistema debe permitir previsualizar o descargar la evidencia.
-- **RF-PP02-016:** El sistema debe permitir marcar evidencia como aceptada, observada o rechazada.
-- **RF-PP02-017:** El sistema debe exigir comentario cuando la evidencia sea observada o rechazada.
-
----
-
-# PP02-B06 - Validaciones de pago
-
-## Funcionalidad PP02-F06 - Visualizar controles normativos del periodo
-
-### A. Descripcion funcional
-
-El sistema debe mostrar para cada funcionario/periodo el resultado de las validaciones normativas que determinan si el pago procede.
-
-### B. Validaciones requeridas
-
-| Validacion | Resultado esperado |
-| :--- | :--- |
-| Licencia medica | Identificar si el periodo solicitado coincide total o parcialmente con licencia medica vigente. |
-| Permiso sin goce de sueldo | Identificar si el funcionario tuvo permiso sin goce durante el periodo solicitado. |
-| Cierre de proyecto o centro de costo | Verificar que la actividad/pago corresponda a un periodo dentro de vigencia. |
-| Receso universitario | Identificar si el periodo corresponde a receso y si existe justificacion excepcional de trabajo efectivo. |
-| Deudas institucionales | Mostrar si existen deudas no regularizadas, especialmente desde la regla 2027. |
-| Inhabilidad por cargo | Verificar si el cargo sigue siendo habilitado o requiere excepcion. |
-| Formacion continua | Verificar que la actividad no corresponda a diplomado, postitulo, postgrado, especialidad o curso similar. |
-| Tope mensual | Comparar monto mensual contra el tope aplicable segun estamento. |
-| Duracion/prorrateo | Verificar que el pago no exceda los meses autorizados por normativa. |
-| SEA | Para academicos dentro de jornada, mostrar condicion SEA vigente o exigencia de compensacion. |
-| Compensacion horaria | Para administrativos dentro de jornada, mostrar compensacion aprobada. |
-| Duplicidad de pago | Verificar que el mismo funcionario/periodo no este pagado o en tramite. |
-| Evidencia obligatoria | Verificar que exista respaldo documental para el periodo. |
-
-### C. Semaforizacion sugerida
-
-| Estado | Significado |
-| :--- | :--- |
-| Cumple | Validacion aprobada. |
-| Alerta | Requiere revision DGDP, pero no necesariamente bloquea. |
-| Bloqueante | No permite aprobar el pago mientras no sea corregido o resuelto. |
-| No aplica | La regla no aplica al caso del funcionario. |
-
-### D. Reglas de negocio
-
-- Las validaciones bloqueantes deben impedir aprobar el funcionario/periodo.
-- Las alertas deben exigir confirmacion o comentario DGDP si se aprueba.
-- El sistema debe registrar fecha, resultado y fuente de cada validacion.
-- Si un PA no existe aun, la pantalla debe dejar el dato como "pendiente de integracion" y no simular cumplimiento.
-
-### E. Historia de usuario
-
-**HU-PP02-06:** Como DGDP, quiero ver todas las validaciones normativas del periodo, para aprobar o rechazar el pago con fundamento.
-
-### F. Requerimientos funcionales
-
-- **RF-PP02-018:** El sistema debe mostrar validaciones normativas por funcionario/periodo.
-- **RF-PP02-019:** El sistema debe distinguir validaciones cumplidas, alertas y bloqueantes.
-- **RF-PP02-020:** El sistema debe registrar el resultado de cada validacion.
-- **RF-PP02-021:** El sistema debe impedir aprobacion si existe bloqueo activo.
-
----
-
-# PP02-B07 - Decision individual DGDP
-
-## Funcionalidad PP02-F07 - Resolver funcionario/periodo
-
-### A. Descripcion funcional
-
-DGDP debe resolver individualmente cada funcionario y periodo incluido en la solicitud de pago.
-
-### B. Acciones disponibles
-
-| Accion | Uso |
-| :--- | :--- |
-| Aprobar funcionario/periodo | El pago cumple y puede avanzar a Finanzas. |
-| Observar / devolver a correccion | Falta evidencia, existe error documental o se requiere aclaracion. |
-| Rechazar funcionario/periodo | El pago no procede por causal normativa o inconsistencia grave. |
-
-### C. Causales sugeridas
-
-- Falta de evidencia.
-- Evidencia insuficiente.
-- Evidencia no corresponde al periodo.
-- Licencia medica.
-- Permiso sin goce.
-- Proyecto o centro de costo cerrado.
-- Receso sin justificacion excepcional.
-- Deuda institucional no regularizada.
-- Inhabilidad por cargo.
-- Actividad de formacion continua.
-- Exceso de tope.
-- Exceso de meses/prorrateo.
-- Pago duplicado.
-- Error en datos de PDS o funcionario.
-- Otra causal fundada.
-
-### D. Reglas de negocio
-
-- Toda observacion o rechazo debe tener comentario obligatorio.
-- La aprobacion con alertas debe exigir comentario o confirmacion DGDP.
-- El monto rechazado debe descontarse del monto que avanza a Finanzas.
-- La decision debe quedar en historial por funcionario/periodo.
-
-### E. Historia de usuario
-
-**HU-PP02-07:** Como DGDP, quiero aprobar, observar o rechazar cada funcionario/periodo, para que solo avancen a Finanzas los pagos procedentes.
-
-### F. Requerimientos funcionales
-
-- **RF-PP02-022:** El sistema debe permitir resolver individualmente cada funcionario/periodo.
-- **RF-PP02-023:** El sistema debe exigir causal y comentario en observacion o rechazo.
-- **RF-PP02-024:** El sistema debe recalcular el monto habilitado segun decisiones individuales.
-- **RF-PP02-025:** El sistema debe registrar historial por funcionario/periodo.
-
----
-
-# PP02-B08 - Decision global y trazabilidad
-
-## Funcionalidad PP02-F08 - Resolver solicitud de pago
-
-### A. Descripcion funcional
-
-Una vez revisados todos los funcionarios/periodos, DGDP debe resolver globalmente la solicitud de pago.
-
-### B. Acciones globales
-
-| Accion | Resultado |
-| :--- | :--- |
-| Aprobar y derivar a Finanzas | Avanzan solo los funcionarios/periodos aprobados por DGDP. |
-| Devolver a correccion | La solicitud vuelve al solicitante para corregir evidencias o antecedentes. |
-| Rechazar solicitud | El pago queda rechazado cuando no existe ningun item procedente o la causal afecta a todo el expediente. |
-
-### C. Reglas de negocio
-
-- No se puede aprobar globalmente si quedan funcionarios/periodos pendientes de decision.
-- No se puede aprobar globalmente si todos los funcionarios/periodos fueron rechazados.
-- **La aprobacion parcial está habilitada:** si existen detalles aprobados junto a detalles observados o rechazados, los detalles aprobados (`sg_pade.cod_estdet = 'APROBADO_DGDP'`) avanzan a Finanzas. Los observados vuelven al solicitante para corrección sin modificar la PDS. Los rechazados quedan cerrados con causal.
-- El monto global que avanza a Finanzas se calcula automáticamente sumando los `sg_pade.mto_solpag` de los detalles con `cod_estdet = 'APROBADO_DGDP'`. No se digita manualmente.
-- La accion global debe registrar usuario, fecha, estado anterior, estado nuevo y comentario.
-
-### D. Declaracion de responsabilidad DGDP
-
-La pantalla debe incluir una declaracion visible que recuerde que DGDP certifica la revision laboral/normativa del pago y que la Universidad puede fiscalizar posteriormente la veracidad de evidencias y antecedentes.
-
-### E. Historia de usuario
-
-**HU-PP02-08:** Como DGDP, quiero resolver globalmente la solicitud de pago, para continuar el flujo solo con pagos revisados y trazables.
-
-### F. Requerimientos funcionales
-
-- **RF-PP02-026:** El sistema debe permitir aprobar y derivar a Finanzas.
-- **RF-PP02-027:** El sistema debe permitir devolver a correccion.
-- **RF-PP02-028:** El sistema debe permitir rechazar la solicitud.
-- **RF-PP02-029:** El sistema debe bloquear la decision global si existen revisiones individuales pendientes.
-- **RF-PP02-030:** El sistema debe registrar la decision global en historial.
-
----
-
-# 7. Casos de uso principales
-
-## CU-PP02-01 - Revisar solicitud de pago recibida
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| Actor | DGDP |
-| Precondicion | Solicitud de pago en estado En revision DGDP. |
-| Flujo principal | DGDP abre la solicitud, visualiza resumen, PDS de origen, resolucion firmada, funcionarios y monto solicitado. |
-| Resultado | Solicitud preparada para revision individual. |
-
-## CU-PP02-02 - Revisar funcionario/periodo
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| Actor | DGDP |
-| Precondicion | Existe funcionario/periodo incluido en el pago. |
-| Flujo principal | DGDP selecciona funcionario, revisa ficha normativa, evidencia, validaciones y decide. |
-| Resultado | Funcionario/periodo queda aprobado, observado o rechazado. |
-
-## CU-PP02-03 - Observar evidencia
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| Actor | DGDP |
-| Precondicion | Evidencia cargada es insuficiente, erronea o no corresponde al periodo. |
-| Flujo principal | DGDP marca evidencia observada, registra comentario y devuelve solicitud a correccion. |
-| Resultado | Solicitud vuelve al solicitante con observacion trazable. |
-
-## CU-PP02-04 - Rechazar pago por causal normativa
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| Actor | DGDP |
-| Precondicion | Existe causal bloqueante no subsanable. |
-| Flujo principal | DGDP selecciona causal, registra comentario y rechaza funcionario/periodo o solicitud completa. |
-| Resultado | Pago rechazado con causal registrada. |
-
-## CU-PP02-05 - Aprobar y derivar a Finanzas
-
-| Elemento | Descripcion |
-| :--- | :--- |
-| Actor | DGDP |
-| Precondicion | Todos los funcionarios/periodos fueron resueltos y existe al menos un pago aprobado. |
-| Flujo principal | DGDP confirma aprobacion global, el sistema recalcula monto vigente y deriva a Finanzas. |
-| Resultado | Solicitud queda En revision Finanzas. |
-
----
-
-# 8. Datos minimos de retorno esperados desde BDD
-
-## 8.1 Solicitud de pago
-
-- `id_solicitud_pago`
-- `estado_pago`
-- `fecha_envio`
-- `rut_solicitante_pago`
-- `nombre_solicitante_pago`
-- `id_solicitud_pds`
-- `nro_resolucion`
-- `ano_resolucion`
-- `cod_unifin`
-- `cod_ccto`
-- `nombre_centro_costo`
-- `periodos_solicitados`
-- `monto_total_solicitado`
-- `monto_aprobado_dgdp`
-- `monto_rechazado_dgdp`
-
-## 8.2 Funcionario/periodo
-
-- `id_detalle_pago`
-- `rut_funcionario`
-- `nombre_funcionario`
-- `estamento`
-- `cargo`
-- `contrato_pds`
-- `actividad_especifica`
-- `periodo_pago`
-- `monto_periodo`
-- `total_aprobado_pds`
-- `total_pagado`
-- `saldo_pendiente`
-- `estado_revision_dgdp`
-- `causal_dgdp`
-- `comentario_dgdp`
-
-## 8.3 Validaciones
-
-- `id_validacion`
-- `tipo_validacion`
-- `resultado`
-- `severidad`
-- `descripcion`
-- `fuente_dato`
-- `fecha_validacion`
-- `bloqueante`
-
-## 8.4 Evidencias
-
-- `id_evidencia_pago`
-- `id_detalle_pago`
-- `tipo_evidencia`
-- `descripcion`
-- `nombre_archivo`
-- `url_archivo`
-- `fecha_carga`
-- `estado_revision_dgdp`
-- `comentario_revision`
-
----
-
-# 9. Procedimientos almacenados o servicios BDD a definir
-
-| Necesidad | Entrada estimada | Resultado esperado |
-| :--- | :--- | :--- |
-| Obtener solicitud de pago para DGDP | ID solicitud pago | Cabecera, PDS origen, montos, estado y resumen. |
-| Obtener funcionarios/periodos de pago | ID solicitud pago | Lista de funcionarios y periodos incluidos. |
-| Obtener ficha normativa de funcionario | ID PDS, RUT, periodo | Contrato, estamento, jornada, tope, SEA, compensacion, saldos. |
-| Obtener evidencias de pago | ID detalle pago | Archivos cargados, tipo, estado y vista/URL. |
-| Ejecutar validaciones de pago | RUT, periodo, ID PDS, centro de costo | Licencia, permiso, cierre, receso, deuda, duplicidad, evidencia, tope. |
-| Registrar decision individual DGDP | ID detalle pago, accion, causal, comentario, usuario | Estado individual y trazabilidad. |
-| Resolver solicitud DGDP | ID solicitud pago, accion global, comentario, usuario | Cambio de estado, monto aprobado/rechazado e historial. |
-
----
-
-# 10. Reglas generales de negocio
-
-1. DGDP revisa pagos por funcionario/periodo, no modifica la PDS original.
-2. Todo funcionario/periodo debe quedar resuelto antes de la decision global.
-3. Toda evidencia observada o rechazada requiere comentario.
-4. Toda causal normativa debe quedar registrada con trazabilidad.
-5. Las validaciones bloqueantes impiden aprobar el funcionario/periodo.
-6. El pago no puede avanzar si no existe resolucion/documento formalizado.
-7. El pago no puede avanzar si no existe evidencia obligatoria.
-8. El pago no puede duplicar un periodo ya pagado o en tramite.
-9. Si existe aprobacion parcial, solo avanza a Finanzas el monto aprobado por DGDP.
-10. Si todos los funcionarios/periodos se rechazan, la solicitud completa debe rechazarse o devolverse, segun causal.
-
----
-
-# 11. Especificaciones de Modelo Normalizado para PP02
-
-## 11.1 Revision por funcionario/cuota
-
-DGDP debe revisar la solicitud de pago a nivel de detalle, no solo a nivel global.
-
-| Elemento | Regla |
-| :--- | :--- |
-| Solicitud de pago | Se identifica por `sg_paso.nro_solici`. |
-| PDS origen | Se consulta mediante `sg_paso.nro_solpds`. |
-| Detalle revisado | Cada funcionario/cuota incluida vive en `sg_pade`. |
-| Cuota base | La cuota proviene de `sg_fucu`. |
-| Evidencia | Se consulta en `sg_fuev` por funcionario, mes y solicitud de pago. |
-
-## 11.2 Aprobacion parcial
-
-La pantalla soporta la aprobación parcial por detalle. Solo los registros de `sg_pade.cod_estdet = 'APROBADO_DGDP'` avanzarán a la Dirección de Finanzas para su revisión presupuestaria y pago.
-
-| Caso | Comportamiento esperado |
-| :--- | :--- |
-| Todos los detalles cumplen | Solicitud avanza completa a Finanzas con estado `EN_REVISION_FINANZAS` en `sg_soli`. |
-| Algunos detalles cumplen | Los detalles aprobados avanzan a Finanzas. Los detalles observados se devuelven al solicitante para corrección. La solicitud cambia a estado `PAGO_PARCIAL` o similar para trazabilidad, pero la derivación opera a nivel de detalle. |
-| Un detalle no cumple | Se actualiza `sg_pade.cod_estdet` para ese detalle (ej. `OBSERVADO` o `RECHAZADO`). |
-| Ningun detalle cumple | La solicitud global se rechaza o se devuelve completa a corrección según aplique. |
-
-Regla: un rechazo o devolución de un detalle de pago por DGDP nunca modifica la PDS original ni marca `sg_fups.ind_retfun` (el prestador no es retirado definitivamente del proyecto).
-
-## 11.3 Estados y causales
-
-DGDP debe registrar la decision por detalle usando los siguientes estados normalizados:
-
-| Estado `cod_estdet` | Significado |
-| :--- | :--- |
-| `EN_PROCESO` | El detalle fue recibido y está pendiente de revisión DGDP. |
-| `APROBADO_DGDP` | El detalle fue revisado y puede avanzar a Finanzas. |
-| `OBSERVADO` | El detalle presenta observaciones; vuelve al solicitante para correción. No modifica la PDS. |
-| `RECHAZADO` | El detalle no procede por causal normativa; se cierra con trazabilidad. No modifica la PDS. |
-
-| Decision | Efecto esperado |
-| :--- | :--- |
-| Aprobar detalle | `sg_pade.cod_estdet = 'APROBADO_DGDP'`. Avanza a Finanzas. |
-| Devolver detalle | `sg_pade.cod_estdet = 'OBSERVADO'`. Vuelve al solicitante para corrección. |
-| Rechazar detalle | `sg_pade.cod_estdet = 'RECHAZADO'` con causal trazable. |
-| Bloquear por condicion normativa | La cuota puede quedar rechazada o pendiente según regla de `sg_fucu.cod_estcuo`. |
-
-Si el rechazo solo aplica al intento de pago, debe quedar en `sg_pade`. Si afecta la cuota base y su posibilidad de reintento, debe reflejarse también en `sg_fucu`.
-
-## 11.4 Evidencias y constancias
-
-DGDP debe revisar evidencias por funcionario y periodo.
-
-| Regla | Descripcion |
-| :--- | :--- |
-| Evidencia obligatoria | No se puede aprobar detalle sin evidencia requerida. |
-| Constancia especial | Licencia, permiso, receso o ausencia deben tener constancia cuando la regla lo exija. |
-| Asociacion minima | Toda evidencia debe apuntar a `id_funprse`. |
-| Asociacion mensual | Si respalda un periodo, debe apuntar a `id_funmes`. |
-| Solicitud de pago | Si fue cargada en el pago, debe informar `nro_solpag`. |
-
-## 11.5 Alertas por rol DGDP
-
-La bandeja DGDP debe calcular el tiempo pendiente desde que la solicitud o detalle quedo asignado a DGDP.
-
-| Caso | Regla |
-| :--- | :--- |
-| Entra a revision DGDP | Inicia contador para rol DGDP. |
-| Pasa mas de 3 dias sin revision | Marcar en rojo para DGDP. |
-| DGDP resuelve y deriva a Finanzas | Se cierra contador DGDP e inicia contador de Finanzas. |
-| DGDP devuelve al solicitante | Se cierra contador DGDP e inicia contador del solicitante. |
-
-El calculo debe salir de `sg_hist` si registra el tramo de asignacion suficiente. Si no permite identificar rol destino, se debe evaluar una tabla satelite de tramos.
-
----
-
-# 12. Requerimientos no funcionales
-
-| Codigo | Requerimiento | Descripcion |
-| :--- | :--- | :--- |
-| **RNF-PP02-001** | Trazabilidad | Toda decision DGDP debe quedar asociada a usuario, fecha, funcionario, periodo y causal. |
-| **RNF-PP02-002** | Legibilidad | La vista debe permitir revisar muchos funcionarios sin perder el contexto del expediente. |
-| **RNF-PP02-003** | Integridad documental | Las evidencias revisadas deben conservar version, estado y comentario. |
-| **RNF-PP02-004** | Auditoria | El sistema debe conservar resultados de validaciones y decisiones para fiscalizacion posterior. |
-| **RNF-PP02-005** | Seguridad | Solo perfiles DGDP autorizados pueden resolver esta etapa. |
-| **RNF-PP02-006** | Consistencia | El monto que avanza a Finanzas debe derivarse de los detalles aprobados, no de digitacion manual. |
-
----
-
-# 13. Pendientes por confirmar
-
-| Punto pendiente | Por qué importa |
-| :--- | :--- |
-| Si licencia médica/permiso sin goce rechaza automáticamente o queda para decisión DGDP. | Define severidad de la validación y si es bloqueante o requiere confirmación. |
-| Si deudas institucionales aplican desde 2027 como bloqueo absoluto o alerta previa a DGDP. | Define la regla temporal y nivel de bloqueo. |
-| Si receso universitario puede ser autorizado en esta pantalla o debe venir autorizado desde la solicitud PDS. | Define las acciones disponibles en DGDP. |
-| Cuál será el repositorio definitivo de evidencias y documento firmado. | Define la integración documental. |
-
-> [!NOTE]
-> **Decisiones ya tomadas (no son pendientes):**
-> - DGDP **puede aprobar parcialmente** por detalle (`sg_pade`). Solo los detalles con `cod_estdet = 'APROBADO_DGDP'` avanzan a Finanzas.
-> - Los detalles observados vuelven al solicitante para corrección, sin modificar la PDS original.
-> - Los detalles rechazados quedan cerrados con causal; no usan `sg_fups.ind_retfun`.
-> - El monto global a Finanzas se calcula automáticamente desde `sum(sg_pade.mto_solpag)` de detalles `APROBADO_DGDP`.
-> - Los estados válidos de `sg_pade.cod_estdet` son: `EN_PROCESO`, `APROBADO_DGDP`, `OBSERVADO`, `RECHAZADO`.
-> - Los estados globales de solicitud derivados son: `EN_TRAMITE`, `APROBADO_DGDP`, `PAGO_PARCIAL`, `PENDIENTE_SALDO`, `RECHAZADA`.
+| En revisión DGDP | DGDP | Aprobado, observado, rechazado |
+| Observado DGDP | Solicitante/Jefatura | Reenviado o retirado |
+| Aprobado DGDP | Sistema | En revisión Finanzas |
+| Rechazado DGDP | DGDP | Cerrado o nuevo intento, según causal |
+| Bloqueado normativo | DGDP autorizado | Desbloqueo excepcional o cierre |
+
+Los códigos definitivos dependen de S0-005/S0-007.
+
+## 7. Datos mínimos a registrar por decisión
+
+```text
+id_pagdet
+cod_regla o cod_causal
+resultado
+severidad
+comentario
+rut_revisor
+perfil
+fecha_hora
+estado_anterior
+estado_nuevo
+excepcion
+id_documento_autorizacion
+vigencia_excepcion
+```
+
+## 8. Preguntas bloqueantes DGDP
+
+1. ¿Quién revisa y quién puede autorizar excepciones?
+2. ¿Jefatura certifica antes de DGDP, en paralelo o fuera del sistema?
+3. ¿Una observación individual devuelve toda la solicitud?
+4. ¿Qué causales permiten corregir y cuáles cierran el intento?
+5. ¿Cuáles reglas se heredan de la PDS y cuáles se recalculan por periodo?
+6. ¿Qué ocurre si una fuente externa no responde?
+7. ¿Licencia total bloquea siempre? ¿Qué cambia si el producto fue cumplido?
+8. ¿Quién decide pago proporcional por ausencia?
+9. ¿DGDP puede modificar el monto o solo aprobar/rechazar lo solicitado?
+10. ¿Existe segunda firma, revisión o segregación de funciones?
+
+## 9. Criterios de aceptación
+
+- DGDP puede resolver dos detalles de una solicitud con resultados diferentes.
+- Toda decisión muestra regla, fuente, fecha, actor y evidencia.
+- Una observación indica exactamente quién corrige y qué puede modificar.
+- Un rechazo DGDP no retira al funcionario de la PDS.
+- Solo la suma aprobada DGDP avanza a Finanzas.
+- Una excepción no puede autorizarse sin responsable y vigencia.

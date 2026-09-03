@@ -1,236 +1,226 @@
-# SG-Solicitudes — Modernización Módulo PDS 2026
-## Flujo de Solicitud de Pago Mensual (D9 - Fase 2)
-### Documento Maestro de Casos de Uso, Base de Datos y Requerimientos Consolidados
+# Requerimientos maestros — Workflow de pagos PDS
 
----
+**Versión:** 0.3 de levantamiento  
+**Fecha:** 2026-08-26  
+**Estado:** en descubrimiento; no habilita desarrollo hasta cerrar las decisiones bloqueantes  
+**Ámbito:** D.U. 009/2026, DU288/DU09, prestaciones de servicios
 
-# 1. Introducción y Propósito del Sistema de Pagos
+## 1. Propósito
 
-El presente documento constituye la **Especificación Técnica Maestra del Workflow de Solicitud de Pago Mensual** correspondiente a la **Fase 2 de Modernización del Módulo PDS — Universidad de La Frontera (UFRO) 2026**.
+Definir cómo una PDS formalizada se transforma en una o varias solicitudes de pago trazables, revisadas por DGDP y resueltas por Finanzas, sin alterar los antecedentes aprobados en la PDS.
 
-Este sistema automatiza y controla el proceso recurrente por el cual los prestadores de servicios de la institución realizan el cobro mensual de sus asignaciones asociadas a resoluciones formalizadas bajo el **Decreto N° 009/2026 (D9)**.
+Este documento es la fuente maestra. Los documentos PP01, PP02 y PP03 detallan cada etapa. Las maquetas HTML son instrumentos de validación visual y no una definición física de BDD.
 
-El sistema garantiza que:
-1. Ningún pago se realice sin un acto administrativo habilitante (Resolución firmada y archivada).
-2. Se cumplan en tiempo de ejecución todas las restricciones normativas recurrentes (ausencia de licencias médicas, vigencia del proyecto, no morosidad).
-3. Exista disponibilidad presupuestaria líquida real en el Centro de Costo antes de liberar cada cuota de pago.
-4. Se mantenga trazabilidad absoluta de las visaciones técnicas, normativas y financieras en cada mes del contrato.
+## 2. Convención de estado de una definición
 
----
+| Marca | Significado | Uso |
+| :--- | :--- | :--- |
+| Confirmado | Existe respuesta explícita o estructura implementada verificable. | Puede transformarse en criterio de aceptación. |
+| Preliminar | Existe respuesta informal o inferencia del proyecto. | Debe ratificarse en taller. |
+| Pendiente | Falta decisión funcional. | No implementar una alternativa irreversible. |
+| Técnico | Recomendación basada en DDL/arquitectura. | Negocio debe validar su efecto funcional. |
 
-# 2. Mapa del Workflow y Transición de Estados
+## 3. Fuentes revisadas
 
-El workflow se activa mensualmente y transiciona a través de los siguientes estados en la tabla `sg_pago_soli.cod_estpago`:
+- Tarjetas de la lista ClickUp [WF de Pago](https://app.clickup.com/90175529655/v/l/901713479167).
+- Sprint 0 [Descubrimiento y decisiones](https://app.clickup.com/t/86e2kw64n) y sus doce actividades.
+- Requerimientos y respuestas preliminares existentes en esta carpeta.
+- DDL real de `sg_soli`, `sg_prse`, `sg_fups`, `sg_fume`, `sg_fuc2`, `sg_fum2`, `sg_ecuo`, `sg_hist` y `sg_apso`.
+- PA `Analisis.valida_saldo_cc_cs` e integración ya disponible en backend.
+- Maquetas visuales del flujo PDS/solicitud ya desarrollado.
+
+## 4. Alcance funcional
+
+### Incluye
+
+- localizar una PDS formalizada y habilitada;
+- mostrar funcionarios, periodos, cuotas, montos y pagos anteriores;
+- crear una cabecera de pago y uno o varios detalles;
+- adjuntar evidencias y constancias por funcionario/cuota/detalle;
+- validar reglas normativas, contractuales y presupuestarias;
+- revisar, observar, aprobar o rechazar por detalle;
+- registrar falta de saldo sin modificar la PDS;
+- autorizar monto, registrar transacción y fecha efectiva;
+- mantener historial global e individual;
+- soportar corrección, reintento, pago parcial y cierre mixto.
+
+### Fuera de alcance hasta decisión
+
+- ejecutar automáticamente una transferencia bancaria;
+- modificar la resolución o los datos aprobados de la PDS;
+- definir unilateralmente reglas normativas no confirmadas por DGDP;
+- reemplazar sistemas maestros de personas, presupuesto o documentos;
+- eliminar datos históricos de `sg_fume`.
+
+## 5. Actores provisionales
+
+| Actor | Responsabilidad provisional | Decisión pendiente |
+| :--- | :--- | :--- |
+| Solicitante de pago | Seleccionar PDS, detalles, montos y evidencias; enviar a revisión. | Titular, delegado, sustituto y alcance por centro de costo. |
+| Responsable de centro de costo/proyecto | Responder por imputación y fondos. | Si siempre coincide con solicitante. |
+| Jefatura directa o unidad ejecutora | Certificar ejecución/resultado. | Si participa dentro del workflow o mediante constancia. |
+| DGDP | Resolver procedencia normativa por detalle. | Perfiles, excepciones y segunda revisión. |
+| Finanzas | Validar saldo, autorizar y registrar resultado financiero. | Límite con Tesorería y forma de reserva. |
+| Tesorería/Remuneraciones | Ejecutar o confirmar desembolso. | Integración, respuesta y contingencia. |
+| Soporte/administrador | Resolver incidencias sin alterar decisiones. | Acciones administrativas permitidas. |
+
+## 6. Inicio y término propuestos
+
+**Inicio recomendado:** PDS formalizada, con resolución/documento final disponible y al menos un funcionario con saldo pagable. Falta ratificar si además debe cumplirse el periodo/hito antes de crear el borrador.
+
+**Término recomendado:** todos los detalles quedan pagados, rechazados o cerrados sin saldo pendiente; los pagados tienen transacción y fecha efectiva. Falta confirmar si SecGen espera confirmación externa o solo registra el dato informado por Finanzas.
+
+## 7. Flujo objetivo
 
 ```mermaid
-graph TD
-    classDef borrador fill:#f5f5f5,stroke:#9e9e9e,stroke-width:2px;
-    classDef revision fill:#ffe0b2,stroke:#fb8c00,stroke-width:2px;
-    classDef rechazo fill:#ffebee,stroke:#c62828,stroke-width:2px;
-    classDef aprobado fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-
-    A[PP01: Solicitante Crea Borrador - Estado 1]:::borrador -->|Despacha Solicitud| B(¿Falla Restricción del Motor?)
-    
-    B -->|SI| C[Rechazada por Sistema - Estado 4]:::rechazo
-    B -->|NO| D[PP02: DGDP - Estado 2]:::revision
-    
-    D -->|Devuelve| A
-    D -->|Rechaza| E[Rechazada por DGDP - Estado 4]:::rechazo
-    D -->|Aprueba| F[PP03: Dirección de Finanzas - Estado 3]:::revision
-    
-    F -->|Rechaza sin Presupuesto| G[Rechazada por Finanzas - Estado 4]:::rechazo
-    F -->|Registra Transacción Contable| H[Pago Ejecutado y Archivado - Estado 8 / 11]:::aprobado
+flowchart LR
+    A[PDS formalizada] --> B[PP01 Borrador]
+    B -->|Enviar| C[Control de ejecución pendiente de decisión]
+    C --> D[PP02 DGDP]
+    D -->|Observar| B
+    D -->|Aprobar detalles| E[PP03 Finanzas]
+    D -->|Rechazar todos| X[Solicitud cerrada sin pago]
+    E -->|Sin saldo temporal| R[Detalle pendiente de saldo / cuota liberada]
+    E -->|Observar| B
+    E -->|Autorizar y registrar| P[Detalle pagado]
+    R --> B2[Nueva solicitud o reintento]
+    P --> Z{¿Todos los detalles resueltos?}
+    Z -->|No| M[Pago parcial / cierre mixto]
+    Z -->|Sí| F[Pagada / archivada]
 ```
 
-### Tabla de Equivalencia de Estados de Pago (`sg_pago_soli.cod_estpago`):
-* **1**: Borrador (Edición exclusiva del Solicitante).
-* **2**: Enviada a DGDP (Auditoría normativa y laboral centralizada).
-* **3**: Enviada a Finanzas (Revisión presupuestaria final).
-* **6**: Devuelta a corrección (Retorna al solicitante con observaciones).
-* **4**: Rechazada (Cierre definitivo de la cuota mensual).
-* **8**: Pagada (Con transacción bancaria contable registrada).
-* **11**: Archivada (Cierre histórico de la transacción).
+El nodo de Jefatura/control de ejecución no es obligatorio hasta cerrar S0-008.
 
----
+## 8. Tres niveles obligatorios de estado
 
-# 3. Diseño del Modelo de Datos de Pagos (SyBase `secgen_db`)
-
-> [!CAUTION]
-> **Diseño Histórico Deprecado:** Las tablas satélites antiguas `sg_pago_soli`, `sg_pago_evid`, y `sg_pago_hist` quedan obsoletas y se mantienen únicamente como referencia histórica.
-
-El modelo de datos oficial y principal para la Fase 2 del workflow de pagos se normaliza en las siguientes tablas:
-1. **`sg_soli`** (Cabecera Común): Registra la existencia de la solicitud en el sistema y su estado global (`sg_soli.cod_estsol`).
-2. **`sg_paso`** (Paso Específico): Vincula el expediente de pago con la PDS de origen (`sg_paso.nro_solpds`).
-3. **`sg_fucu`** (Cuota Mensual): Registra el estado de la cuota base del contrato (`sg_fucu.cod_estcuo`).
-4. **`sg_pade`** (Detalle de Pago): Desglosa cada funcionario y cuota solicitada en el expediente, permitiendo decisiones individuales (`sg_pade.cod_estdet`) y registrando su número de transacción (`sg_pade.nro_transac`).
-5. **`sg_fuev`** (Evidencias/Constancias): Vincula los entregables físicos con el funcionario, mes y pago solicitado.
-
-### Estados Recomendados para Detalle y Cuota (`sg_pade.cod_estdet` / `sg_fucu.cod_estcuo`)
-* **BORRADOR**: Solicitud guardada localmente por el solicitante.
-* **EN_PROCESO**: Enviada y en proceso de revisión de DGDP.
-* **APROBADO_DGDP**: Visada positivamente por DGDP.
-* **OBSERVADO**: Detalle con reparos devuelto para corrección del solicitante.
-* **RECHAZADO**: Detalle cerrado permanentemente para este intento.
-* **PENDIENTE_SALDO**: Detalle validado pero pausado por falta de saldo en Finanzas (permite reintento).
-* **PAGADO**: Detalle procesado con transacción bancaria efectiva asignada.
-
----
-
-# 4. Diseño de Validaciones del Motor (Validaciones a nivel de Detalle `sg_pade`)
-
-Para asegurar la robustez institucional de la UFRO, las validaciones de base de datos se orquestan en procedimientos de base de datos ejecutados por cada detalle.
-
-## 4.1 `sp_pago_validar_restricciones_detalle`
-**Objetivo:** Escaneo automático ejecutado en el envío del Solicitante y en la etapa de DGDP. Cruza el RUT del detalle contra `sisper_db`.
-* **Pseudocódigo de validación de Licencia Médica:**
-  ```sql
-  IF EXISTS (SELECT 1 FROM sisper_db..licencias 
-             WHERE rut = @rut_fun 
-             AND @fecha_periodo BETWEEN fecha_inicio AND fecha_termino)
-  BEGIN
-      -- Cambia estado del detalle a OBSERVADO y registra el log de error
-      UPDATE sg_pade SET cod_estdet = 'OBSERVADO', comentario_excep = 'Registro de Licencia Médica activa en el periodo de ejecución.' WHERE id_pagdet = @id_pagdet;
-      INSERT INTO sg_hist (nro_solici, accion, comentario) 
-      VALUES (@nro_solici, 'OBSERVAR_DETALLE', 'Alerta automática: Beneficiario registra Licencia Médica activa.');
-  END
-  ```
-* **Pseudocódigo de validación de Permiso sin Goce de Sueldo:**
-  ```sql
-  IF EXISTS (SELECT 1 FROM sisper_db..permisos 
-             WHERE rut = @rut_fun 
-             AND tipo_permiso = 'SGO' 
-             AND @fecha_periodo BETWEEN fecha_inicio AND fecha_termino)
-  BEGIN
-      UPDATE sg_pade SET cod_estdet = 'OBSERVADO', comentario_excep = 'Registro de Permiso sin Goce de Sueldo activo en el periodo.' WHERE id_pagdet = @id_pagdet;
-  END
-  ```
-
-## 4.2 `sp_pago_revisar_presupuesto_detalle`
-**Objetivo:** Consultar saldo real disponible en el centro de costos del proyecto.
-* **Flujo Operativo:**
-  ```sql
-  SELECT @saldo_dispo = saldo_liquido, @cod_financ = tipo_financiamiento 
-  FROM contabilidad_db..centro_costos 
-  WHERE cod_cenco = @cod_cenco;
-
-  IF @cod_financ NOT IN ('21', '44')
-  BEGIN
-      THROW ERROR 'Financiamiento Incompatible: El Centro de Costos no corresponde a Fondos Propios (21) o Terceros (44).';
-  END
-
-  IF @saldo_dispo < @monto_solpag
-  BEGIN
-      -- En Finanzas se marca como PENDIENTE_SALDO en lugar de rechazo definitivo
-      UPDATE sg_pade SET cod_estdet = 'PENDIENTE_SALDO' WHERE id_pagdet = @id_pagdet;
-  END
-  ```
-
-> [!IMPORTANT]
-> **Separación de Responsabilidad:** El rechazo o devolución de un detalle de pago nunca altera la PDS original ni activa el indicador de retiro definitivo del funcionario (`sg_fups.ind_retfun`).
-
----
-
-# 5. Actualizacion de Modelo Normalizado de Pagos
-
-> [!NOTE]
-> Las secciones iniciales de este documento mantienen nombres de trabajo usados en versiones previas, como `sg_pago_soli` o `sg_pago_evid`. Para la normalizacion actual del modelo, el pago se estructura usando `sg_soli`, `sg_paso`, `sg_fucu`, `sg_pade`, `sg_fuev` y `sg_tevi`.
-
-## 5.0 Relación con Solicitud PDS Formalizada
-
-- El pago nace desde una PDS formalizada y con resolución/documento firmado.
-- `sg_prse` y `sg_fups` son la fuente de datos aprobados.
-- `sg_fume` contiene los meses aprobados por funcionario.
-- `sg_fucu` contiene las cuotas generadas desde esos meses aprobados.
-- `sg_paso` crea la solicitud formal de pago asociada a la PDS.
-- `sg_pade` registra qué cuotas se solicitan pagar.
-- `sg_fuev` registra las evidencias/constancias por funcionario/mes/pago.
-- El pago no modifica la PDS, funcionarios, meses ni topes aprobados.
-- Un rechazo de pago no debe usar `sg_fups.ind_retfun`.
-
-### Matriz de Validaciones de Pago
-
-| Regla | Resuelta en PDS | Revalidar en Pago |
+| Nivel | Fuente propuesta | Pregunta que responde |
 | :--- | :--- | :--- |
-| Cargo inhabilitado | Sí | Solo mostrar antecedente |
-| Asignación directiva | Sí | Solo mostrar antecedente |
-| Formación continua | Sí | Solo mostrar antecedente |
-| Tope mensual | Sí | Revalidar si cambia monto solicitado |
-| Máximo 2 meses | Sí | Validar cuota generada coherente |
-| SEA | Sí | Mostrar antecedente |
-| Compensación | Sí | Mostrar y exigir si falta respaldo |
-| Licencia médica | Puede haber sido evaluada | Sí, por mes ejecutado |
-| Permiso sin goce | Puede haber sido evaluado | Sí, por mes ejecutado |
-| Receso | No siempre | Sí, requiere constancia |
-| Deudas 2027 | Puede haber sido evaluada | Sí, si fecha aplica |
-| Ausencias | No estática | Sí, ajuste proporcional |
-| Saldo CC | Informativo/aprobado PDS | Sí, final en Finanzas |
-| Evidencia | Planificada | Carga real obligatoria |
+| Cabecera | `sg_soli.cod_estsol` + `sg_paso` | ¿En qué etapa está el expediente completo? |
+| Detalle/intento | `sg_pade.cod_estdet` | ¿Qué ocurrió con este funcionario/cuota en esta solicitud? |
+| Cuota acumulada | `sg_fume.cod_estcuo` | ¿La cuota sigue disponible, está comprometida o ya fue pagada? |
 
-## 5.1 Principio de relacion PDS - Pago
+Los estados no se deben copiar automáticamente entre niveles. Cada transición debe declarar evento, actor, precondiciones, efectos y reversión.
 
-La solicitud de pago debe nacer desde una PDS formalizada, pero el pago no debe tratarse como un bloque unico e indivisible de toda la prestacion.
+## 9. Modelo conceptual
 
-Regla recomendada:
+```mermaid
+erDiagram
+    sg_soli ||--|| sg_prse : especializa_PDS
+    sg_prse ||--o{ sg_fups : contiene_funcionarios
+    sg_fups ||--o{ sg_fume : posee_cuotas
+    sg_soli ||--|| sg_paso : especializa_pago
+    sg_prse ||--o{ sg_paso : origina
+    sg_paso ||--o{ sg_pade : contiene
+    sg_fume ||--o{ sg_pade : intenta_pagar
+    sg_pade ||--o{ sg_fuev : respalda
+    sg_soli ||--o{ sg_hist : audita
+    sg_soli ||--o{ sg_apso : asigna
+```
 
-| Nivel | Tabla | Uso |
+### Reutilización confirmada técnicamente
+
+- `sg_soli`: cabecera común.
+- `sg_prse`: PDS y centro de costo origen.
+- `sg_fups`: funcionario, ítem, monto aprobado, rango y tope.
+- `sg_fume`: cuota canónica; sustituye la propuesta redundante `sg_fucu`.
+- `sg_ecuo`: estados acumulados de cuota.
+- `sg_fuc2`: compensación efectivamente realizada.
+- `sg_hist`: historial global.
+- `sg_apso`, `sg_tfls`, `sg_eta1`: tareas, flujo, etapas y perfiles.
+
+### Estructuras por crear o completar
+
+- `sg_paso`: especialización de solicitud de pago y vínculo a la PDS.
+- `sg_pade`: relación solicitud–cuota, montos, decisión y transacción.
+- catálogo de estados y causales de detalle;
+- evidencia uno-a-muchos asociada a detalle/cuota;
+- resultado detallado de validaciones cuando se requiera auditoría;
+- cobertura de cuota cuando un pago cubra varios periodos o hitos.
+
+## 10. Requerimientos transversales
+
+| ID | Requerimiento | Estado |
 | :--- | :--- | :--- |
-| Cabecera comun | `sg_soli` | Crea la solicitud formal de pago como solicitud del sistema. |
-| Cabecera especifica de pago | `sg_paso` | Relaciona la solicitud de pago con la PDS origen mediante `nro_solpds`. |
-| Cuota base | `sg_fucu` | Representa la cuota pagable generada desde el mes aprobado del funcionario. |
-| Detalle de pago | `sg_pade` | Registra las cuotas/funcionarios incluidos en una solicitud de pago concreta. |
-| Evidencia/constancia | `sg_fuev` | Registra respaldos por funcionario, mes y solicitud de pago si aplica. |
+| RF-PP-COM-001 | Solo una PDS formalizada y habilitada puede originar pagos. | Preliminar |
+| RF-PP-COM-002 | Una solicitud de pago pertenece a una sola PDS. | Recomendado; confirmar |
+| RF-PP-COM-003 | Una solicitud puede contener uno o varios funcionarios y cuotas de esa PDS. | Preliminar |
+| RF-PP-COM-004 | Toda decisión individual se registra en un detalle; no se modifica `sg_fups.cod_estfun` por rechazo de pago. | Técnico |
+| RF-PP-COM-005 | Una cuota pagada o comprometida en otra solicitud enviada no puede seleccionarse. | Confirmado |
+| RF-PP-COM-006 | Un borrador no reserva cuota ni presupuesto salvo decisión expresa. | Pendiente |
+| RF-PP-COM-007 | El saldo se recalcula al enviar, aprobar y pagar; la validación final no usa caché. | Técnico |
+| RF-PP-COM-008 | La falta temporal de saldo permite reintento sin redigitar los antecedentes permanentes. | Preliminar |
+| RF-PP-COM-009 | Un pago parcial exige motivo y conserva el saldo pendiente. | Preliminar |
+| RF-PP-COM-010 | El expediente conserva historial de actor, perfil, acción, fecha, estado anterior/nuevo y observación. | Confirmado |
+| RF-PP-COM-011 | La evidencia se versiona lógicamente; reemplazar no borra el respaldo anterior. | Recomendado |
+| RF-PP-COM-012 | La interfaz diferencia favorable, advertencia, observación y bloqueo con color, texto e icono. | Confirmado visualmente |
+| RF-PP-COM-013 | Todos los importes nuevos usan `decimal(19,2)`. | Técnico |
+| RF-PP-COM-014 | La autorización se ejecuta bajo transacción y evita compromisos concurrentes. | Técnico |
+| RF-PP-COM-015 | El cierre global se deriva de los detalles; no se digita manualmente. | Recomendado |
 
-## 5.2 Cardinalidad esperada
+## 11. Validaciones por momento
 
-| Relacion | Regla |
-| :--- | :--- |
-| Una PDS puede tener muchas solicitudes de pago. | `sg_prse -> sg_paso` mediante `nro_solpds`. |
-| Una solicitud de pago pertenece a una sola PDS origen. | `sg_paso.nro_solpds` apunta a `sg_prse.nro_solici`. |
-| Una solicitud de pago puede incluir una o muchas cuotas/personas. | `sg_paso -> sg_pade`. |
-| Una cuota pertenece a un mes aprobado de un funcionario. | `sg_fucu.id_funmes -> sg_fume.id_funmes`. |
-| El pago real se resuelve por detalle. | `sg_pade` permite aprobar, rechazar o dejar pendiente una cuota sin afectar al resto. |
+| Momento | Controles mínimos | Efecto |
+| :--- | :--- | :--- |
+| Buscar PDS | formalización, acceso al centro de costo, existencia de saldo contractual | filtrar o bloquear selección |
+| Guardar borrador | integridad de PDS y pertenencia de detalles | guardar sin reservar, pendiente de decisión |
+| Enviar PP01 | cuota disponible, monto, evidencia, duplicidad, tope y saldo | bloquear envío por detalle inválido |
+| Resolver DGDP | licencia, inhabilidad, sin goce, compatibilidad, jornada, evidencia y excepción | aprobar, observar o rechazar detalle |
+| Recibir Finanzas | recalcular detalle vigente y total aprobado DGDP | excluir detalles no aprobados |
+| Autorizar | saldo FIN21 menos compromisos activos SG, centro/item vigente | autorizar o dejar pendiente de saldo |
+| Pagar | transacción, fecha, monto autorizado y estado válido | cerrar detalle y actualizar cuota |
 
-## 5.3 Casos que debe soportar el modelo
+Cada regla debe registrar: código, fuente, fecha de evaluación, resultado, severidad, actor, evidencia, posibilidad de excepción y vigencia.
 
-| Caso | Comportamiento esperado |
-| :--- | :--- |
-| Pagar toda la PDS en una solicitud. | `sg_paso` contiene varios registros `sg_pade`. |
-| Pagar solo un funcionario de la PDS. | `sg_paso` contiene solo las cuotas de ese funcionario. |
-| Pagar un grupo de funcionarios. | `sg_pade` contiene solo los funcionarios/cuotas seleccionados. |
-| Rechazar pago de un funcionario por falta de saldo. | Se rechaza o deja pendiente el `sg_pade` correspondiente, sin cerrar todo el pago. |
-| Reintentar pago cuando exista saldo. | Se crea una nueva solicitud de pago que vuelve a incluir la cuota si `sg_fucu` no esta pagada ni cerrada. |
-| Evitar duplicidad. | Una cuota pagada o en tramite activo no debe volver a seleccionarse. |
+El detalle regla por regla — qué se hereda de la solicitud de resolución, qué se revalida, qué se adapta y qué es nuevo — está en [8_matriz_validaciones_resolucion_a_pago.md](./8_matriz_validaciones_resolucion_a_pago.md).
 
-## 5.4 Reglas de rechazo parcial y reintento
+El inventario de lo que existe hoy —incluida la cadena completa de validación de saldo y su estado real— está en [9_catastro_validaciones_y_saldos.md](./9_catastro_validaciones_y_saldos.md).
 
-1. El rechazo de un funcionario en etapa de pago no modifica la PDS original.
-2. El rechazo de pago no debe usar `sg_fups.ind_retfun`, porque ese indicador pertenece al flujo PDS.
-3. Si el problema afecta solo al intento de pago, se registra en `sg_pade.cod_estdet`.
-4. Si el problema afecta la cuota base, se registra en `sg_fucu.cod_estcuo`.
-5. Si el rechazo es por falta temporal de saldo, la cuota debe poder volver a solicitarse cuando exista disponibilidad, salvo regla de negocio contraria.
+## 12. Saldo presupuestario
 
-## 5.5 Alertas por etapa y rol
+`valida_saldo_cc_cs` puede reutilizarse con `sg_prse.cod_unifin`, `sg_prse.cod_ccto`, `sg_fups.cod_sitm` y la suma solicitada por combinación de financiamiento.
 
-El contador de dias no debe ser global para toda la solicitud. Debe calcularse por etapa o tramo de revision:
+Brechas por resolver:
 
-| Situacion | Regla |
-| :--- | :--- |
-| La solicitud entra a una etapa/rol. | Se inicia el contador desde la fecha de entrada. |
-| El rol revisa y deriva. | Se cierra el tramo y el siguiente rol inicia contador desde cero. |
-| Pasa el plazo definido, por ejemplo mas de 3 dias. | La bandeja debe marcar la solicitud en rojo para ese rol/persona. |
-| Se requiere medicion historica por rol. | Puede calcularse con fecha inicio/cierre de cada tramo, usando `sg_hist` si alcanza o una tabla satelite si no. |
+- el parámetro `@Afecta` está declarado pero no se usa;
+- el PA usa `decimal(15,2)` y el modelo objetivo `decimal(19,2)`;
+- los compromisos del nuevo workflow pueden no estar reflejados aún en FIN21;
+- falta definir la ruta para `itm_global`, `cc_global` y `pry_global`;
+- falta confirmar si se consulta, reserva o solo valida saldo.
 
-Primero se debe revisar si `sg_hist` registra suficiente informacion para calcular el rol pendiente. Si solo registra quien ejecuto la accion, pero no quien recibe la siguiente etapa, se debe evaluar una tabla satelite de tramos/asignacion.
+## 13. Decisiones bloqueantes
 
----
+1. Actor titular, delegación, sustitución y segregación de funciones.
+2. Evento exacto de inicio y término.
+3. Momento y responsable de crear cuotas.
+4. Cardinalidad: una PDS por solicitud y agrupación de meses/funcionarios.
+5. Catálogos y transiciones de cabecera, detalle y cuota.
+6. Reglas repetibles por pago y severidad de cada resultado.
+7. Participación de Jefatura Directa.
+8. Frontera SecGen–Finanzas–Tesorería.
+9. Catálogo, obligatoriedad y vigencia de evidencias.
+10. Reserva de cuota/saldo en borrador y tratamiento de concurrencia.
 
-# 6. Resumen Consolidado de Pantallas y Roles
+Las preguntas y datos necesarios están en [4_preguntas_transversales_y_datos.md](./4_preguntas_transversales_y_datos.md).
 
-Para ver en detalle los flujos individuales por rol, diríjase a sus respectivos documentos técnicos:
+## 14. Definition of Ready para desarrollo
 
-1. **Pantalla PP01 (Solicitante/Beneficiario):** [1_requerimientos_solicitante_pago.md](file:///d:/trabajo_ufro_2026/nuevo_workflow_fase_2/template_wf_pagos/requerimientos_wf/1_requerimientos_solicitante_pago.md)
-   * *Acción:* Buscar y seleccionar resoluciones PDS activas mediante controles predictivos (por resolución, centro de costo o nombre), visualizar el PDF oficial de la resolución firmada, revisar el balance de meses (pagados, en tránsito, pendientes), visualizar labores/funciones de solo lectura comprometidas en la BDD, y cargar los documentos físicos de respaldo (evidencias de cumplimiento) para solicitar el cobro mensual (solo editable en estado Borrador).
-2. **Pantalla PP02 (DGDP - Auditoría de Personas):** [2_requerimientos_dgdp_pago.md](file:///d:/trabajo_ufro_2026/nuevo_workflow_fase_2/template_wf_pagos/requerimientos_wf/2_requerimientos_dgdp_pago.md)
-   * *Acción:* Fiscalizar restricciones dinámicas del funcionario (licencias, deudas, permisos, cierre de proyectos). Otorgar o denegar excepciones de receso y prorrateo anual superior al límite de 2 meses.
-3. **Pantalla PP03 (Dirección de Finanzas - Ejecución):** [3_requerimientos_direccion_finanzas_pago.md](file:///d:/trabajo_ufro_2026/nuevo_workflow_fase_2/template_wf_pagos/requerimientos_wf/3_requerimientos_direccion_finanzas_pago.md)
-   * *Acción:* Control de saldos contables, imputación presupuestaria final del mes, registro contable de egreso (`nro_transac`) y dispersión bancaria del pago.
+Un requerimiento pasa a desarrollo solo si:
+
+- tiene actor, precondición, disparador y resultado;
+- identifica datos de entrada, salida y fuente;
+- define validaciones, severidad y mensajes;
+- define estados y transiciones afectadas;
+- incluye permisos y trazabilidad;
+- tiene criterios de aceptación positivos, negativos y de concurrencia;
+- no contradice una decisión vigente;
+- tiene respuesta o dueño/fecha para cada pregunta bloqueante;
+- está vinculado a una tarjeta de ClickUp.
+
+## 15. Próximos entregables
+
+1. Taller S0-001/S0-002: RACI y frontera del flujo.
+2. Taller S0-003/S0-005: agregado, cuota, detalle y estados.
+3. Taller S0-006/S0-007/S0-010: reglas, severidades y evidencias.
+4. Taller S0-008/S0-009: Jefatura y Finanzas/Tesorería.
+5. Revisión S0-011: escenarios de aceptación.
+6. Cierre S0-012: acta, decisiones y backlog refinado.
