@@ -74,17 +74,158 @@
             font-size: var(--pds-du288-font-support); font-weight: 700; letter-spacing: 0.08em;
             display: inline-block;
         }
+
+        /* ===================================================================
+           Layout real de la app -- calcado de layouts/default.vue,
+           components/layouts/SideMenu.vue, Topbar.vue y MenuItemBody.vue.
+           Copiado tal cual (los <style scoped> de Vue no aplican fuera del
+           componente, asi que se reproducen sin el atributo de scope) para
+           que este mockup se vea identico a la app real, no una aproximacion.
+           =================================================================== */
+        #sidebar-wrapper {
+            background-color: #ffffff;
+            border-right: 1px solid var(--pds-du288-border, #dee2e6);
+            min-height: 100vh;
+            width: 250px;
+            min-width: 250px;
+        }
+        .pds-sidebar-brand-box {
+            background-color: var(--pds-du288-primary, #00396c);
+            height: 64px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .pds-sidebar-logo { max-height: 42px; width: auto; }
+        .pds-sidebar-section-label {
+            font-size: 0.72rem; letter-spacing: 0.05em;
+            color: var(--pds-du288-muted, #596b7d) !important;
+        }
+        .pds-menu-separator { border-top: 1px solid var(--pds-du288-border, #dee2e6); }
+
+        #dna-topbar {
+            background-color: var(--pds-du288-primary, #00396c);
+            color: #ffffff;
+            min-height: 64px;
+        }
+        .pds-topbar-title { color: #ffffff; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.2px; }
+        .pds-topbar-logo-container { height: 38px; display: flex; align-items: center; }
+        .pds-topbar-logo { max-height: 36px; width: auto; }
+
+        .dna-menu-item { margin-bottom: 0.15rem; }
+        .pds-submenu-container {
+            border-left: 2px solid var(--pds-du288-border, #e2e8f0);
+            margin-left: 1.1rem; margin-top: 0.25rem; margin-bottom: 0.35rem;
+        }
+        .pds-menu-item-body {
+            border-radius: var(--pds-du288-radius, 6px);
+            font-size: 0.875rem; cursor: pointer; user-select: none;
+        }
+        .pds-parent-header {
+            font-weight: 700; color: var(--pds-du288-primary, #00396c);
+            padding-top: 0.65rem; padding-bottom: 0.65rem;
+        }
+        .pds-chevron-icon { font-size: 0.75rem; }
+        .pds-active-leaf {
+            background-color: var(--pds-du288-primary, #00396c) !important;
+            color: #ffffff !important; font-weight: 700;
+            box-shadow: 0 2px 6px rgba(0, 57, 108, 0.25);
+        }
+        .pds-inactive-leaf { color: #475569; font-weight: 500; }
+        .pds-inactive-leaf:hover { background-color: #f1f5f9; color: var(--pds-du288-primary, #00396c); }
+        .pds-menu-icon { font-size: 0.95rem; }
+
+        #page-content-wrapper { flex: 1; min-width: 0; }
     </style>
 </head>
 
 <body>
-    <div class="app-bar">
-        <span class="brand">Sistema de Gestión de Solicitudes · Prestación de servicios</span>
-        <div class="user">
-            <strong id="lbl_user">—</strong><br>
-            <span>Solicitante · Jefe de proyecto</span>
-        </div>
-    </div>
+    <div id="wrapper" class="d-flex">
+
+        <!-- ===== Sidebar real, calcado de SideMenu.vue / MenuItem.vue ===== -->
+        <aside id="sidebar-wrapper" class="pds-du288-scope shadow">
+            <div class="pds-sidebar-brand-box d-flex align-items-center justify-content-center px-3 py-3">
+                <img src="../../sg-solicitudes-frontend/static/imgs/logo_bl.png"
+                    alt="Universidad de La Frontera" class="pds-sidebar-logo img-fluid">
+            </div>
+            <div class="pds-sidebar-body">
+                <div class="pds-sidebar-section-label px-3 pt-3 pb-2 text-uppercase text-muted font-weight-bold">
+                    Prestación de Servicios
+                </div>
+                <div class="list-group list-group-flush pds-sidebar-menu-list">
+
+                    <div class="pds-menu-item-wrapper">
+                        <a href="#" class="text-decoration-none">
+                            <div class="pds-menu-item-body d-flex align-items-center px-3 py-2 pds-inactive-leaf">
+                                <i class="fas fa-house mr-2 pds-menu-icon text-secondary"></i>
+                                <span class="pds-menu-label flex-grow-1">Inicio</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="pds-menu-item-wrapper">
+                        <div class="dna-menu-item">
+                            <button class="ninja-btn w-100 text-left p-0 border-0 bg-transparent" type="button">
+                                <div class="pds-menu-item-body d-flex align-items-center px-3 py-2 pds-parent-header">
+                                    <i class="fas fa-hand-holding-dollar mr-2 pds-menu-icon text-primary"></i>
+                                    <span class="pds-menu-label flex-grow-1">Prestación de servicios</span>
+                                    <i class="fas fa-chevron-down pds-chevron-icon ml-auto small text-muted"></i>
+                                </div>
+                            </button>
+                            <div class="pds-submenu-container pl-2">
+
+                                <!-- Submenú "Prestaciones" -- colapsado, no es la sección activa -->
+                                <div class="dna-menu-item">
+                                    <button class="ninja-btn w-100 text-left p-0 border-0 bg-transparent" type="button">
+                                        <div class="pds-menu-item-body d-flex align-items-center px-3 py-2 pds-parent-header">
+                                            <span class="pds-menu-label flex-grow-1">Prestaciones</span>
+                                            <i class="fas fa-chevron-right pds-chevron-icon ml-auto small text-muted"></i>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <!-- Submenú "Pago" -- expandido, esta vista vive aquí -->
+                                <div class="dna-menu-item">
+                                    <button class="ninja-btn w-100 text-left p-0 border-0 bg-transparent" type="button">
+                                        <div class="pds-menu-item-body d-flex align-items-center px-3 py-2 pds-parent-header">
+                                            <span class="pds-menu-label flex-grow-1">Pago</span>
+                                            <i class="fas fa-chevron-down pds-chevron-icon ml-auto small text-muted"></i>
+                                        </div>
+                                    </button>
+                                    <div class="pds-submenu-container pl-2">
+                                        <div class="dna-menu-item">
+                                            <a href="#" class="text-decoration-none">
+                                                <div class="pds-menu-item-body d-flex align-items-center px-3 py-2 pds-active-leaf">
+                                                    <span class="pds-menu-label flex-grow-1">Solicitudes de pago</span>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </aside>
+
+        <div id="page-content-wrapper">
+            <!-- ===== Topbar real, calcado de Topbar.vue ===== -->
+            <nav id="dna-topbar" class="pds-du288-scope navbar navbar-expand-lg px-3 py-2 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0" type="button"><i class="fas fa-bars"></i></button>
+                    <h5 class="pds-topbar-title ml-3 my-0 d-none d-sm-block">Solicitudes de pago</h5>
+                </div>
+                <section class="d-flex align-items-center ml-auto">
+                    <div class="pds-topbar-logo-container mr-3 pr-3 border-right border-secondary-subtle d-none d-md-block">
+                        <img src="../../sg-solicitudes-frontend/static/imgs/logo_bl.png"
+                            class="pds-topbar-logo img-fluid" alt="Universidad de La Frontera">
+                    </div>
+                    <div class="d-flex align-items-center text-white" style="font-size:13px">
+                        <strong id="lbl_user">—</strong>&nbsp;· Solicitante · Jefe de proyecto
+                    </div>
+                </section>
+            </nav>
 
     <!-- Todo el contenido DU288 vive bajo el alcance obligatorio -->
     <div class="pds-du288-scope">
@@ -120,67 +261,62 @@
                     <div class="pds-ui-section-header">
                         <div>
                             <h6 class="pds-ui-section-title mb-1">
-                                <i class="fas fa-search text-primary"></i>
-                                Buscar la prestación que se requiere pagar
+                                <i class="fas fa-list text-primary"></i>
+                                Prestaciones pagables
                             </h6>
                             <p class="pds-ui-section-subtitle mb-0">
                                 Se listan únicamente prestaciones con resolución archivada, vigentes y con saldo
-                                pendiente sobre centros de costo a su cargo.
+                                pendiente sobre centros de costo a su cargo. Filtre para acotar la tabla.
                             </p>
                         </div>
+                        <span class="pds-ui-section-subtitle" id="lbl_n_resultados"></span>
                     </div>
 
-                    <div class="pds-check-grid mb-3">
-                        <button type="button" class="pds-check info pds-check--clickable" data-modo="funcionario"
-                            onclick="setModo('funcionario')">
-                            <i class="fas fa-user"></i><span>Buscar por funcionario</span>
-                        </button>
-                        <button type="button" class="pds-check secondary pds-check--clickable" data-modo="resolucion"
-                            onclick="setModo('resolucion')">
-                            <i class="fas fa-file-alt"></i><span>Buscar por resolución</span>
-                        </button>
-                    </div>
-
-                    <div class="pds-ui-grid" id="form_funcionario">
+                    <div class="pds-ui-grid mb-3" id="filtros_prestaciones">
                         <div class="form-group">
-                            <label class="pds-ui-label" for="q_funcionario">RUT o nombre del funcionario</label>
+                            <label class="pds-ui-label" for="q_funcionario">Funcionario</label>
                             <input type="text" id="q_funcionario" class="form-control"
-                                placeholder="Ej.: 8.796.271-7 o Poza Aravena">
-                        </div>
-                        <div class="form-group d-flex align-items-end">
-                            <button class="btn pds-ui-action-button pds-ui-action-button--primary" onclick="buscar()">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="pds-ui-grid is-hidden" id="form_resolucion">
-                        <div class="form-group">
-                            <label class="pds-ui-label" for="q_resolucion">N.° de resolución exenta</label>
-                            <input type="text" id="q_resolucion" class="form-control" placeholder="Ej.: 42">
+                                placeholder="RUT o nombre" oninput="buscar()">
                         </div>
                         <div class="form-group">
-                            <label class="pds-ui-label" for="q_anio">Año</label>
-                            <select id="q_anio" class="custom-select">
-                                <option>2026</option>
-                                <option>2025</option>
+                            <label class="pds-ui-label" for="q_resolucion">N.° de resolución</label>
+                            <input type="text" id="q_resolucion" class="form-control"
+                                placeholder="Ej.: 42" oninput="buscar()">
+                        </div>
+                        <div class="form-group">
+                            <label class="pds-ui-label" for="q_actividad">Actividad</label>
+                            <input type="text" id="q_actividad" class="form-control"
+                                placeholder="Nombre de la actividad" oninput="buscar()">
+                        </div>
+                        <div class="form-group">
+                            <label class="pds-ui-label" for="q_cc">Centro de costo</label>
+                            <input type="text" id="q_cc" class="form-control"
+                                placeholder="Ej.: 1610-0" oninput="buscar()">
+                        </div>
+                        <div class="form-group">
+                            <label class="pds-ui-label" for="q_fecha_desde">Ejecución desde</label>
+                            <input type="date" id="q_fecha_desde" class="form-control" onchange="buscar()">
+                        </div>
+                        <div class="form-group">
+                            <label class="pds-ui-label" for="q_fecha_hasta">Ejecución hasta</label>
+                            <input type="date" id="q_fecha_hasta" class="form-control" onchange="buscar()">
+                        </div>
+                        <div class="form-group">
+                            <label class="pds-ui-label" for="q_estado">Estado del saldo</label>
+                            <select id="q_estado" class="custom-select" onchange="buscar()">
+                                <option value="">Todos</option>
+                                <option value="pendiente">Pendientes</option>
+                                <option value="pagado">Pagados</option>
                             </select>
                         </div>
                         <div class="form-group d-flex align-items-end">
-                            <button class="btn pds-ui-action-button pds-ui-action-button--primary" onclick="buscar()">
-                                <i class="fas fa-search"></i> Buscar
+                            <button type="button" class="btn btn-outline-secondary pds-ui-action-button"
+                                onclick="limpiarFiltros()">
+                                <i class="fas fa-eraser"></i> Limpiar filtros
                             </button>
                         </div>
                     </div>
-                </section>
 
-                <section class="pds-ui-section">
-                    <div class="pds-ui-section-header">
-                        <h6 class="pds-ui-section-title mb-0">
-                            <i class="fas fa-list text-primary"></i> Prestaciones pagables
-                        </h6>
-                        <span class="pds-ui-section-subtitle" id="lbl_n_resultados"></span>
-                    </div>
                     <div class="table-responsive">
                         <table class="table pds-ui-table mb-0">
                             <thead>
@@ -192,6 +328,7 @@
                                     <th class="text-right">Monto autorizado</th>
                                     <th class="text-right">Saldo</th>
                                     <th>Cuotas</th>
+                                    <th>Estado</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -558,6 +695,11 @@
             </div>
         </div>
     </div>
+            <!-- /.app-content, /.pds-du288-scope del contenido -->
+        </div>
+        <!-- /#page-content-wrapper -->
+    </div>
+    <!-- /#wrapper -->
 
     <script src="mock_data_pago_du288.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -613,23 +755,15 @@
         };
 
         // ===================== estado =====================
-        let modo = 'funcionario';
         let exp = null, staff = null, cobertura = [];
         let compensacionOk = false, fechaSimulada = false, evidenciaOk = false;
 
         document.getElementById('lbl_user').textContent = DB_PAGOS.usuarioSesion.dniFormato;
 
-        // ===================== búsqueda =====================
-        function setModo(m) {
-            modo = m;
-            document.querySelectorAll('[data-modo]').forEach((b) => {
-                const activo = b.dataset.modo === m;
-                b.className = 'pds-check ' + (activo ? 'info' : 'secondary') + ' pds-check--clickable';
-            });
-            document.getElementById('form_funcionario').classList.toggle('is-hidden', m !== 'funcionario');
-            document.getElementById('form_resolucion').classList.toggle('is-hidden', m !== 'resolucion');
-        }
-
+        // ===================== búsqueda / filtros =====================
+        // Un solo filtro combinado, siempre visible junto a la tabla -- no hay
+        // modo funcionario/resolución por separado, todos los campos filtran
+        // en conjunto (AND) sobre el mismo listado.
         function filas() {
             const out = [];
             DB_PAGOS.expedientes.forEach((e) => {
@@ -639,17 +773,46 @@
             return out;
         }
 
+        function limpiarFiltros() {
+            ['q_funcionario', 'q_resolucion', 'q_actividad', 'q_cc', 'q_fecha_desde', 'q_fecha_hasta']
+                .forEach((id) => { document.getElementById(id).value = ''; });
+            document.getElementById('q_estado').value = '';
+            buscar();
+        }
+
         function buscar() {
-            const q = (modo === 'funcionario'
-                ? document.getElementById('q_funcionario').value
-                : document.getElementById('q_resolucion').value).trim().toLowerCase();
+            const qFuncionario = document.getElementById('q_funcionario').value.trim().toLowerCase();
+            const qResolucion = document.getElementById('q_resolucion').value.trim().replace(/\D/g, '');
+            const qActividad = document.getElementById('q_actividad').value.trim().toLowerCase();
+            const qCc = document.getElementById('q_cc').value.trim().toLowerCase();
+            const qDesde = document.getElementById('q_fecha_desde').value;
+            const qHasta = document.getElementById('q_fecha_hasta').value;
+            const qEstado = document.getElementById('q_estado').value;
 
             const res = filas().filter(({ e, s }) => {
-                if (!q) return true;
-                return modo === 'funcionario'
-                    ? (s.name.toLowerCase().includes(q) || fRut(s.staffDni).includes(q) ||
-                       s.staffDni.includes(q.replace(/\D/g, '')))
-                    : String(e.resolutionExternalNumber) === q.replace(/\D/g, '');
+                const pagado = (s.cuotas || []).reduce((a, c) => a + (c.monto || 0), 0);
+                const saldo = s.total - pagado;
+
+                if (qFuncionario && !(
+                    s.name.toLowerCase().includes(qFuncionario) ||
+                    fRut(s.staffDni).includes(qFuncionario) ||
+                    s.staffDni.includes(qFuncionario.replace(/\D/g, ''))
+                )) return false;
+
+                if (qResolucion && String(e.resolutionExternalNumber) !== qResolucion) return false;
+
+                if (qActividad && !e.provision.activity.toLowerCase().includes(qActividad)) return false;
+
+                if (qCc && !`${e.provision.costCenter1}-${e.provision.costCenter2}`
+                    .toLowerCase().includes(qCc)) return false;
+
+                if (qDesde && s.f_termino && s.f_termino.slice(0, 10) < qDesde) return false;
+                if (qHasta && s.f_inicio && s.f_inicio.slice(0, 10) > qHasta) return false;
+
+                if (qEstado === 'pendiente' && saldo <= 0) return false;
+                if (qEstado === 'pagado' && saldo > 0) return false;
+
+                return true;
             });
             window.__res = res;
 
@@ -658,13 +821,17 @@
 
             const tb = document.getElementById('tbody_resultados');
             if (!res.length) {
-                tb.innerHTML = `<tr><td colspan="8" class="pds-ui-empty-table-row text-center py-4">
-                    No hay prestaciones pagables para ese criterio. Revise el RUT o el número de resolución.
+                tb.innerHTML = `<tr><td colspan="9" class="pds-ui-empty-table-row text-center py-4">
+                    No hay prestaciones pagables para estos filtros. Ajuste el criterio de búsqueda.
                     </td></tr>`;
                 return;
             }
             tb.innerHTML = res.map(({ e, s }, i) => {
                 const pagado = (s.cuotas || []).reduce((a, c) => a + (c.monto || 0), 0);
+                const saldo = s.total - pagado;
+                const estadoChip = saldo <= 0
+                    ? '<span class="pds-check ok" style="display:inline-flex"><i class="fas fa-circle-check"></i><span>Pagado</span></span>'
+                    : '<span class="pds-check warn" style="display:inline-flex"><i class="fas fa-clock"></i><span>Pendiente</span></span>';
                 return `<tr>
                     <td><strong>N.° ${e.resolutionExternalNumber}/${e.resolutionYear}</strong><br>
                         <span class="pds-ui-section-subtitle">${esc(e.requestStatus)}</span></td>
@@ -674,8 +841,9 @@
                         <span class="pds-ui-section-subtitle">CC ${e.provision.costCenter1}-${e.provision.costCenter2}</span></td>
                     <td>${fFecha(s.f_inicio)}<br>${fFecha(s.f_termino)}</td>
                     <td class="text-right"><strong>${clp(s.total)}</strong></td>
-                    <td class="text-right"><strong>${clp(s.total - pagado)}</strong></td>
+                    <td class="text-right"><strong>${clp(saldo)}</strong></td>
                     <td><span class="pds-ui-mini-chip">${(s.cuotas || []).length} de ${s.maxCuotasAnio}</span></td>
+                    <td>${estadoChip}</td>
                     <td class="text-right">
                         <button class="btn pds-ui-action-button pds-ui-action-button--primary"
                             style="min-width:auto;" onclick="seleccionar(${i})">Seleccionar</button></td>
@@ -1099,7 +1267,6 @@
         });
 
         renderBandeja();
-        setModo('funcionario');
         buscar();
     </script>
 </body>
