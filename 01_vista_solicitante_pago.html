@@ -36,6 +36,89 @@
         /* Separación obligatoria de 24 px entre secciones principales */
         .pds-ui-section { margin-bottom: 24px; }
 
+        /* Pasos del formulario. Seleccionar la prestación y armar la cuota son
+           dos etapas de la misma solicitud; el indicador evita que la primera
+           se lea como una pantalla de búsqueda desconectada. */
+        .pasos-form {
+            list-style: none; display: flex; gap: 8px; flex-wrap: wrap;
+            margin: 0 0 20px; padding: 0;
+        }
+        .pasos-form .paso {
+            display: flex; align-items: center; gap: 10px; flex: 1 1 240px;
+            background: #fff; border: 1px solid var(--pds-du288-border);
+            border-radius: 8px; padding: 10px 14px; font-size: 13px;
+            color: var(--pds-du288-muted);
+        }
+        .pasos-form .paso-n {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+            background: var(--pds-du288-soft); color: var(--pds-du288-muted);
+            font-weight: 700; font-size: 12px;
+        }
+        .pasos-form .paso-sub { font-size: 11px; }
+        .pasos-form .paso.is-actual {
+            border-color: var(--pds-du288-primary); color: var(--pds-du288-text, #212121);
+        }
+        .pasos-form .paso.is-actual .paso-n { background: var(--pds-du288-primary); color: #fff; }
+        .pasos-form .paso.is-hecho .paso-n { background: var(--pds-du288-success-dark, #00875e); color: #fff; }
+
+        /* Resumen permanente del expediente: los tres números que gobiernan la
+           decisión (autorizado, disponible, esta cuota) quedan siempre a la
+           vista, para no tener que volver a abrir el contexto para consultarlos. */
+        .resumen-fijo {
+            position: sticky; top: 0; z-index: 20;
+            background: #fff; border: 1px solid var(--pds-du288-border);
+            border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+        }
+        .resumen-fijo .rf-id { flex: 1 1 260px; min-width: 0; }
+        .resumen-fijo .rf-nombre {
+            font-size: 14px; font-weight: 700; line-height: 1.3;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .resumen-fijo .rf-sub { font-size: 12px; color: var(--pds-du288-muted); }
+        .resumen-fijo .rf-dato { text-align: right; }
+        .resumen-fijo .rf-label {
+            display: block; font-size: 10px; text-transform: uppercase;
+            letter-spacing: 0.04em; color: var(--pds-du288-muted);
+        }
+        .resumen-fijo .rf-valor { font-size: 15px; font-weight: 700; }
+        .resumen-fijo .rf-valor.is-foco { color: var(--pds-du288-primary); }
+
+        /* Contexto heredado colapsable */
+        .ctx-block { border: 1px solid var(--pds-du288-border); border-radius: 8px; background: #fff; }
+        .ctx-toggle {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            background: none; border: none; padding: 14px 16px; cursor: pointer; text-align: left;
+        }
+        .ctx-toggle-main { display: flex; align-items: center; font-size: 14px; font-weight: 600; }
+        .ctx-toggle-sub {
+            font-size: 12px; font-weight: 400; color: var(--pds-du288-muted); margin-left: 10px;
+        }
+        .ctx-chevron { color: var(--pds-du288-muted); transition: transform .15s ease; }
+        .ctx-chevron.is-open { transform: rotate(180deg); }
+        .ctx-body { padding: 0 16px 4px; border-top: 1px solid var(--pds-du288-border); }
+        .ctx-body .pds-ui-section { margin-bottom: 20px; padding-top: 16px; }
+
+        /* Barra de acciones fija: el estado de validación y el botón de envío
+           acompañan al usuario, en vez de vivir al final del scroll. */
+        .acciones-fijas {
+            position: sticky; bottom: 0; z-index: 20;
+            background: #fff; border-top: 1px solid var(--pds-du288-border);
+            margin: 0 -24px; padding: 12px 24px;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+
+        /* Nota explicativa dentro de una sección: informa una regla heredada,
+           no señala un problema, así que va en gris y sin fondo de alerta. */
+        .pds-ui-inline-note {
+            font-size: 12px;
+            color: var(--pds-du288-muted, #718096);
+            background: var(--pds-du288-soft, #f1f5f9);
+            border-radius: 6px;
+            padding: 9px 12px;
+        }
+
         /* Tabs del expediente, con los tokens del estándar */
         .pago-tabs { border-bottom: 1px solid var(--pds-du288-border); display: flex; gap: 4px; margin-bottom: 24px; }
         .pago-tab {
@@ -233,29 +316,28 @@
 
             <!-- ===================== PASO 1: BÚSQUEDA ===================== -->
             <div id="vista_busqueda">
-                <div class="pds-ui-page-header d-flex justify-content-between mb-3">
-                    <h1 class="pds-ui-page-title">Solicitud de pago de prestación de servicios</h1>
+                <a class="btn btn-link pl-0 mb-2" href="00_bandeja_pagos.html" style="font-size:13px;">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver a la bandeja
+                </a>
+
+                <div class="pds-ui-page-header mb-3">
+                    <h1 class="pds-ui-page-title">Nueva solicitud de pago</h1>
+                    <p class="pds-ui-section-subtitle mb-0">
+                        Una solicitud corresponde a un funcionario y a una sola resolución archivada.
+                        Si el mismo centro de costo tiene dos resoluciones distintas, son dos solicitudes.
+                    </p>
                 </div>
 
-                <!-- Bandeja del solicitante -->
-                <section class="pds-ui-section" id="sec_bandeja">
-                    <div class="pds-ui-section-header">
-                        <div>
-                            <h6 class="pds-ui-section-title mb-1">
-                                <i class="fas fa-inbox text-primary"></i>
-                                Solicitudes que requieren su acción
-                            </h6>
-                            <p class="pds-ui-section-subtitle mb-0">
-                                Borradores sin enviar y solicitudes devueltas a corrección por DGDP o Finanzas.
-                            </p>
-                        </div>
-                        <span class="pds-ui-status-badge" id="badge_bandeja"
-                            style="color: var(--pds-du288-warning-dark);">
-                            <i class="fas fa-exclamation-circle"></i> <span id="lbl_bandeja_total">0</span> pendientes
-                        </span>
-                    </div>
-                    <div id="lista_bandeja"></div>
-                </section>
+                <!-- Pasos del formulario: la selección no es una pantalla aparte,
+                     es el primer paso de la misma solicitud. -->
+                <ol class="pasos-form" id="pasos_form">
+                    <li class="paso is-actual"><span class="paso-n">1</span>
+                        <span><strong>Seleccionar la prestación</strong><br>
+                        <span class="paso-sub">Centro de costo, resolución y funcionario</span></span></li>
+                    <li class="paso"><span class="paso-n">2</span>
+                        <span><strong>Armar la cuota</strong><br>
+                        <span class="paso-sub">Meses cubiertos, montos y respaldo</span></span></li>
+                </ol>
 
                 <section class="pds-ui-section">
                     <div class="pds-ui-section-header">
@@ -265,8 +347,8 @@
                                 Prestaciones pagables
                             </h6>
                             <p class="pds-ui-section-subtitle mb-0">
-                                Se listan únicamente prestaciones con resolución archivada, vigentes y con saldo
-                                pendiente sobre centros de costo a su cargo. Filtre para acotar la tabla.
+                                Solo prestaciones con resolución archivada y vigente, sobre centros de costo a su
+                                cargo, cuya ejecución ya ocurrió y que aún tienen saldo autorizado por pagar.
                             </p>
                         </div>
                         <span class="pds-ui-section-subtitle" id="lbl_n_resultados"></span>
@@ -344,6 +426,9 @@
                 <button class="btn btn-link pl-0 mb-2" onclick="volver()" style="font-size:13px;">
                     <i class="fas fa-arrow-left mr-1"></i> Volver a la búsqueda
                 </button>
+                <a class="btn btn-link pl-0 mb-2 ml-3" href="00_bandeja_pagos.html" style="font-size:13px;">
+                    <i class="fas fa-inbox mr-1"></i> Ir a la bandeja
+                </a>
 
                 <div class="pds-ui-page-header d-flex justify-content-between align-items-center mb-3">
                     <div>
@@ -355,6 +440,16 @@
                     </span>
                 </div>
 
+                <!-- Mismo indicador de pasos que el paso 1, ahora en la etapa 2 -->
+                <ol class="pasos-form" id="pasos_form_2">
+                    <li class="paso is-hecho"><span class="paso-n"><i class="fas fa-check"></i></span>
+                        <span><strong>Prestación seleccionada</strong><br>
+                        <span class="paso-sub" id="paso1_resumen">—</span></span></li>
+                    <li class="paso is-actual"><span class="paso-n">2</span>
+                        <span><strong>Armar la cuota</strong><br>
+                        <span class="paso-sub">Meses cubiertos, montos y respaldo</span></span></li>
+                </ol>
+
                 <div class="pago-tabs">
                     <button class="pago-tab active" id="tabbtn_pago" onclick="setTab('pago')">
                         <i class="fas fa-hand-holding-usd mr-2"></i>Generar solicitud de pago</button>
@@ -365,71 +460,32 @@
                 <!-- --------------- TAB: SOLICITUD DE PAGO --------------- -->
                 <div id="tab_pago">
 
+                    <!-- Resumen permanente: identidad del expediente y los tres
+                         números que gobiernan la decisión. Se mantiene visible
+                         al hacer scroll para no tener que reabrir el contexto. -->
+                    <div class="resumen-fijo">
+                        <div class="rf-id">
+                            <div class="rf-nombre" id="rf_nombre">—</div>
+                            <div class="rf-sub" id="rf_sub">—</div>
+                        </div>
+                        <div class="rf-dato">
+                            <span class="rf-label">Autorizado</span>
+                            <span class="rf-valor" id="rf_autorizado">—</span>
+                        </div>
+                        <div class="rf-dato">
+                            <span class="rf-label">Disponible</span>
+                            <span class="rf-valor" id="rf_disponible">—</span>
+                        </div>
+                        <div class="rf-dato">
+                            <span class="rf-label" id="rf_cuota_label">Esta cuota</span>
+                            <span class="rf-valor is-foco" id="rf_cuota">—</span>
+                        </div>
+                    </div>
+
                     <div class="pds-ui-validation-summary p-3 is-hidden" id="box_errores"></div>
 
-                    <!-- 1. Antecedentes de la PDS -->
-                    <section class="pds-ui-section">
-                        <div class="pds-ui-section-header">
-                            <div>
-                                <h6 class="pds-ui-section-title mb-1">
-                                    <i class="fas fa-file-contract text-primary"></i>
-                                    Antecedentes de la prestación
-                                </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
-                                    Datos heredados de la resolución. No se editan en el pago.
-                                </p>
-                            </div>
-                            <span class="origen-chip origen-pds">Dato de la PDS</span>
-                        </div>
-
-                        <div class="pds-ui-data-group">
-                            <div class="pds-ui-data-group-title">Expediente de origen</div>
-                            <div class="pds-ui-grid" id="grid_expediente"></div>
-                        </div>
-
-                        <div class="pds-ui-data-group">
-                            <div class="pds-ui-data-group-title">Imputación presupuestaria</div>
-                            <div class="pds-ui-grid" id="grid_imputacion"></div>
-                        </div>
-                    </section>
-
-                    <!-- 2. Funcionario y contrato -->
-                    <section class="pds-ui-section">
-                        <div class="pds-ui-section-header">
-                            <div>
-                                <h6 class="pds-ui-section-title mb-1">
-                                    <i class="fas fa-user-tie text-primary"></i>
-                                    Funcionario y contrato evaluado
-                                </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
-                                    Condiciones revalidadas a la fecha del pago.
-                                </p>
-                            </div>
-                            <span class="origen-chip origen-pds">Dato de la PDS</span>
-                        </div>
-                        <div class="pds-ui-grid mb-3" id="grid_funcionario"></div>
-                        <div class="pds-check-grid" id="checks_funcionario"></div>
-                    </section>
-
-                    <!-- 3. Estado de pago -->
-                    <section class="pds-ui-section">
-                        <div class="pds-ui-section-header">
-                            <div>
-                                <h6 class="pds-ui-section-title mb-1">
-                                    <i class="fas fa-coins text-primary"></i>
-                                    Estado de pago de la actividad
-                                </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
-                                    El monto pagable de una cuota es el menor entre el tope, el saldo autorizado,
-                                    lo ejecutado y el saldo presupuestario.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="pds-ui-metrics-grid mb-3" id="grid_metricas"></div>
-                        <div class="pds-check-grid" id="checks_cupo"></div>
-                    </section>
-
-                    <!-- 4. Cuota: cobertura y montos -->
+                    <!-- PASO 1: lo único que el solicitante debe construir. -->
+<!-- 4. Cuota: cobertura y montos -->
                     <section class="pds-ui-section">
                         <div class="pds-ui-section-header">
                             <div>
@@ -437,12 +493,17 @@
                                     <i class="fas fa-calendar-alt text-primary"></i>
                                     Cuota a solicitar
                                 </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
+                                <p class="pds-ui-section-subtitle mb-0" id="lbl_sub_cuota">
                                     Indique los meses de ejecución que cubre esta cuota y el monto imputado a cada uno.
                                 </p>
                             </div>
                             <span class="origen-chip origen-pago">Ingresado en el pago</span>
                         </div>
+
+                        <!-- Cómo se comporta el monto según el tipo de la PDS:
+                             fija = precargado desde la resolución y solo baja
+                             con causal; variable = se ingresa dentro del tope. -->
+                        <div class="pds-ui-inline-note mb-3" id="nota_tipo_monto"></div>
 
                         <div class="pds-ui-grid mb-3">
                             <div class="form-group">
@@ -489,35 +550,8 @@
                         <div class="pds-check-grid mt-2" id="checks_monto"></div>
                     </section>
 
-                    <!-- 5. Compensación -->
-                    <section class="pds-ui-section" id="sec_compensacion">
-                        <div class="pds-ui-section-header">
-                            <div>
-                                <h6 class="pds-ui-section-title mb-1">
-                                    <i class="fas fa-clock text-primary"></i>
-                                    Compensación horaria del periodo pagado
-                                </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
-                                    Se acredita contra el registro de marcaje. Si falta cobertura, se recomprometen
-                                    únicamente los tramos pendientes.
-                                </p>
-                            </div>
-                            <span class="pds-ui-status-badge" id="badge_comp"
-                                style="color: var(--pds-du288-warning-dark);">
-                                <i class="fas fa-exclamation-circle"></i> Pendiente
-                            </span>
-                        </div>
-                        <div class="pds-ui-metrics-grid mb-3" id="grid_comp_metricas"></div>
-                        <div class="pds-ui-data-group">
-                            <div class="pds-ui-data-group-title">Tramos comprometidos en la resolución</div>
-                            <div class="pds-check-grid mb-2" id="tramos_box"></div>
-                            <button class="btn btn-outline-secondary pds-ui-action-button" id="btn_recomprometer">
-                                <i class="fas fa-sync"></i> Acreditar y recomprometer
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- 6. Evidencia -->
+                    <!-- PASO 2: respaldo del periodo que se está cobrando. -->
+<!-- 6. Evidencia -->
                     <section class="pds-ui-section">
                         <div class="pds-ui-section-header">
                             <div>
@@ -557,48 +591,155 @@
                         </div>
                     </section>
 
-                    <!-- 7. Validación presupuestaria -->
-                    <section class="pds-ui-section">
-                        <div class="pds-ui-section-header">
-                            <div>
-                                <h6 class="pds-ui-section-title mb-1">
-                                    <i class="fas fa-university text-primary"></i>
-                                    Validación presupuestaria
-                                </h6>
-                                <p class="pds-ui-section-subtitle mb-0">
-                                    Vista previa. El saldo se recalcula sin caché al enviar y al autorizar.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="pds-budget-validation">
-                            <div class="pds-budget-validation-header">
-                                <span class="pds-ui-data-group-title mb-0">Saldo por ítem presupuestario</span>
-                                <span class="origen-chip origen-ext">FIN21</span>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table pds-ui-table pds-budget-validation-table mb-2">
-                                    <thead>
-                                        <tr>
-                                            <th>Unidad · centro de costo</th>
-                                            <th>Ítem</th>
-                                            <th class="text-right">Saldo disponible</th>
-                                            <th class="text-right">Monto solicitado</th>
-                                            <th class="text-right">Saldo remanente</th>
-                                            <th>Resultado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_saldo"></tbody>
-                                </table>
-                            </div>
-                            <p class="pds-budget-validation-note mb-0">
-                                El procedimiento institucional no descuenta todavía los compromisos vivos de este
-                                workflow. Mientras eso no ocurra, la anticoncurrencia se resuelve en la transacción
-                                de envío y autorización.
-                            </p>
+                    <!-- CONTEXTO HEREDADO -- colapsado por defecto.
+                         Son antecedentes de la resolución y validaciones ya
+                         resueltas: se consultan cuando hacen falta, no compiten
+                         con la tarea principal. -->
+                    <section class="pds-ui-section ctx-block">
+                        <button type="button" class="ctx-toggle" id="btn_ctx"
+                            aria-expanded="false" aria-controls="ctx_body" onclick="toggleContexto()">
+                            <span class="ctx-toggle-main">
+                                <i class="fas fa-folder-open text-primary mr-2"></i>
+                                <span>Antecedentes de la resolución y validaciones</span>
+                                <span class="ctx-toggle-sub" id="ctx_resumen">—</span>
+                            </span>
+                            <i class="fas fa-chevron-down ctx-chevron" id="ctx_chevron"></i>
+                        </button>
+                        <div class="ctx-body is-hidden" id="ctx_body">
+                            <!-- 1. Antecedentes de la PDS -->
+                                                <section class="pds-ui-section">
+                                                    <div class="pds-ui-section-header">
+                                                        <div>
+                                                            <h6 class="pds-ui-section-title mb-1">
+                                                                <i class="fas fa-file-contract text-primary"></i>
+                                                                Antecedentes de la prestación
+                                                            </h6>
+                                                            <p class="pds-ui-section-subtitle mb-0">
+                                                                Datos heredados de la resolución. No se editan en el pago.
+                                                            </p>
+                                                        </div>
+                                                        <span class="origen-chip origen-pds">Dato de la PDS</span>
+                                                    </div>
+
+                                                    <div class="pds-ui-data-group">
+                                                        <div class="pds-ui-data-group-title">Expediente de origen</div>
+                                                        <div class="pds-ui-grid" id="grid_expediente"></div>
+                                                    </div>
+
+                                                    <div class="pds-ui-data-group">
+                                                        <div class="pds-ui-data-group-title">Imputación presupuestaria</div>
+                                                        <div class="pds-ui-grid" id="grid_imputacion"></div>
+                                                    </div>
+                                                </section>
+
+                            <!-- 2. Funcionario y contrato -->
+                                                <section class="pds-ui-section">
+                                                    <div class="pds-ui-section-header">
+                                                        <div>
+                                                            <h6 class="pds-ui-section-title mb-1">
+                                                                <i class="fas fa-user-tie text-primary"></i>
+                                                                Funcionario y contrato evaluado
+                                                            </h6>
+                                                            <p class="pds-ui-section-subtitle mb-0">
+                                                                Condiciones revalidadas a la fecha del pago.
+                                                            </p>
+                                                        </div>
+                                                        <span class="origen-chip origen-pds">Dato de la PDS</span>
+                                                    </div>
+                                                    <div class="pds-ui-grid mb-3" id="grid_funcionario"></div>
+                                                    <div class="pds-check-grid" id="checks_funcionario"></div>
+                                                </section>
+
+                            <!-- 3. Estado de pago -->
+                                                <section class="pds-ui-section">
+                                                    <div class="pds-ui-section-header">
+                                                        <div>
+                                                            <h6 class="pds-ui-section-title mb-1">
+                                                                <i class="fas fa-coins text-primary"></i>
+                                                                Estado de pago de la actividad
+                                                            </h6>
+                                                            <p class="pds-ui-section-subtitle mb-0">
+                                                                El monto pagable de una cuota es el menor entre el tope, el saldo autorizado,
+                                                                lo ejecutado y el saldo presupuestario.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="pds-ui-metrics-grid mb-3" id="grid_metricas"></div>
+                                                    <div class="pds-check-grid" id="checks_cupo"></div>
+                                                </section>
+
+                            <!-- 5. Compensación -->
+                                                <section class="pds-ui-section" id="sec_compensacion">
+                                                    <div class="pds-ui-section-header">
+                                                        <div>
+                                                            <h6 class="pds-ui-section-title mb-1">
+                                                                <i class="fas fa-clock text-primary"></i>
+                                                                Compensación horaria del periodo pagado
+                                                            </h6>
+                                                            <p class="pds-ui-section-subtitle mb-0">
+                                                                Se acredita contra el registro de marcaje. Si falta cobertura, se recomprometen
+                                                                únicamente los tramos pendientes.
+                                                            </p>
+                                                        </div>
+                                                        <span class="pds-ui-status-badge" id="badge_comp"
+                                                            style="color: var(--pds-du288-warning-dark);">
+                                                            <i class="fas fa-exclamation-circle"></i> Pendiente
+                                                        </span>
+                                                    </div>
+                                                    <div class="pds-ui-metrics-grid mb-3" id="grid_comp_metricas"></div>
+                                                    <div class="pds-ui-data-group">
+                                                        <div class="pds-ui-data-group-title">Tramos comprometidos en la resolución</div>
+                                                        <div class="pds-check-grid mb-2" id="tramos_box"></div>
+                                                        <button class="btn btn-outline-secondary pds-ui-action-button" id="btn_recomprometer">
+                                                            <i class="fas fa-sync"></i> Acreditar y recomprometer
+                                                        </button>
+                                                    </div>
+                                                </section>
+
+                            <!-- 7. Validación presupuestaria -->
+                                                <section class="pds-ui-section">
+                                                    <div class="pds-ui-section-header">
+                                                        <div>
+                                                            <h6 class="pds-ui-section-title mb-1">
+                                                                <i class="fas fa-university text-primary"></i>
+                                                                Validación presupuestaria
+                                                            </h6>
+                                                            <p class="pds-ui-section-subtitle mb-0">
+                                                                Vista previa. El saldo se recalcula sin caché al enviar y al autorizar.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="pds-budget-validation">
+                                                        <div class="pds-budget-validation-header">
+                                                            <span class="pds-ui-data-group-title mb-0">Saldo por ítem presupuestario</span>
+                                                            <span class="origen-chip origen-ext">FIN21</span>
+                                                        </div>
+                                                        <div class="table-responsive">
+                                                            <table class="table pds-ui-table pds-budget-validation-table mb-2">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Unidad · centro de costo</th>
+                                                                        <th>Ítem</th>
+                                                                        <th class="text-right">Saldo disponible</th>
+                                                                        <th class="text-right">Monto solicitado</th>
+                                                                        <th class="text-right">Saldo remanente</th>
+                                                                        <th>Resultado</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="tbody_saldo"></tbody>
+                                                            </table>
+                                                        </div>
+                                                        <p class="pds-budget-validation-note mb-0">
+                                                            El procedimiento institucional no descuenta todavía los compromisos vivos de este
+                                                            workflow. Mientras eso no ocurra, la anticoncurrencia se resuelve en la transacción
+                                                            de envío y autorización.
+                                                        </p>
+                                                    </div>
+                                                </section>
                         </div>
                     </section>
 
-                    <!-- 8. Resultado de validaciones -->
+<!-- 8. Resultado de validaciones -->
                     <section class="pds-ui-section">
                         <div class="pds-ui-section-header">
                             <div>
@@ -612,9 +753,10 @@
                         <div id="lista_validaciones"></div>
                     </section>
 
-                    <!-- 9. Acciones -->
-                    <div class="pds-ui-action-row mb-4">
+<!-- 9. Acciones -->
+                    <div class="acciones-fijas">
                         <div class="mr-auto" style="font-size:12px; color: var(--pds-du288-muted);">
+                            <div id="lbl_estado_envio" class="mb-1"></div>
                             <label class="mb-0" style="cursor:pointer;">
                                 <input type="checkbox" id="chk_fecha" class="mr-1">
                                 Maqueta: simular fecha posterior al término de ejecución
@@ -627,7 +769,7 @@
                         <button class="btn pds-ui-action-button pds-ui-action-button--primary" id="btn_enviar" disabled>
                             <i class="fas fa-paper-plane"></i> Enviar a DGDP</button>
                     </div>
-                </div>
+</div>
 
                 <!-- --------------- TAB: ARCHIVO --------------- -->
                 <div id="tab_archivo" class="is-hidden">
@@ -735,6 +877,14 @@
         };
         const esc = (s) => String(s == null ? '' : s)
             .replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+        // Tipo de monto de la prestación, heredado de la resolución
+        // (sg_fups.cod_tpps, catálogo sg_tpps): 1 = Fijo, 2 = Variable.
+        const esFijo = (staff) => Number(staff && staff.cod_tpps) !== 2;
+        // En una prestación fija el monto de cada mes ya viene comprometido y
+        // solo puede BAJAR con una causal (licencia, permiso, ejecución
+        // parcial). En una variable se ingresa libremente dentro del tope.
+        const montoEditable = (staff, fila) => !esFijo(staff) || !!(fila && fila.causal);
 
         // Dato en lectura: siempre .pds-ui-read-field / label / value
         const readField = (label, value, chip) => `
@@ -858,6 +1008,7 @@
             document.getElementById('btn_recomprometer').disabled = false;
             document.getElementById('vista_busqueda').classList.add('is-hidden');
             document.getElementById('vista_detalle').classList.remove('is-hidden');
+            marcarPaso(2);
             renderExpediente();
             window.scrollTo(0, 0);
         }
@@ -865,6 +1016,7 @@
         function volver() {
             document.getElementById('vista_detalle').classList.add('is-hidden');
             document.getElementById('vista_busqueda').classList.remove('is-hidden');
+            marcarPaso(1);
         }
 
         function setTab(t) {
@@ -894,9 +1046,14 @@
         function renderExpediente() {
             const p = exp.provision;
             document.getElementById('lbl_titulo_exp').textContent = staff.name;
-            document.getElementById('lbl_sub_exp').textContent =
-                'Resolución N.° ' + exp.resolutionExternalNumber + '/' + exp.resolutionYear +
+            const subtitulo = 'Resolución N.° ' + exp.resolutionExternalNumber + '/' + exp.resolutionYear +
                 ' · ' + p.activity + ' · CC ' + p.costCenter1 + '-' + p.costCenter2;
+            document.getElementById('lbl_sub_exp').textContent = subtitulo;
+            document.getElementById('rf_nombre').textContent = staff.name;
+            document.getElementById('rf_sub').textContent = subtitulo;
+            document.getElementById('paso1_resumen').textContent =
+                'CC ' + p.costCenter1 + '-' + p.costCenter2 + ' · Res. ' +
+                exp.resolutionExternalNumber + '/' + exp.resolutionYear + ' · ' + staff.name;
 
             document.getElementById('grid_expediente').innerHTML =
                 readField('Solicitud PDS', 'N.° ' + exp.requestId) +
@@ -905,7 +1062,18 @@
                 readField('Actividad', esc(p.activity)) +
                 readField('Jefe de proyecto', fRut(p.projectManagerDni)) +
                 readField('Solicitante de la resolución', esc(exp.applicantName)) +
-                readField('Rango de ejecución', fFecha(p.periodFrom) + ' – ' + fFecha(p.periodTo));
+                readField('Rango de ejecución', fFecha(p.periodFrom) + ' – ' + fFecha(p.periodTo)) +
+                // Tipo de monto y cuotas declaradas vienen de la resolución
+                // (sg_fups.cod_tpps y sg_fups.tot_cuotas) y son los que
+                // determinan cómo se comporta la sección de cuota más abajo.
+                readField('Tipo de monto', esFijo(staff)
+                    ? 'Fijo · reparto parejo por mes'
+                    : 'Variable · monto por mes se define en el pago') +
+                readField('Cuotas declaradas',
+                    staff.totCuotas == null
+                        ? SIN_INFO
+                        : staff.totCuotas + (staff.totCuotas === 1 ? ' cuota' : ' cuotas') +
+                          ' · tope completo por cada una');
 
             document.getElementById('grid_imputacion').innerHTML =
                 readField('Unidad financiera', p.costCenter1) +
@@ -949,13 +1117,41 @@
                 selMes.appendChild(o);
             }
 
-            cobertura = mesesDeEjecucion().map((m, i) => ({
-                ...m, incluido: true, monto: i === 0 ? staff.total : 0, causal: '',
+            // En una prestación FIJA el monto de cada mes ya viene comprometido
+            // desde la resolución: el total se repartió parejo entre los meses
+            // de ejecución, así que aquí se precarga y no se ingresa a mano.
+            // En una VARIABLE la resolución solo reservó el techo, así que cada
+            // mes parte en cero y el solicitante declara cuánto corresponde.
+            cobertura = mesesDeEjecucion().map((m) => ({
+                ...m,
+                incluido: true,
+                monto: esFijo(staff) ? montoParejoResolucion() : 0,
+                causal: '',
             }));
+            document.getElementById('nota_tipo_monto').innerHTML = esFijo(staff)
+                ? '<i class="fas fa-equals mr-2"></i>' +
+                  '<strong>Prestación fija.</strong> El total autorizado (' + clp(staff.total) + ') ' +
+                  'se repartió parejo entre los ' + mesesDeEjecucion().length + ' meses de ejecución: ' +
+                  clp(montoParejoResolucion()) + ' por mes. Ese monto viene comprometido desde la ' +
+                  'resolución y solo puede bajar indicando una causal de ajuste.'
+                : '<i class="fas fa-chart-line mr-2"></i>' +
+                  '<strong>Prestación variable.</strong> La resolución reservó un techo de ' +
+                  clp(staff.total) + ' pero no fijó el monto de cada mes. Indique cuánto corresponde ' +
+                  'a cada mes ejecutado, sin superar el tope de esta cuota.';
+
             renderCobertura();
             renderCompensacion();
             renderArchivo();
             recalcular();
+        }
+
+        // Monto que la resolución comprometió para cada mes en una prestación
+        // fija: el total repartido parejo entre los meses de ejecución. Es el
+        // valor de partida de cada fila y el techo al que vuelve cuando se
+        // retira una causal de ajuste.
+        function montoParejoResolucion() {
+            const meses = mesesDeEjecucion().length;
+            return meses ? Math.round(staff.total / meses) : 0;
         }
 
         function renderCobertura() {
@@ -982,7 +1178,10 @@
                     </td>
                     <td class="text-right">
                         <input type="text" class="form-control monto-input monto-mes d-inline-block"
-                            data-i="${i}" value="${Number(c.monto).toLocaleString('es-CL')}">
+                            data-i="${i}" value="${Number(c.monto).toLocaleString('es-CL')}"
+                            ${montoEditable(staff, c)
+                                ? ''
+                                : 'readonly title="Monto comprometido en la resolución (prestación fija). Para bajarlo, indique una causal de ajuste."'}>
                     </td>
                 </tr>`).join('');
 
@@ -990,7 +1189,17 @@
                 cobertura[this.dataset.i].incluido = this.checked; recalcular();
             }));
             document.querySelectorAll('.causal-mes').forEach((el) => el.addEventListener('change', function () {
-                cobertura[this.dataset.i].causal = this.value; recalcular();
+                const fila = cobertura[this.dataset.i];
+                fila.causal = this.value;
+                // En una prestación fija, declarar una causal es lo que habilita
+                // bajar el monto de ese mes; quitarla lo devuelve al valor
+                // comprometido en la resolución. Se vuelve a pintar la tabla
+                // para que el campo refleje ese cambio de estado.
+                if (esFijo(staff)) {
+                    if (!fila.causal) fila.monto = montoParejoResolucion();
+                    renderCobertura();
+                }
+                recalcular();
             }));
             document.querySelectorAll('.monto-mes').forEach((el) => {
                 el.addEventListener('input', function () {
@@ -1084,6 +1293,20 @@
                 el.disabled = !cobertura[el.dataset.i].incluido;
             });
             document.getElementById('lbl_total_cuota').textContent = clp(total);
+
+            // Resumen permanente del encabezado
+            const nCuota = (staff.cuotas || []).length + 1;
+            document.getElementById('rf_autorizado').textContent = clp(staff.total);
+            document.getElementById('rf_disponible').textContent = clp(saldoContractual);
+            document.getElementById('rf_cuota_label').textContent =
+                'Cuota ' + nCuota + ' de ' + (staff.totCuotas || staff.maxCuotasAnio);
+            document.getElementById('rf_cuota').textContent = clp(total);
+
+            // Titular del bloque colapsado: adelanta lo que hay adentro para
+            // que no haya que abrirlo solo para saber si algo requiere atención.
+            document.getElementById('ctx_resumen').textContent =
+                'Tope por cuota ' + clp(tope) + ' · máximo pagable ' + clp(limite) +
+                (staff.dentroJor === 'S' ? ' · exige compensación' : '');
 
             document.getElementById('grid_metricas').innerHTML =
                 metric('Monto total autorizado', clp(staff.total)) +
@@ -1196,6 +1419,25 @@
                 V.filter((v) => v.e === 'secondary').length + ' sin fuente y ' +
                 V.filter((v) => v.e === 'ok').length + ' conformes.';
             document.getElementById('btn_enviar').disabled = bloqueos.length > 0;
+
+            // Estado del envío junto al botón: si algo bloquea, se nombra la
+            // causa ahí mismo en vez de obligar a buscarla en la lista
+            // (guía §5: resultado + objeto + causa + acción esperada).
+            document.getElementById('lbl_estado_envio').innerHTML = bloqueos.length
+                ? '<span style="color: var(--pds-du288-danger-dark);">' +
+                  '<i class="fas fa-ban mr-1"></i>No se puede enviar: ' + esc(bloqueos[0].t.toLowerCase()) +
+                  (bloqueos.length > 1 ? ' y ' + (bloqueos.length - 1) + ' bloqueo(s) más.' : '.') + '</span>'
+                : '<span style="color: var(--pds-du288-success-dark);">' +
+                  '<i class="fas fa-check-circle mr-1"></i>Listo para enviar a DGDP.</span>';
+        }
+
+        // Abre y cierra el contexto heredado. Cerrado por defecto: son
+        // antecedentes de consulta, no parte de la tarea.
+        function toggleContexto() {
+            const cuerpo = document.getElementById('ctx_body');
+            const abierto = cuerpo.classList.toggle('is-hidden') === false;
+            document.getElementById('ctx_chevron').classList.toggle('is-open', abierto);
+            document.getElementById('btn_ctx').setAttribute('aria-expanded', String(abierto));
         }
 
         // ===================== interacciones =====================
@@ -1215,32 +1457,13 @@
             fechaSimulada = this.checked; recalcular();
         });
 
-        // Bandeja del solicitante
-        function renderBandeja() {
-            const items = DB_PAGOS.bandeja || [];
-            document.getElementById('lbl_bandeja_total').textContent = items.length;
-            document.getElementById('sec_bandeja').classList.toggle('is-hidden', items.length === 0);
-            const meta = {
-                devuelta: ['error', 'fa-undo', 'Devuelta a corrección'],
-                borrador: ['secondary', 'fa-edit', 'Borrador sin enviar'],
-            };
-            document.getElementById('lista_bandeja').innerHTML = items.map((it) => {
-                const [estado, ico, titulo] = meta[it.tipo] || meta.borrador;
-                return `<div class="pds-ui-read-field pds-ui-read-field--compact mb-2 d-flex flex-row
-                             align-items-center justify-content-between">
-                    <div>
-                        <span class="pds-ui-read-value d-flex align-items-center" style="gap:8px;">
-                            <i class="fas ${ico}" style="color:var(--pds-du288-${
-                                estado === 'error' ? 'danger-dark' : 'muted'});"></i>
-                            <span>${titulo}${it.folio ? ' · ' + it.folio : ''}</span>
-                        </span>
-                        <span class="pds-ui-section-subtitle">${esc(it.funcionario)} · ${esc(it.detalle)}
-                            · ${fFecha(it.fecha + 'T12:00:00Z')}</span>
-                    </div>
-                    <button class="btn btn-outline-secondary pds-ui-action-button"
-                        onclick="seleccionar(0)">Continuar</button>
-                </div>`;
-            }).join('');
+        // Marca en qué paso del formulario se está. La selección y el armado de
+        // la cuota son dos pasos de la misma solicitud, no dos pantallas sueltas.
+        function marcarPaso(n) {
+            document.querySelectorAll('#pasos_form .paso').forEach((el, i) => {
+                el.classList.toggle('is-actual', i === n - 1);
+                el.classList.toggle('is-hecho', i < n - 1);
+            });
         }
 
         // Envío: confirmación previa obligatoria
@@ -1266,7 +1489,7 @@
             b.innerHTML = '<i class="fas fa-check-circle"></i> Enviada a DGDP';
         });
 
-        renderBandeja();
+        marcarPaso(1);
         buscar();
     </script>
 </body>

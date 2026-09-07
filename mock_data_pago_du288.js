@@ -39,6 +39,57 @@ const DB_PAGOS = {
     },
   ],
 
+  // Bandejas por rol. El flujo es Solicitante → DGDP → Finanzas (Q-E05), y
+  // Finanzas puede devolver a DGDP por falta de fondos, no rechazar de plano
+  // (Q-E11). Cada fila abre la vista del rol correspondiente.
+  bandejas: {
+    solicitante: {
+      rol: "Solicitante · Jefe de proyecto",
+      vista: "01_vista_solicitante_pago.html",
+      accion: "Continuar",
+      filas: [
+        { folio: "PAG-2026-0031", funcionario: "JEANETTE DEL PILAR POZA ARAVENA", resolucion: "42/2026",
+          cuota: "1 de 2", monto: 141111, estado: "Devuelta a corrección", tono: "warn",
+          detalle: "DGDP solicitó corregir el periodo cubierto por la cuota.", fecha: "2026-08-28" },
+        { folio: null, funcionario: "JEANETTE DEL PILAR POZA ARAVENA", resolucion: "42/2026",
+          cuota: "1 de 2", monto: 141111, estado: "Borrador", tono: "secondary",
+          detalle: "Sin enviar. Falta adjuntar el informe de actividades.", fecha: "2026-09-01" },
+        { folio: "PAG-2026-0028", funcionario: "MARCO ANTONIO SEPULVEDA DIAZ", resolucion: "39/2026",
+          cuota: "2 de 2", monto: 220000, estado: "En revisión DGDP", tono: "info",
+          detalle: "Enviada el 26-08. Sin acción pendiente de su parte.", fecha: "2026-08-26" },
+      ],
+    },
+    dgdp: {
+      rol: "DGDP · Revisión normativa",
+      vista: "02_vista_dgdp_pago.html",
+      accion: "Revisar",
+      filas: [
+        { folio: "PAG-2026-0028", funcionario: "MARCO ANTONIO SEPULVEDA DIAZ", resolucion: "39/2026",
+          cuota: "2 de 2", monto: 220000, estado: "Pendiente de revisión", tono: "warn",
+          detalle: "Última cuota: exige ejecución terminada.", fecha: "2026-08-26" },
+        { folio: "PAG-2026-0033", funcionario: "CAROLINA ANDREA MUÑOZ SOTO", resolucion: "51/2026",
+          cuota: "1 de 2", monto: 98000, estado: "Pendiente de revisión", tono: "warn",
+          detalle: "Cuota parcial con causal de licencia médica.", fecha: "2026-09-03" },
+        { folio: "PAG-2026-0021", funcionario: "JORGE LUIS FUENTES ROJAS", resolucion: "33/2026",
+          cuota: "1 de 1", monto: 310000, estado: "Devuelta por Finanzas", tono: "danger",
+          detalle: "Finanzas devolvió por falta de saldo en el centro de costo.", fecha: "2026-09-04" },
+      ],
+    },
+    finanzas: {
+      rol: "Finanzas · Autorización y pago",
+      vista: "03_vista_direccion_finanzas_pago.html",
+      accion: "Autorizar",
+      filas: [
+        { folio: "PAG-2026-0019", funcionario: "PATRICIA ELENA GODOY LEIVA", resolucion: "28/2026",
+          cuota: "2 de 2", monto: 180000, estado: "Aprobada por DGDP", tono: "info",
+          detalle: "CC 1610-0 · ítem 306. Saldo suficiente.", fecha: "2026-09-05" },
+        { folio: "PAG-2026-0022", funcionario: "RODRIGO ESTEBAN VERA CAMPOS", resolucion: "35/2026",
+          cuota: "1 de 2", monto: 256250, estado: "Aprobada por DGDP", tono: "info",
+          detalle: "CC 9010-5 · ítem 306. Verificar saldo antes de comprometer.", fecha: "2026-09-05" },
+      ],
+    },
+  },
+
   expedientes: [
     {
       requestId: 205,
@@ -114,7 +165,18 @@ const DB_PAGOS = {
           totalAmmount: 141111,
           grossTotal: 141111,
           codCoin: 1,
+          // cod_tpps (catálogo sg_tpps) se usa como tipo de monto:
+          //   1 = Fijo    → el total se reparte parejo entre los meses de
+          //                 ejecución; el monto de cada mes viene comprometido
+          //                 desde la resolución y no se ingresa en el pago.
+          //   2 = Variable→ el monto real de cada mes se define en el pago;
+          //                 la resolución solo reservó el techo.
+          // (S0-013 Q-A06: "también hay pagos fijos y variables")
           cod_tpps: 1,
+          // Cuotas declaradas en la resolución (sg_fups.tot_cuotas). Fija el
+          // techo del bruto: tope × cuotas. El límite se cuenta POR CUOTA, no
+          // por meses (Q-C01), y cada cuota dispone del tope completo (Q-C02).
+          totCuotas: 2,
           f_inicio: "2026-09-02T04:00:00.0Z",
           f_termino: "2026-09-17T03:00:00.0Z",
           nomCargo: "ADMINISTRATIVOS",
