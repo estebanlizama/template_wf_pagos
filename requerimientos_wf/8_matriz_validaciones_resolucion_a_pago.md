@@ -117,7 +117,6 @@ Normativa: [reglas_restricciones_du288_d09.md](../../reglas/reglas_restricciones
 | `COMPENSACION_JORNADA` / `requiredCompensation` | Exigencia de compensación según estamento, SEA y modalidad | **H** | El compromiso quedó fijado en la PDS | UI |
 | `COMPENSACION_TOTAL_INCOMPLETA` / `totalCompensationMismatch` | La compensación registrada debe cubrir lo exigido | **H** + **N** | Heredado como compromiso; **nuevo**: acreditar que la compensación se *ejecutó* en el periodo pagado (`sg_fuc2`) | DGDP |
 | `compensationTimeOverlap`, `compensationTimeDuplicate`, `compensationDateOutOfPeriod`, `compensationOverlapWorkday` | Consistencia de tramos y jornada institucional 08:30–17:18 | **A** | Se reaplican sobre los tramos recomprometidos en el pago | UI + PA-TX |
-| `LIMITE_DIARIO_EXCEDIDO` | Límite de 12 horas diarias | **A** | Igual que el anterior | UI + PA-TX |
 | `LIMITE_SEMANAL_EXCEDIDO` | `totHoras + hrsHonor + prestación ≤ 56` | **A** | Se revalida sobre los tramos nuevos; el compromiso original no se recalcula | UI + PA-TX |
 | `HORARIO_EJECUCION_JORNADA`, `executionSchedule*` | Distribución horaria de ejecución | **H** | Antecedente | — |
 

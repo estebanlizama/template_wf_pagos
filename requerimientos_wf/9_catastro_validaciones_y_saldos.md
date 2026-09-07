@@ -284,7 +284,6 @@ Fuente del catálogo: [issueMeta.js](../../../sg-solicitudes-frontend/utils/serv
 | RES-JO-05 | Tramos sin solapamiento ni duplicados | `formatters.js` | error | BLOQUEA |
 | RES-JO-06 | Fecha del tramo dentro del periodo habilitado | `formatters.js` | error | BLOQUEA |
 | RES-JO-07 | Compensación fuera de la jornada institucional 08:30–17:18 | `compensationOverlapsInstitutionalWorkday` | error | BLOQUEA |
-| RES-JO-08 | Límite de 12 horas diarias | `getCompensationWorkloadEvaluation` | error | BLOQUEA |
 | RES-JO-09 | Límite de 56 horas semanales (`totHoras + hrsHonor + prestación`) | `sg_fupssSecgen13` + PDS activas | error | BLOQUEA |
 | RES-JO-10 | Distribución horaria de ejecución obligatoria y consistente | `sg_fuhosSecgen01` | error | BLOQUEA |
 | RES-JO-11 | La distribución no supera el cupo semanal disponible | cálculo en UI | error | BLOQUEA |

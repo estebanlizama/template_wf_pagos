@@ -329,7 +329,7 @@ Para cada regla se debe definir: fuente, campos de consulta, cobertura temporal,
 
 **Q-I05.** ¿Qué horas se consideran para el máximo semanal de 56: contrato, honorarios, prestación y otras compensaciones?
 
-**Q-I06.** ¿La regla máxima diaria es 12 horas totales? ¿Qué fuentes se suman y cómo se manejan cruces de medianoche?
+**Q-I06 (resuelta).** No se aplica un tope diario. Los cruces de medianoche se registran como un solo tramo cuya hora de término corresponde al día siguiente; se mantiene el máximo semanal de 56 horas y la restricción de días hábiles.
 
 **Q-I07.** ¿Se valida la planificación aprobada, las horas efectivamente realizadas o ambas?
 
@@ -577,4 +577,3 @@ Para cada escenario se debe entregar un ejemplo anonimizado con datos iniciales,
 - Se conoce el alcance exacto de SecGen, DGDP, Finanzas, FIN21 y Tesorería/Remuneraciones.
 - Los escenarios positivos, negativos, parciales, excepcionales, concurrentes y de reversa tienen resultado esperado.
 - Cada decisión puede transformarse en requisito, cambio de BDD/PA/API/UI y caso de prueba.
-
