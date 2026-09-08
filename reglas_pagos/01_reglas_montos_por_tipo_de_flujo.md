@@ -93,7 +93,7 @@ Implementación acordada (2026-09-07): se reutiliza `sg_fups.cod_tpps`
 
 | `cod_tpps` | Tipo | Comportamiento del monto |
 |---|---|---|
-| 1 | **Fijo** | Monto parejo entre los meses de ejecución (`monto_mes = mto_total ÷ periodos`). Conocido con certeza desde la solicitud. |
+| 1 | **Fijo** | Monto parejo entre los meses de ejecución (`mto_total ÷ meses`, calculado en pantalla). Conocido con certeza desde la solicitud. |
 | 2 | **Variable** | El monto real de cada mes no se conoce al crear la solicitud. La solicitud declara solo el **techo máximo**; la distribución se define al pago. |
 
 Coherente con C-03 (el solicitante distribuye manualmente en ambos casos) y
@@ -118,13 +118,29 @@ con C-10 (en ambos el monto solo puede bajar respecto del techo).
 | 3 | Variable | No | Tope completo por cuota, acotado por saldo autorizado | Según distribución del solicitante | Solo el techo |
 | 4 | Variable | Sí | Sin tope (A-02) | Libre | Solo el techo |
 
-## 8. Corrección pendiente en el frontend
+## 8. Estado del frontend (actualizado 2026-09-07)
 
-`getTopBrutoLabel` (PdsDu288RequestForm.vue) acota el techo por meses de
-ejecución solo en el caso fijo; en el variable usa el cupo completo sin
-acotar. Debe acotar en ambos: un funcionario que ejecuta un solo mes no
-puede requerir dos cuotas — no hay un segundo mes que pagar, y ese número
-alimenta compromisos presupuestarios.
+Corregido: `getTopBrutoLabel` ya no deriva el techo de los meses de
+ejecución. El campo **Cuotas esperadas** (`worker.nroCuotas`, acotado por
+`getMaxDeclarableInstallments` a `min(cupo disponible, meses de ejecución)`)
+es ahora el dato que fija el techo: `tope × cuotas declaradas`, igual para
+fijo y variable — resuelve T-01/T-02 a nivel de solicitud.
+
+Cubierto en el formulario de solicitud:
+
+| Regla | Dónde |
+|---|---|
+| T-04 (techo acotado por saldo autorizado) | `workerPaymentMonthsValidation`, `ceil(total/tope) ≤ cuotas declaradas` |
+| C-01 (define el solicitante) | Campo "Cuotas esperadas" |
+| C-09 (mes bloqueado para la misma actividad) | Regla 11 (`cost_center_month_locked`) |
+| Numeral 2 / T-05 (suma mensual del funcionario) | Regla 3 (`monthlyCapAggregateCheck`), entre solicitudes concurrentes |
+| §5 fijo/variable | `worker.codTpps`, reparto visible en `ExecutionMonthsTags` |
+
+**No cubierto — son reglas de la etapa de pago, no de la solicitud** (T-01,
+T-02, T-03, T-06, C-02 a C-08, C-10): dependen de que exista una cuota real
+con su propio monto y estado, y hoy `sg_fume.mto_apagar` no se escribe (Q-B13
+sigue bloqueando). Mientras tanto, la solicitud solo puede garantizar el
+agregado (techo total), no el detalle por cuota.
 
 ## 9. Puntos abiertos — no asumir criterio
 
