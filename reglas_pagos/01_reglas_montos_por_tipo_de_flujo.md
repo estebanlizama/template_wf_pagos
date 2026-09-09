@@ -42,6 +42,49 @@ Consecuencias:
 | T-04 | El techo real de cada cuota sigue acotado por el **saldo del monto total autorizado** en la resolución: *"si se paga 100 en la primera no se puede pagar 100000"* | Q-A07 |
 | T-05 | Cuando dos cuotas caen en el **mismo mes** (solo permitido por deudas/atrasos), sí se evalúa además la **suma mensual** del funcionario contra el tope de ese mes | Q-C05, Q-C08 |
 | T-06 | Las cuotas **ya pagadas o en transacción** consumen cupo y saldo; no se recalculan ni se liberan | Confirmación 2026-09-07 |
+| T-07 | En **monto fijo**, la factibilidad se mide sobre la **cuota más cargada**, no sobre la razón `total ÷ tope`: los meses son indivisibles y la cuota agrupa meses enteros | Deducida de §5 + C-03 + T-01/T-02; confirmación 2026-09-09 |
+
+### T-07 — factibilidad del reparto en monto fijo
+
+En **fijo** cada mes lleva exactamente `mto_total ÷ meses` y una cuota agrupa
+**meses enteros** (C-03). Entonces la cuota más cargada tiene
+`ceil(meses ÷ cuotas)` meses, y **es esa** la que debe caber bajo el tope:
+
+```
+ceil(meses ÷ cuotas) × (mto_total ÷ meses)  ≤  tope
+```
+
+La razón simple `ceil(total ÷ tope) ≤ cuotas` **no alcanza**, porque asume que
+el monto se puede cortar en cualquier punto. Contraejemplo real:
+
+> $300.000 en **3 meses**, tope $150.000, **2 cuotas**, fijo.
+> `ceil(300.000 ÷ 150.000) = 2 ≤ 2` → la aprobaría.
+> Pero cada mes lleva $100.000 y toda agrupación de 3 meses en 2 cuotas deja una
+> cuota de 2 meses = **$200.000 > tope**. No existe partición válida: la
+> solicitud se aprobaría y después no se podría pagar dentro del tope.
+
+Se resuelve al revés, que además da el mínimo de cuotas necesario:
+
+```
+meses por cuota   = floor(tope ÷ (mto_total ÷ meses))
+cuotas necesarias = ceil(meses ÷ meses por cuota)
+```
+
+Si `meses por cuota < 1`, un solo mes ya excede el tope y **ninguna cantidad de
+cuotas lo arregla**: hay que bajar el monto o extender la ejecución.
+
+De la misma desigualdad sale el **techo del bruto en fijo**, que tampoco es
+`tope × cuotas`:
+
+```
+bruto máximo (fijo) = tope × meses ÷ ceil(meses ÷ cuotas)
+```
+
+Con 3 meses y 2 cuotas el techo real es `tope × 1,5`, no `tope × 2`.
+
+En **variable** nada de esto aplica: el monto de cada mes se define al pagar, se
+reparte libremente entre las cuotas, y sigue valiendo `ceil(total ÷ tope) ≤
+cuotas` con techo `tope × cuotas`. Es la misma frontera que separa a ADR-010.
 
 Monto máximo de una cuota:
 
@@ -118,19 +161,23 @@ con C-10 (en ambos el monto solo puede bajar respecto del techo).
 | 3 | Variable | No | Tope completo por cuota, acotado por saldo autorizado | Según distribución del solicitante | Solo el techo |
 | 4 | Variable | Sí | Sin tope (A-02) | Libre | Solo el techo |
 
-## 8. Estado del frontend (actualizado 2026-09-07)
+## 8. Estado del frontend (actualizado 2026-09-09)
 
-Corregido: `getTopBrutoLabel` ya no deriva el techo de los meses de
-ejecución. El campo **Cuotas esperadas** (`worker.nroCuotas`, acotado por
-`getMaxDeclarableInstallments` a `min(cupo disponible, meses de ejecución)`)
-es ahora el dato que fija el techo: `tope × cuotas declaradas`, igual para
-fijo y variable — resuelve T-01/T-02 a nivel de solicitud.
+El campo **Cuotas esperadas** (`worker.nroCuotas`, acotado por
+`getMaxDeclarableInstallments` a `min(cupo disponible, meses de ejecución)`) es
+el dato que fija el techo, no los meses de ejecución — resuelve T-01/T-02 a
+nivel de solicitud.
+
+**El techo ya no es `tope × cuotas` para ambos tipos** (corrección 2026-09-09,
+T-07): en fijo es `tope × meses ÷ ceil(meses ÷ cuotas)`, porque la cuota agrupa
+meses enteros; en variable sigue siendo `tope × cuotas`.
 
 Cubierto en el formulario de solicitud:
 
 | Regla | Dónde |
 |---|---|
-| T-04 (techo acotado por saldo autorizado) | `workerPaymentMonthsValidation`, `ceil(total/tope) ≤ cuotas declaradas` |
+| T-04 (techo acotado por saldo autorizado) | `workerPaymentMonthsValidation` |
+| T-07 (factibilidad del reparto en fijo) | `getPaymentMonthsValidation` (frontend) y `validateStaffAuthorizedAmount` (backend); techo en `getTopBrutoLabel` |
 | C-01 (define el solicitante) | Campo "Cuotas esperadas" |
 | C-09 (mes bloqueado para la misma actividad) | Regla 11 (`cost_center_month_locked`) |
 | Numeral 2 / T-05 (suma mensual del funcionario) | Regla 3 (`monthlyCapAggregateCheck`), entre solicitudes concurrentes |
