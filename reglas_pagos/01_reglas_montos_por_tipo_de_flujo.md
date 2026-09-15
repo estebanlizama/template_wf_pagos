@@ -43,6 +43,7 @@ Consecuencias:
 | T-05 | Cuando dos cuotas caen en el **mismo mes** (solo permitido por deudas/atrasos), sí se evalúa además la **suma mensual** del funcionario contra el tope de ese mes | Q-C05, Q-C08 |
 | T-06 | Las cuotas **ya pagadas o en transacción** consumen cupo y saldo; no se recalculan ni se liberan | Confirmación 2026-09-07 |
 | T-07 | En **monto fijo**, la factibilidad se mide sobre la **cuota más cargada**, no sobre la razón `total ÷ tope`: los meses son indivisibles y la cuota agrupa meses enteros | Deducida de §5 + C-03 + T-01/T-02; confirmación 2026-09-09 |
+| T-08 | El reparto de un monto **fijo** entre los meses usa el **método de resto mayor**: cada mes recibe el piso de la división y los pesos sobrantes se entregan de a uno a los primeros meses. La suma de los meses es **siempre** exactamente `mto_total` | Estándar de asignación (Hamilton / largest remainder); corrección 2026-09-15 |
 
 ### T-07 — factibilidad del reparto en monto fijo
 
@@ -95,6 +96,47 @@ monto de la cuota = MIN(
     monto ajustado por licencia o permiso           (Q-B12)
 )
 ```
+
+### T-08 — reparto del monto fijo entre los meses
+
+En **fijo** cada mes lleva `mto_total ÷ meses`, pero esa división casi nunca
+da exacta y el peso no se puede partir. Repartir con `Math.round` rompe por
+las dos puntas:
+
+| Total | Meses | `Math.round` | Error |
+|---|---|---|---|
+| $600.000 | 7 | 85.714 × 7 = 599.998 | **−$2**, se pierde |
+| $200.000 | 3 | 66.667 × 3 = 200.001 | **+$1, excede lo autorizado** |
+| $850.000 | 11 | 77.273 × 11 = 850.003 | **+$3, excede lo autorizado** |
+
+Los casos `+` son los graves: violan T-04 pagando más de lo que la resolución
+autorizó. El redondeo bancario **no** resuelve esto — corrige el sesgo al
+redondear valores independientes, pero no garantiza que las partes sumen el
+total; medido sobre estos mismos casos da exactamente el mismo error.
+
+El reparto correcto es en dos pasos:
+
+```
+base  = floor(mto_total ÷ meses)        // el piso, para todos
+resto = mto_total − base × meses        // siempre 0 ≤ resto < meses
+mes i = base + (i < resto ? 1 : 0)      // el sobrante, de a un peso
+```
+
+**Invariante:** `Σ meses = mto_total`, exacto, siempre. Y como `resto` es
+menor que la cantidad de meses, ningún mes difiere de otro en más de 1 peso.
+
+Que el peso extra vaya a los **primeros** meses es decisión nuestra, no del
+estándar: con meses de igual peso todos los restos empatan, y el método deja
+el desempate abierto. Se fija en los primeros por ser determinista, auditable
+y la implementación convencional.
+
+No aplica a **variable**: ahí el monto de cada mes lo define el solicitante al
+pagar, no sale de una división.
+
+Implementado en `getFixedMonthAmounts` (`normative/formatters.js`), con los
+casos de regresión en `paymentMonthsValidation.test.cjs`. Los tests previos
+usaban 111.111÷3 y 250.000÷1 — que sí dividen exacto — y por eso el defecto
+pasó inadvertido.
 
 ## 3. Cuotas: cuántas, cuándo y quién
 
@@ -178,6 +220,7 @@ Cubierto en el formulario de solicitud:
 |---|---|
 | T-04 (techo acotado por saldo autorizado) | `workerPaymentMonthsValidation` |
 | T-07 (factibilidad del reparto en fijo) | `getPaymentMonthsValidation` (frontend) y `validateStaffAuthorizedAmount` (backend); techo en `getTopBrutoLabel` |
+| T-08 (reparto por resto mayor) | `getFixedMonthAmounts` (`normative/formatters.js`); visible mes a mes en `ExecutionMonthsTags` |
 | C-01 (define el solicitante) | Campo "Cuotas esperadas" |
 | C-09 (mes bloqueado para la misma actividad) | Regla 11 (`cost_center_month_locked`) |
 | Numeral 2 / T-05 (suma mensual del funcionario) | Regla 3 (`monthlyCapAggregateCheck`), entre solicitudes concurrentes |
