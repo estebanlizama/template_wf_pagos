@@ -11,15 +11,30 @@ Formato según `template-du09/cambios_pa_solicitud_wf/reglas_estandarizacion_pa.
 Alimenta la bandeja del jefe de proyecto: prestaciones DU288 con resolucion
 archivada de las que es responsable, con el avance de pago de sus cuotas.
 
-### Por que filtra por `sg_prse.rut_jefpro`
+### Por que filtra por el responsable vigente y no por `sg_prse.rut_jefpro`
 
-El jefe de proyecto queda registrado en la propia prestacion al crearse la
-resolucion, asi que el filtro es directo y no necesita cruzar a `fin21_db`.
-Tiene una consecuencia abierta: si esa persona cambia de rol, las resoluciones
-viejas le siguen apareciendo a ella y no al responsable vigente del centro de
-costo. S0-001 define al solicitante como "jefe de proyecto del centro de costo"
-(apunta al vigente) y Q-E03 como "supervisor de dicha actividad" (apunta al
-declarado). Pendiente de cerrar antes de que existan datos reales.
+Gestiona el pago quien esta a cargo del centro de costo hoy, no quien quedo
+declarado en la resolucion. Filtrar por `rut_jefpro` dejaba las cuotas
+impagables al cambiar el jefe de proyecto: el saliente perdia el acceso y el
+entrante no recibia ninguna fila, porque el RUT congelado en la prestacion ya
+no correspondia a nadie con el rol. Cerrando asi el conflicto entre S0-001
+("jefe de proyecto del centro de costo", apunta al vigente) y Q-E03
+("supervisor de dicha actividad", apunta al declarado): manda el vigente, y
+`rut_jefpro` se devuelve igual como dato informativo para que el nuevo
+responsable sepa a quien preguntar por la actividad.
+
+Va como `exists` y no como `inner join` a proposito. Si un centro de costo
+tuviera dos responsables vigentes, el join multiplicaria las filas y **todos
+los `sum()` quedarian inflados** -- montos pagados y saldos al doble.
+
+Con este filtro la autorizacion queda dentro del PA: quien no es responsable
+vigente de ningun centro de costo recibe cero filas, sin necesitar una guarda
+de rol aparte en el backend.
+
+Queda un borde: un centro de costo sin responsable vigente deja sus
+prestaciones invisibles para todos. Es poco probable, pero las cuotas se
+pierden en silencio, asi que conviene una vista de DGDP sin el filtro o un
+conteo de huerfanas.
 
 ### Normalizacion del RUT
 
@@ -61,6 +76,19 @@ de prestaciones previas.
 | 3 | Pago parcial | Alguna cuota pagada y otras no |
 | 4 | Pagada | Todas las cuotas en 9 |
 | 5 | Con rechazo | Alguna cuota en 10 |
+
+### Activacion del menu de pagos
+
+El menu se activa cuando la persona tiene al menos una prestacion en proceso,
+es decir `cod_estpag` distinto de 4 (pagada) y de 0 (sin cuotas). Lo resuelve
+`GET /requests/service-provision/payments/access-summary`, que el frontend
+consulta una vez por sesion y cachea: no es un chequeo por render.
+
+Ese resumen devuelve `isProjectManager` aparte, tomado de `sg_cctosSecgen05`
+con `@id_modprse = 2` -- la misma definicion de jefe de proyecto que ya usa el
+lado solicitante. Se mantiene separado porque sin el, cero prestaciones no
+distingue "no tienes el rol" de "no tienes nada pendiente", y el estado vacio
+no podria explicar por que la tabla esta vacia.
 
 ### Lo que el PA no resuelve
 

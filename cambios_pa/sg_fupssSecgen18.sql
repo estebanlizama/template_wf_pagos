@@ -15,12 +15,12 @@ go
 /* Procedimiento : sg_fupssSecgen18
 
    Entrada :
-   @rut_person          -> RUT del jefe de proyecto. (Opcional)
+   @rut_person          -> RUT del responsable vigente del centro de costo. (Opcional)
    @ano                 -> Ano de ejecucion. Usa el actual si no se envia. (Opcional)
    @mes                 -> Mes de corte, trae las cuotas hasta @ano/@mes inclusive. (Opcional)
 
-   Objetivo : Prestaciones DU288 con resolucion archivada a cargo de un jefe de
-   proyecto, con el avance de pago de sus cuotas
+   Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
+   costo que la persona tiene a cargo, con el avance de pago de sus cuotas
 
    Creacion: ELA 2026/09/22
    Actualizacion: Sin registro
@@ -58,6 +58,7 @@ SELECT
     rtrim(isnull(ccto.nom_ab_cct, '')) AS nom_ab_cct,
     prse.cc_global,
     prse.pry_global,
+    prse.rut_jefpro,
     fu.f_inicio,
     fu.f_termino,
     fu.mto_total,
@@ -114,7 +115,12 @@ LEFT JOIN
     secgen_db.dbo.sg_fume fume
     ON fume.id_funprse = fu.id_funprse
 WHERE
-    prse.rut_jefpro = @rut_person
+    exists (select 1
+              from fin21_db..es_ecct ecct
+             where ecct.cod_ccto   = prse.cod_ccto
+               and ecct.cod_unifin = prse.cod_unifin
+               and ecct.vigente    = 'S'
+               and ecct.rut        = @rut_person)
 AND
     isnull(prse.cod_modprs, 1) = 2
 AND
@@ -127,7 +133,7 @@ GROUP BY
     fu.id_funprse, fu.nro_solici, fu.rut,
     pers.nom_dest, pers.nom_nombre, pers.nom_appate, pers.nom_apmate,
     prse.actividad, prse.cod_unifin, prse.cod_ccto, ccto.nom_ab_cct,
-    prse.cc_global, prse.pry_global,
+    prse.cc_global, prse.pry_global, prse.rut_jefpro,
     fu.f_inicio, fu.f_termino,
     fu.mto_total, fu.mto_tope, fu.tot_cuotas, fu.cod_tpps,
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, soli.f_solicit
