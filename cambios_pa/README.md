@@ -94,3 +94,20 @@ no podria explicar por que la tabla esta vacia.
 
 Devuelve conteos, no las cuotas una por una. Los chips de meses de la vista de
 detalle se cargan con el PA de detalle, no con este.
+
+---
+
+## sp_as01sSecgen01 — consulta de asistencia, ausencias y justificaciones
+
+Alimenta la validación de DGDP (Dependencia D3 / Sección H / PAG-33) para verificar si un
+funcionario presenta licencias médicas, permisos sin goce o ausencias durante el periodo
+de ejecución de una cuota de prestación DU288.
+
+### Entradas
+- `@rut char(9)`: RUT del funcionario a consultar.
+- `@cod_periodo smallint`: Código de período de evaluación en `sisper_db..sp_prdo`.
+
+### Salida
+Devuelve el detalle diario ordenado cronológicamente con:
+`diasem`, `feriado`, `fecha`, `hora_e`, `hora_s`, `m_ent`, `m_sal`, `res_ausen`, `excusa`, `cod_estasi`, `des_estasi`.
+
