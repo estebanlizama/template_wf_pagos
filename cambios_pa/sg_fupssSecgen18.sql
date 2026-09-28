@@ -64,6 +64,12 @@ SELECT
     fu.mto_total,
     fu.mto_tope,
     fu.tot_cuotas,
+    case
+        when upper(ltrim(rtrim(isnull(fu.ext_cuotas, '')))) in ('S', 'N')
+            then upper(ltrim(rtrim(fu.ext_cuotas)))
+        when ccto.cod_tfinan = 44 then 'S'
+        else 'N'
+    end AS ext_cuotas,
     fu.cod_tpps,
     soli.nro_resolu,
     soli.ano_resolu,
@@ -135,7 +141,7 @@ GROUP BY
     prse.actividad, prse.cod_unifin, prse.cod_ccto, ccto.nom_ab_cct,
     prse.cc_global, prse.pry_global, prse.rut_jefpro,
     fu.f_inicio, fu.f_termino,
-    fu.mto_total, fu.mto_tope, fu.tot_cuotas, fu.cod_tpps,
+    fu.mto_total, fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, ccto.cod_tfinan,
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, soli.f_solicit
 HAVING
     @mes is null

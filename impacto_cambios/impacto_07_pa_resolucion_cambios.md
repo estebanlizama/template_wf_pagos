@@ -146,10 +146,10 @@ Debe ordenar por `fume.ano_prop, fume.mes_prop`.
 
 ---
 
-## 6. Lo nuevo que resolución **sí** tiene que empezar a guardar
+## 6. `ext_cuotas`: integrado como snapshot de la resolución
 
-`sg_fups.ext_cuotas` es la única columna nueva del modelo que pertenece al grano de resolución, y
-**hoy no la escribe nadie** — no existe una sola referencia en backend, frontend ni PA.
+`sg_fups.ext_cuotas` pertenece al grano de funcionario-prestación y ya se
+escribe en el alta y actualización DU288.
 
 | | |
 | :--- | :--- |
@@ -157,18 +157,27 @@ Debe ordenar por `fume.ano_prop, fume.mes_prop`.
 | Dónde vive | `sg_fups`, por funcionario-prestación |
 | Quién la determina | El tipo de centro de costo (Q-G13: *"mediante el tipo de centro de costo se va a identificar si necesita algún tipo de extensión"*) |
 | Quién la escribe | **Resolución**, al guardar el funcionario |
+| Dominio implementado | `S` / `N` |
 
-El frontend ya calcula la condición: `isSelectedCostCenterAnid()`, que alimenta
-`getMaxDeclarableInstallments({ isCapExempt })`. Hoy se **recalcula** en cada consulta; con
-`ext_cuotas` queda **congelada** al momento de la resolución, que es lo correcto: si el centro de
-costo deja de ser ANID después, la prestación ya autorizada no debería perder su excepción.
+El backend no toma `ext_cuotas` desde el funcionario: deriva la condición
+desde `ind_anid` o desde `cod_tfinan = 44` del contexto del centro de costo y
+la congela en `sg_fups`.
+Si el centro de costo cambia de clasificación después, la prestación
+autorizada conserva su excepción. `sg_fupssSecgen17` y `sg_fupssSecgen18` la
+devuelven para que historial y pagos consuman el mismo dato persistido.
 
-**Falta definir:**
-- si es `'S'/'N'` o un código que distinga ANID de otras causales,
-- si DGDP puede modificarla después de archivada.
+Una PDS histórica con `ext_cuotas = 'S'` no consume el cupo general de cuotas
+de una solicitud posterior. La marca no desactiva controles de monto, saldo,
+choque de períodos ni estados de pago.
 
-Y hay que agregarla al `INSERT`/`UPDATE` de `sg_fups`, que hoy no la incluye
-([repository.ts:2087](../../../sg-solicitudes-backend/src/repositories/storedProcedures/service-provision-request-procedures.repository.ts:2087) escribe `tot_cuotas` pero no `ext_cuotas`).
+Para prestaciones anteriores al writer, los PA de historial y pagos usan
+`cod_tfinan = 44` únicamente cuando `ext_cuotas` es nulo. Los valores
+persistidos `S/N` prevalecen, evitando que una reclasificación posterior del
+centro de costo cambie resoluciones nuevas.
+
+**Fuera de alcance de esta entrega:** una causal distinta de ANID y la edición
+manual por DGDP después del archivado. Ambas requieren una decisión normativa;
+no se infieren desde el campo binario.
 
 ---
 
@@ -186,6 +195,7 @@ Y hay que agregarla al `INSERT`/`UPDATE` de `sg_fups`, que hoy no la incluye
 | 8 | Join a `sg_efum`, salida `des_estfum` | `sg_fupssSecgen17` | renombre |
 | 9 | **`order by ano_prop, mes_prop`** | `sg_fupssSecgen17` | bug |
 | 10 | **Eliminar `updateInstallmentStatusesByRequest` y su llamada** | service + repository + query | código muerto |
-| 11 | **Escribir `ext_cuotas` al guardar el funcionario** | PA de `sg_fups` + repository | nuevo |
+| 11 | **Escribir `ext_cuotas` al guardar el funcionario** | PA de `sg_fups` + repository | implementado |
+| 12 | Devolver y aplicar `ext_cuotas` en historial y pagos | PA 17/18 + backend + frontend | implementado |
 
 Los marcados en negrita no son renombres: son cambios de comportamiento que hay que probar.

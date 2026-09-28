@@ -77,6 +77,22 @@ de prestaciones previas.
 | 4 | Pagada | Todas las cuotas en 9 |
 | 5 | Con rechazo | Alguna cuota en 10 |
 
+### `ext_cuotas` — extensión congelada en la resolución
+
+El listado devuelve `sg_fups.ext_cuotas` junto con `tot_cuotas`. El backend lo
+expone como `installmentExtensionIndicator` y `hasInstallmentExtension`, y la
+bandeja muestra una marca cuando la prestación fue autorizada con extensión.
+Para resoluciones nuevas, el flujo de pagos consume el snapshot y no permite
+editarlo.
+
+Compatibilidad histórica: si el snapshot todavía está nulo, el listado deriva
+`S` desde `cod_tfinan = 44`. Un `S` o `N` persistido siempre prevalece; el
+fallback existe solo para resoluciones anteriores a la integración del writer.
+
+La extensión libera únicamente el cupo de cuotas del numeral 6. No omite las
+validaciones de saldo, monto autorizado, ejecución cumplida ni estado de los
+meses.
+
 ### Activacion del menu de pagos
 
 El menu se activa cuando la persona tiene al menos una prestacion en proceso,
@@ -110,4 +126,3 @@ de ejecución de una cuota de prestación DU288.
 ### Salida
 Devuelve el detalle diario ordenado cronológicamente con:
 `diasem`, `feriado`, `fecha`, `hora_e`, `hora_s`, `m_ent`, `m_sal`, `res_ausen`, `excusa`, `cod_estasi`, `des_estasi`.
-
