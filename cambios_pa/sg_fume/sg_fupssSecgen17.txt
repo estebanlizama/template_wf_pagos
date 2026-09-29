@@ -50,6 +50,7 @@ begin
         fu.mto_total,
         fu.monto_mes,
         fu.tot_cuotas,
+        fu.ext_cuotas,
         fu.cod_tpps,
         fu.periodos,
         fu.cod_sitm,

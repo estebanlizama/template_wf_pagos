@@ -13,190 +13,378 @@ go
 /* Procedimiento : sp_as01sSecgen01
 
    Entrada :
-   @rut                 -> RUT del funcionario a consultar. (Obligatorio)
-   @cod_periodo         -> Codigo del periodo de evaluacion en sp_prdo. (Obligatorio)
+   @rut                 -> RUT del funcionario. (Obligatorio)
+   @cod_periodo         -> Periodo de evaluacion. Si se envia, define el rango. (Opcional)
+   @f_inicio            -> Fecha inicial YYYYMMDD. Se usa si no hay periodo. (Opcional)
+   @f_termino           -> Fecha final YYYYMMDD. Se usa si no hay periodo. (Opcional)
 
-   Objetivo : Consulta de asistencia, ausencias, turnos, justificaciones y feriados de un funcionario.
+   Objetivo : Entregar el registro de asistencia diario de un funcionario, para
+   contrastar el trabajo efectivamente realizado contra el horario y la
+   compensacion comprometidos en una prestacion de servicios.
 
-   Creacion: ELA 2026/09/25
+   Devuelve una fila por dia CON registro en sp_as01, con todos los datos
+   asociados: marca real, horario del turno, estado, ausencias, justificaciones
+   y feriado.
+
+   El rango se puede indicar de dos formas. Con @cod_periodo se conserva el
+   comportamiento de la consulta original del modulo de calificaciones. Con
+   @f_inicio/@f_termino se acota un rango libre, que es lo que necesita una
+   cuota de pago: sp_prdo no cubre ese caso porque sus periodos duran de 5 a 12
+   meses, se solapan entre si y no se cargan desde 2017.
+
+   Creacion: ELA 2026/09/28
    Actualizacion: Sin registro
 */
 create procedure Analisis2.sp_as01sSecgen01
     @rut char(9) = null,
-    @cod_periodo smallint = null
+    @cod_periodo smallint = null,
+    @f_inicio char(8) = null,
+    @f_termino char(8) = null
 as
 begin
     set nocount on
 
-    declare @n_dias_jus int
-    declare @fecha_hoy datetime
-    declare @inicio datetime
-    declare @termino datetime
+    declare @inicio     datetime
+    declare @termino    datetime
+    declare @tol_entrad int
+    declare @tol_salida int
 
-    select @n_dias_jus = n_dias_jus from sisper_db..sp_pasi
-    select @fecha_hoy = getdate()
+    /* ==================================================================
+       BLOQUE 1 - VALIDACIONES
+       ================================================================== */
 
-    if @rut is null or @cod_periodo is null
+    if @rut is null
     begin
-        select 'Error en parametros de la consulta.' as msg
+        select 'Error: Falta el RUT del funcionario' as msg
         return
     end
 
+    if @cod_periodo is null and (@f_inicio is null or @f_termino is null)
+    begin
+        select 'Error: Indique un periodo o un rango de fechas completo' as msg
+        return
+    end
+
+    /* El maestro del modulo de personal. */
     if not exists (select 1 from sisper_db..sp_pers where rut_person = @rut)
     begin
-        select 'El funcionario RUT ' + @rut + ' no se encuentra registrado.' as msg
+        select 'Error: El funcionario no se encuentra registrado en personal' as msg
         return
     end
 
-    if not exists (select 1 from sisper_db..sp_prdo where cod_periodo = @cod_periodo)
+    /* El maestro institucional. La consulta original lo unia en el FROM sin
+       usar ninguna columna: quien faltaba aqui obtenia cero filas y ningun
+       mensaje. Se convierte en validacion explicita. */
+    if not exists (select 1 from ufro_db..sp_pers where rut = @rut)
     begin
-        select 'El Periodo de Evaluacion ingresado no existe.' as msg
+        select 'Error: El funcionario no se encuentra en el maestro institucional' as msg
         return
     end
 
-    select @inicio = f_inicio,
-           @termino = f_termino
-      from sisper_db..sp_prdo
-     where cod_periodo = @cod_periodo
+    /* ==================================================================
+       BLOQUE 2 - RANGO DE FECHAS
+       ================================================================== */
 
-    if (@inicio is null and @termino is null) or (@inicio = '1900/01/01' and @termino = '1900/01/01')
+    if @cod_periodo is not null
     begin
-        select @inicio = dateadd(dd, -8, getdate())
-        select @termino = dateadd(dd, 7, getdate())
+        if not exists (select 1 from sisper_db..sp_prdo where cod_periodo = @cod_periodo)
+        begin
+            select 'Error: El periodo de evaluacion no existe' as msg
+            return
+        end
+
+        select @inicio  = f_inicio,
+               @termino = f_termino
+        from sisper_db..sp_prdo
+        where cod_periodo = @cod_periodo
+
+        /* Respaldos del comportamiento original, por si el periodo esta
+           cargado a medias. */
+        if (@inicio is null and @termino is null)
+           or (@inicio = '19000101' and @termino = '19000101')
+        begin
+            select @inicio  = dateadd(dd, -8, getdate())
+            select @termino = dateadd(dd,  7, getdate())
+        end
+
+        if @inicio is null
+            select @inicio = dateadd(dd, -14, @termino)
+
+        if @termino is null
+            select @termino = dateadd(dd, 14, @inicio)
+    end
+    else
+    begin
+        /* isdate() no existe en ASE 12.5 -- se valida con patindex, igual que
+           el resto de los PA del proyecto. */
+        if char_length(@f_inicio) <> 8
+           or char_length(@f_termino) <> 8
+           or patindex('%[^0-9]%', @f_inicio) > 0
+           or patindex('%[^0-9]%', @f_termino) > 0
+        begin
+            select 'Error: Formato de fecha invalido. Use YYYYMMDD' as msg
+            return
+        end
+
+        if convert(int, substring(@f_inicio, 5, 2)) not between 1 and 12
+           or convert(int, substring(@f_termino, 5, 2)) not between 1 and 12
+           or convert(int, substring(@f_inicio, 7, 2)) not between 1 and 31
+           or convert(int, substring(@f_termino, 7, 2)) not between 1 and 31
+        begin
+            select 'Error: Mes o dia fuera de rango' as msg
+            return
+        end
+
+        select @inicio  = convert(datetime, @f_inicio, 112)
+        select @termino = convert(datetime, @f_termino, 112)
     end
 
-    if @inicio is null
+    if @termino < @inicio
     begin
-        select @inicio = dateadd(dd, -14, @termino)
+        select 'Error: La fecha de termino es anterior a la de inicio' as msg
+        return
     end
 
-    if @termino is null
-    begin
-        select @termino = dateadd(dd, 14, @inicio)
-    end
+    /* f_ent_o trae hora: el ultimo dia se incluye hasta las 23:59:59. */
+    select @termino = dateadd(ss, 86399,
+                              convert(datetime, convert(char(8), @termino, 112), 112))
+
+    /* Parametros del modulo de asistencia. La tabla tiene UNA sola fila: sus
+       columnas cod_asist e id_marca son correlativos (proximo identificador a
+       asignar), no llaves hacia sp_as01 -- no unir por ellas.
+
+       tol_entrad y tol_salida son la tolerancia institucional en minutos:
+       marcar hasta 5 minutos despues de la hora del turno se considera
+       cumplido. El consumidor la necesita para no penalizar diferencias que
+       la institucion ya acepta.
+
+       n_dias_jus (dias de plazo para justificar) viene vacio en la tabla, asi
+       que no se devuelve. */
+    select @tol_entrad = isnull(tol_entrad, 0),
+           @tol_salida = isnull(tol_salida, 0)
+    from sisper_db..sp_pasi
+
+    /* ==================================================================
+       BLOQUE 3 - AUSENCIAS DEL DIA  (sp_as21 + sp_eaus)
+       Relacion 1:N -- un dia puede tener varias ausencias.
+       ================================================================== */
 
     create table #ausencias (
-        cod_asist int null,
-        res_ausen varchar(255) null
+        cod_asist  int          not null,
+        res_ausen  varchar(255) null
     )
 
-    create table #asist (
-        cod_asist  int not null,
-        ndia       tinyint not null,
-        fecha      char(10) not null,
-        hora_e     char(5) not null,
-        hora_s     char(5) not null,
-        m_ent      char(5) null,
-        m_sal      char(5) null,
-        cod_estasi tinyint not null,
-        des_estasi varchar(20) not null,
-        res_ausen  varchar(255) null,
-        f_ent_o    datetime not null,
-        diasem     varchar(10) null,
-        excusa     varchar(320) null,
-        feriado    varchar(60) null
-    )
+    declare @c_asist  int
+    declare @c_ant    int
+    declare @motivo   varchar(60)
+    declare @acum     varchar(255)
 
-    declare @cod_asist int,
-            @res_ausen varchar(30),
-            @cod_asist2 int,
-            @tot_ausen varchar(255)
-
-    declare ausencia cursor for
+    declare cur_ausen cursor for
         select a.cod_asist, f.res_ausen
-          from sisper_db..sp_as01 a,
-               sisper_db..sp_as21 e,
-               sisper_db..sp_eaus f
-         where a.rut = @rut
-           and a.f_ent_o between @inicio and @termino
-           and a.cod_asist = e.cod_asist
-           and f.tip_agraus = e.tip_agraus
+        from sisper_db..sp_as01 a
+        inner join sisper_db..sp_as21 e
+            on e.cod_asist = a.cod_asist
+        inner join sisper_db..sp_eaus f
+            on f.tip_agraus = e.tip_agraus
            and f.cod_agraus = e.cod_agraus
+        where a.rut = @rut
+          and a.f_ent_o between @inicio and @termino
+        order by a.cod_asist        /* el original no ordenaba: el agrupado
+                                       dependia del plan de ejecucion */
+    for read only
 
-    open ausencia
-    fetch ausencia into @cod_asist, @res_ausen
-    while @@sqlstatus <> 2
+    open cur_ausen
+    fetch cur_ausen into @c_asist, @motivo
+
+    while @@sqlstatus = 0
     begin
-        select @cod_asist2 = @cod_asist
-        select @tot_ausen = null
-        while @cod_asist2 = @cod_asist and @@sqlstatus <> 2
+        select @c_ant = @c_asist
+        select @acum  = null
+
+        while @@sqlstatus = 0 and @c_asist = @c_ant
         begin
-            if @tot_ausen is not null
-                select @tot_ausen = @tot_ausen + '<br>' + @res_ausen
+            /* El original hacia NULL + cadena en la primera vuelta, que en ASE
+               da NULL: la variable nunca acumulaba nada. */
+            if @acum is null
+                select @acum = @motivo
             else
-                select @tot_ausen = @res_ausen
-            fetch ausencia into @cod_asist, @res_ausen
+                select @acum = @acum + ' | ' + @motivo
+
+            fetch cur_ausen into @c_asist, @motivo
         end
-        insert #ausencias values (@cod_asist2, @tot_ausen)
+
+        insert into #ausencias (cod_asist, res_ausen) values (@c_ant, @acum)
     end
-    close ausencia
-    deallocate cursor ausencia
 
-    insert into #asist (
-        cod_asist, ndia, fecha, hora_e, hora_s, m_ent, m_sal,
-        cod_estasi, des_estasi, res_ausen, f_ent_o, diasem, excusa, feriado
+    close cur_ausen
+    deallocate cursor cur_ausen
+
+    /* ==================================================================
+       BLOQUE 4 - JUSTIFICACIONES DEL DIA  (sp_as31 + sp_tjus + sp_cjus)
+       Tambien 1:N. El original usaba UPDATE...FROM, que se queda con una
+       fila arbitraria cuando hay varias coincidencias.
+       ================================================================== */
+
+    create table #justif (
+        cod_asist  int          not null,
+        excusa     varchar(255) null
     )
-    select a.cod_asist,
-           datepart(cdw, a.f_ent_o) as dia,
-           convert(varchar(10), a.f_ent_o, 103) as fecha,
-           case f.ver_hora
-               when 'S' then convert(varchar(5), a.hora_ent_o, 108)
-               else 'T.S.H.'
-           end as hora_e,
-           case f.ver_hora
-               when 'S' then convert(varchar(5), a.hora_sal_o, 108)
-               else 'T.S.H.'
-           end as hora_s,
-           convert(varchar(5), a.f_entrada, 108) as m_ent,
-           convert(varchar(5), a.f_salida, 108) as m_sal,
-           a.cod_estasi,
-           b.des_estasi,
-           e.res_ausen,
-           a.f_ent_o,
-           null, null, null
-      from sisper_db..sp_as01 a
-     inner join sisper_db..sp_easi b on a.cod_estasi = b.cod_estasi
-     inner join ufro_db..sp_pers d on d.rut = a.rut
-     inner join sisper_db..sp_turn f on f.cod_turno = a.cod_turno
-      left join #ausencias e on e.cod_asist = a.cod_asist
-      left join sisper_db..sp_as31 g on g.cod_asist = a.cod_asist
-     where a.rut = @rut
-       and a.f_ent_o between @inicio and @termino
-     order by a.f_ent_o
 
-    update #asist
-       set excusa = rtrim(x.des_tipjus) + '/' + rtrim(y.des_catjus)
-      from #asist a,
-           sisper_db..sp_as31 b,
-           sisper_db..sp_cjus y,
-           sisper_db..sp_tjus x
-     where b.cod_asist = a.cod_asist
-       and b.cod_catjus = y.cod_catjus
-       and b.cod_tipjus = x.cod_tipjus
+    declare @j_asist  int
+    declare @j_ant    int
+    declare @detalle  varchar(120)
+    declare @acumjus  varchar(255)
 
-    update #asist set diasem = 'Lunes'     where ndia = 1
-    update #asist set diasem = 'Martes'    where ndia = 2
-    update #asist set diasem = 'Miercoles' where ndia = 3
-    update #asist set diasem = 'Jueves'    where ndia = 4
-    update #asist set diasem = 'Viernes'   where ndia = 5
-    update #asist set diasem = 'Sabado'    where ndia = 6
-    update #asist set diasem = 'Domingo'   where ndia = 7
+    declare cur_justif cursor for
+        select b.cod_asist,
+               rtrim(x.des_tipjus) + '/' + rtrim(y.des_catjus)
+        from sisper_db..sp_as01 a
+        inner join sisper_db..sp_as31 b
+            on b.cod_asist = a.cod_asist
+        inner join sisper_db..sp_tjus x
+            on x.cod_tipjus = b.cod_tipjus
+        inner join sisper_db..sp_cjus y
+            on y.cod_catjus = b.cod_catjus
+        where a.rut = @rut
+          and a.f_ent_o between @inicio and @termino
+        order by b.cod_asist
+    for read only
 
-    update #asist
-       set feriado = b.des_tipfer
-      from #asist z,
-           ufro_db..es_cfer a,
-           ufro_db..es_tfer b
-     where a.cod_tipfer = b.cod_tipfer
-       and z.f_ent_o = a.f_feriado
+    open cur_justif
+    fetch cur_justif into @j_asist, @detalle
 
-    select diasem, feriado, fecha, hora_e, hora_s, m_ent, m_sal,
-           res_ausen, excusa, cod_estasi, des_estasi
-      from #asist
-     order by f_ent_o
+    while @@sqlstatus = 0
+    begin
+        select @j_ant   = @j_asist
+        select @acumjus = null
 
-    drop table #asist
+        while @@sqlstatus = 0 and @j_asist = @j_ant
+        begin
+            if @acumjus is null
+                select @acumjus = @detalle
+            else
+                select @acumjus = @acumjus + ' | ' + @detalle
+
+            fetch cur_justif into @j_asist, @detalle
+        end
+
+        insert into #justif (cod_asist, excusa) values (@j_ant, @acumjus)
+    end
+
+    close cur_justif
+    deallocate cursor cur_justif
+
+    /* ==================================================================
+       BLOQUE 5 - RESULTADO
+       Una fila por dia con registro. Todos los enriquecimientos resueltos
+       en la misma consulta, no con updates sucesivos.
+       ================================================================== */
+
+    select
+        /* Trazabilidad: el original no devolvia el identificador. */
+        a.cod_asist                                   as cod_asist,
+
+        convert(char(8), a.f_ent_o, 112)              as fecha,
+        a.f_ent_o                                     as fec_asist,
+
+        /* Dia de la semana independiente de @@datefirst: 1900-01-01 fue
+           lunes, asi que la distancia en dias modulo 7 da 1 = Lunes. */
+        convert(tinyint, (datediff(dd, '19000101', a.f_ent_o) % 7) + 1)
+                                                      as cod_diasem,
+        case (datediff(dd, '19000101', a.f_ent_o) % 7) + 1
+             when 1 then 'Lunes'
+             when 2 then 'Martes'
+             when 3 then 'Miercoles'
+             when 4 then 'Jueves'
+             when 5 then 'Viernes'
+             when 6 then 'Sabado'
+             when 7 then 'Domingo'
+        end                                           as des_diasem,
+
+        /* Marca real del reloj. Se devuelve siempre; ocultarla con un
+           literal impedia distinguir "no marco" de "no le corresponde". */
+        convert(char(5), a.hora_ent_o, 108)           as hora_marca_ent,
+        convert(char(5), a.hora_sal_o, 108)           as hora_marca_sal,
+
+        /* Horario de referencia del turno. */
+        convert(char(5), a.f_entrada, 108)            as hora_turno_ent,
+        convert(char(5), a.f_salida, 108)             as hora_turno_sal,
+
+        /* Minutos entre marcas. El WF valida horas, no cadenas de texto.
+           Se corrige el cruce de medianoche. */
+        case
+            when a.hora_ent_o is null or a.hora_sal_o is null then null
+            when datediff(mi, a.hora_ent_o, a.hora_sal_o) < 0
+                then datediff(mi, a.hora_ent_o, a.hora_sal_o) + 1440
+            else datediff(mi, a.hora_ent_o, a.hora_sal_o)
+        end                                           as min_marcados,
+
+        a.cod_turno                                   as cod_turno,
+        /* 'S' = marcaje exigible. 'N' = funcionario sin control de reloj. */
+        isnull(t.ver_hora, 'N')                       as ver_hora,
+
+        a.cod_estasi                                  as cod_estasi,
+        b.des_estasi                                  as des_estasi,
+
+        case when au.cod_asist is null then 'N' else 'S' end as tie_ausenc,
+        au.res_ausen                                  as res_ausen,
+
+        case when ju.cod_asist is null then 'N' else 'S' end as tie_justif,
+        ju.excusa                                     as excusa,
+
+        case when fe.cod_tipfer is null then 'N' else 'S' end as es_feriado,
+        fe.cod_tipfer                                 as cod_tipfer,
+        tf.des_tipfer                                 as des_tipfer,
+
+        /* Minutos de atraso sobre la hora del turno, ya descontada la
+           tolerancia institucional. 0 = llego dentro de tolerancia. */
+        case
+            when a.hora_ent_o is null or a.f_entrada is null then null
+            when datediff(mi, a.f_entrada, a.hora_ent_o) <= @tol_entrad then 0
+            else datediff(mi, a.f_entrada, a.hora_ent_o) - @tol_entrad
+        end                                           as min_atraso,
+
+        /* Minutos de salida anticipada, con la misma logica. */
+        case
+            when a.hora_sal_o is null or a.f_salida is null then null
+            when datediff(mi, a.hora_sal_o, a.f_salida) <= @tol_salida then 0
+            else datediff(mi, a.hora_sal_o, a.f_salida) - @tol_salida
+        end                                           as min_anticip,
+
+        /* Tolerancia aplicada, para que el consumidor sepa con que criterio
+           se calcularon las dos columnas anteriores. */
+        @tol_entrad                                   as tol_entrad,
+        @tol_salida                                   as tol_salida
+
+    from sisper_db..sp_as01 a
+
+    /* Estado de asistencia: cod_estasi es obligatorio en sp_as01. */
+    inner join sisper_db..sp_easi b
+        on b.cod_estasi = a.cod_estasi
+
+    /* Turno: LEFT. Con INNER, un dia sin turno asignado desaparecia. */
+    left join sisper_db..sp_turn t
+        on t.cod_turno = a.cod_turno
+
+    left join #ausencias au
+        on au.cod_asist = a.cod_asist
+
+    left join #justif ju
+        on ju.cod_asist = a.cod_asist
+
+    /* Feriado: se comparan fechas normalizadas. El original igualaba un
+       datetime con hora contra una fecha, asi que nunca coincidia. */
+    left join ufro_db..es_cfer fe
+        on convert(char(8), fe.f_feriado, 112) = convert(char(8), a.f_ent_o, 112)
+    left join ufro_db..es_tfer tf
+        on tf.cod_tipfer = fe.cod_tipfer
+
+    where a.rut = @rut
+      and a.f_ent_o between @inicio and @termino
+    order by a.f_ent_o
+
     drop table #ausencias
+    drop table #justif
 end
 go
 

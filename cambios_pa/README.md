@@ -85,13 +85,15 @@ bandeja muestra una marca cuando la prestación fue autorizada con extensión.
 Para resoluciones nuevas, el flujo de pagos consume el snapshot y no permite
 editarlo.
 
-Compatibilidad histórica: si el snapshot todavía está nulo, el listado deriva
-`S` desde `cod_tfinan = 44`. Un `S` o `N` persistido siempre prevalece; el
-fallback existe solo para resoluciones anteriores a la integración del writer.
+`ext_cuotas` es la única fuente de la excepción. Los PA de consulta devuelven
+el valor persistido sin derivarlo de `cod_tfinan`, `ind_anid` ni otro dato del
+centro de costo. Por lo mismo, un registro histórico nulo continúa nulo.
 
-La extensión libera únicamente el cupo de cuotas del numeral 6. No omite las
-validaciones de saldo, monto autorizado, ejecución cumplida ni estado de los
-meses.
+Cuando vale `S`, amplía el máximo desde 2 hasta 12 cuotas —sin superar los
+meses de ejecución ni el año calendario— y omite la comparación contra el tope
+mensual. Se mantienen las validaciones de saldo, monto total positivo, período
+de ejecución y estado de los meses. PA14 y PA15 reciben la misma señal para las
+validaciones de contrato y asignaciones.
 
 ### Activacion del menu de pagos
 
