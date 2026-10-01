@@ -1,0 +1,276 @@
+use secgen_db
+go
+
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_fuc2iSecgen01')
+   drop procedure Analisis2.sg_fuc2iSecgen01
+
+go
+
+/* Procedimiento : sg_fuc2iSecgen01
+
+   Entrada :
+   @id_funprse          -> Identificador del funcionario. (Obligatorio)
+   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @corr_fume           -> Correlativo del mes de ejecucion. (Obligatorio)
+   @fec_comrea          -> Fecha de la compensacion realizada. (Obligatorio)
+   @hora_ini            -> Hora de inicio del tramo. (Obligatorio)
+   @hora_ter            -> Hora de termino del tramo. (Obligatorio)
+
+   Objetivo : Registrar un tramo de compensacion efectivamente realizado por un
+   funcionario en un mes de ejecucion.
+
+   Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
+*/
+create procedure Analisis2.sg_fuc2iSecgen01
+    @id_funprse int = null,
+    @rut_person char(9) = null,
+    @corr_fume tinyint = null,
+    @fec_comrea datetime = null,
+    @hora_ini time = null,
+    @hora_ter time = null
+as
+
+declare @cod_modprs tinyint
+declare @dentro_jor char(1)
+declare @f_inicio datetime
+declare @f_termino datetime
+declare @cod_estfum tinyint
+declare @cod_estcuo tinyint
+declare @fecha_base datetime
+declare @inicio_dt datetime
+declare @termino_dt datetime
+declare @min_ini int
+declare @min_ter int
+declare @dia_ini int
+declare @dia_ter int
+declare @jor_ini int
+declare @jor_ter int
+
+if @id_funprse is null or @corr_fume is null or @fec_comrea is null
+   or @hora_ini is null or @hora_ter is null
+begin
+    select 'Error: Datos de compensacion incompletos' as msg
+    return
+end
+
+if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
+begin
+    select 'Falta el rut del jefe de proyecto' as msg
+    return
+end
+
+select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
+
+if not exists (select 1
+                 from secgen_db.dbo.sg_fups fu,
+                      secgen_db.dbo.sg_prse prse,
+                      fin21_db..es_ecct ecct
+                where fu.id_funprse = @id_funprse
+                  and prse.nro_solici = fu.nro_solici
+                  and ecct.cod_ccto   = prse.cod_ccto
+                  and ecct.cod_unifin = prse.cod_unifin
+                  and ecct.vigente    = 'S'
+                  and ecct.rut        = @rut_person)
+begin
+    select 'Error: La prestacion no esta a su cargo' as msg
+    return
+end
+
+select
+    @cod_modprs = isnull(prse.cod_modprs, 1),
+    @dentro_jor = isnull(fu.dentro_jor, 'N'),
+    @f_inicio = fu.f_inicio,
+    @f_termino = fu.f_termino
+from secgen_db.dbo.sg_prse prse,
+     secgen_db.dbo.sg_fups fu
+where prse.nro_solici = fu.nro_solici
+  and fu.id_funprse = @id_funprse
+
+if @cod_modprs is null or @cod_modprs <> 2
+begin
+    select 'Error: El funcionario no corresponde a la modalidad DU288' as msg
+    return
+end
+
+if @dentro_jor not in ('S', 'D')
+begin
+    select 'Error: El funcionario no requiere compensacion horaria' as msg
+    return
+end
+
+select @cod_estfum = cod_estfum
+from secgen_db.dbo.sg_fume
+where id_funprse = @id_funprse
+  and corr_fume = @corr_fume
+
+if @cod_estfum is null
+begin
+    select 'Error: El mes de ejecucion indicado no existe' as msg
+    return
+end
+
+select @cod_estcuo = ep.cod_estcuo
+from secgen_db.dbo.sg_dpag dp,
+     secgen_db.dbo.sg_epag ep
+where dp.id_funprse = @id_funprse
+  and dp.corr_fume = @corr_fume
+  and ep.id_funprse = dp.id_funprse
+  and ep.nro_cuota = dp.nro_cuota
+
+if @cod_estfum <> 1 and isnull(@cod_estcuo, 0) <> 3
+begin
+    select 'Error: El mes de ejecucion ya no admite cambios' as msg
+    return
+end
+
+if @hora_ter = @hora_ini
+begin
+    select 'Error: Las horas de inicio y termino deben ser distintas' as msg
+    return
+end
+
+select @fecha_base = dateadd(
+    day,
+    datediff(day, convert(datetime, '19000101'), @fec_comrea),
+    convert(datetime, '19000101')
+)
+select @min_ini = datepart(hh, @hora_ini) * 60 + datepart(mi, @hora_ini)
+select @min_ter = datepart(hh, @hora_ter) * 60 + datepart(mi, @hora_ter)
+select @inicio_dt = dateadd(minute, @min_ini, @fecha_base)
+select @termino_dt = dateadd(minute, @min_ter, @fecha_base)
+
+if @hora_ter < @hora_ini
+    select @termino_dt = dateadd(day, 1, @termino_dt)
+
+if @f_inicio is null or @f_termino is null
+   or datediff(day, @f_inicio, @inicio_dt) < 0
+   or datediff(day, @termino_dt, @f_termino) < 0
+begin
+    select 'Error: La compensacion esta fuera del periodo autorizado' as msg
+    return
+end
+
+if exists (
+    select 1
+    from ufro_db.dbo.es_cfer c
+    where c.cod_tipfer = 1
+      and (
+          datediff(day, c.f_feriado, @inicio_dt) = 0
+          or (
+              datediff(day, @inicio_dt, @termino_dt) > 0
+              and @min_ter > 0
+              and datediff(day, c.f_feriado, @termino_dt) = 0
+          )
+      )
+)
+begin
+    select 'Error: La fecha seleccionada corresponde a un feriado nacional y no admite compensacion' as msg
+    return
+end
+
+select @jor_ini = 8 * 60 + 30
+select @jor_ter = 17 * 60 + 18
+select @dia_ini = datediff(day, convert(datetime, '19000101'), @inicio_dt) % 7
+select @dia_ter = datediff(day, convert(datetime, '19000101'), @termino_dt) % 7
+
+if @dia_ini between 0 and 4
+   and @min_ini < @jor_ter
+   and (case when @hora_ter < @hora_ini then 1440 else @min_ter end) > @jor_ini
+begin
+    select 'Error: La compensacion no puede realizarse dentro de la jornada institucional' as msg
+    return
+end
+
+if @hora_ter < @hora_ini
+   and @dia_ter between 0 and 4
+   and @min_ter > @jor_ini
+begin
+    select 'Error: La compensacion no puede realizarse dentro de la jornada institucional' as msg
+    return
+end
+
+if exists (
+    select 1
+    from secgen_db.dbo.sg_fuc2 fc
+    where fc.id_funprse = @id_funprse
+      and @inicio_dt < dateadd(
+            day,
+            case when fc.hora_ter < fc.hora_ini then 1 else 0 end,
+            dateadd(
+                minute,
+                datepart(hh, fc.hora_ter) * 60 + datepart(mi, fc.hora_ter),
+                dateadd(
+                    day,
+                    datediff(day, convert(datetime, '19000101'), fc.fec_comrea),
+                    convert(datetime, '19000101')
+                )
+            )
+          )
+      and dateadd(
+            minute,
+            datepart(hh, fc.hora_ini) * 60 + datepart(mi, fc.hora_ini),
+            dateadd(
+                day,
+                datediff(day, convert(datetime, '19000101'), fc.fec_comrea),
+                convert(datetime, '19000101')
+            )
+          ) < @termino_dt
+)
+begin
+    select 'Error: El tramo de compensacion esta duplicado o superpuesto' as msg
+    return
+end
+
+if exists (
+    select 1
+    from secgen_db.dbo.sg_fuco fo
+    where fo.id_funprse = @id_funprse
+      and @inicio_dt < dateadd(
+            day,
+            case when fo.hora_ter < fo.hora_ini then 1 else 0 end,
+            dateadd(
+                minute,
+                datepart(hh, fo.hora_ter) * 60 + datepart(mi, fo.hora_ter),
+                dateadd(
+                    day,
+                    datediff(day, convert(datetime, '19000101'), fo.fec_compro),
+                    convert(datetime, '19000101')
+                )
+            )
+          )
+      and dateadd(
+            minute,
+            datepart(hh, fo.hora_ini) * 60 + datepart(mi, fo.hora_ini),
+            dateadd(
+                day,
+                datediff(day, convert(datetime, '19000101'), fo.fec_compro),
+                convert(datetime, '19000101')
+            )
+          ) < @termino_dt
+)
+begin
+    select 'Error: El tramo se superpone con una compensacion comprometida' as msg
+    return
+end
+
+insert into secgen_db.dbo.sg_fuc2
+    (id_funprse, corr_fume, fec_comrea, hora_ini, hora_ter)
+values
+    (@id_funprse, @corr_fume, @inicio_dt, @hora_ini, @hora_ter)
+
+if @@error <> 0
+begin
+    select 'Error: No fue posible guardar el tramo de compensacion' as msg
+    return
+end
+
+select 'OK' as msg
+go
+
+grant execute on Analisis2.sg_fuc2iSecgen01 to UsuaVrac
+go

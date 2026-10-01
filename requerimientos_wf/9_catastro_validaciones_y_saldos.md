@@ -350,7 +350,7 @@ Todo lo de esta parte está en estado `POR CREAR`, salvo lo que se indique. La c
 | PAG-15 | La última cuota solo se envía con la ejecución terminada | SAL-06b | bloqueo |
 | PAG-16 | Dos cuotas en el mismo mes de pago solo por atraso administrativo | MOD-08 | advertencia con causal registrada |
 | PAG-17 | Una PDS por solicitud, un funcionario por solicitud, sin mezclar CC, proyecto, ítem ni moneda | A03, A05, A10 | bloqueo |
-| PAG-18 | Recompromiso de compensación faltante cuando la comprometida en la PDS no se cumplió | C15, nota de cierre del bloque C | habilita la revalidación |
+| PAG-18 | Recompromiso de compensación faltante cuando la comprometida en la PDS no se cumplió | C15, nota de cierre del bloque C | **no implementable sin decidir dónde se guarda** — ver PAG-38b |
 
 ## 14. Control de ejecución — Jefatura
 
@@ -363,12 +363,12 @@ Todo lo de esta parte está en estado `POR CREAR`, salvo lo que se indique. La c
 | PAG-30 | Cargo o contrato habilitado a la fecha de pago | RES-IN-01/02 revalidados | bloqueo |
 | PAG-31 | Sin asignación inhabilitante vigente durante el periodo pagado | RES-IN-03 adaptado | bloqueo |
 | PAG-32 | Constancia jurada de parentesco presentada | RES-IN-07, diferida desde la resolución | bloqueo |
-| PAG-33 | Sin licencia médica en el periodo cubierto | nuevo, sin fuente integrada | bloqueo, según decisión de fuente |
-| PAG-34 | Sin permiso sin goce de sueldo en el periodo cubierto | nuevo, sin fuente integrada | bloqueo |
+| PAG-33 | Sin licencia médica en el periodo cubierto | `sp_eaus` grupo 2 — fuente confirmada 30-09-2026 | bloqueo |
+| PAG-34 | Sin permiso sin goce de sueldo en el periodo cubierto | `sp_eaus` grupo 1 código 2 — fuente confirmada 30-09-2026 | bloqueo |
 | PAG-35 | Receso universitario no pagado salvo trabajo efectivo acreditado | nuevo | bloqueo con acreditación |
 | PAG-36 | Proyecto vigente y no cerrado al momento de la ejecución | nuevo | bloqueo |
 | PAG-37 | Sin deuda institucional no regularizada (desde 2027-01-01) | RES-IN-08 revalidado | bloqueo desde esa fecha |
-| PAG-38 | La compensación comprometida se acreditó como ejecutada, contrastada contra **marcaje biométrico y registro de reloj** | RES-JO-03 adaptado (`sg_fuc2`) | bloqueo, con vía alternativa para quien no tiene marcaje obligatorio |
+| PAG-38 | Lo informado en `sg_fuc2` cubre lo comprometido en `sg_fuco` para los meses de la cuota | RES-JO-03 adaptado (`sg_fuc2`) | **bloquea el envío, no el registro** — decidido 01-10-2026 |
 | PAG-38b | Si la compensación no se cumplió o está incompleta, se vuelven a comprometer **solo los tramos faltantes** y la solicitud se revalida | C15, nota de cierre del bloque C | habilita corrección sin rehacer la solicitud |
 | PAG-38c | Las reglas horarias se reaplican sobre los tramos nuevos: solapamiento, duplicados, jornada institucional, 12 h diarias y 56 h semanales | RES-JO-04 a RES-JO-09 adaptados | bloqueo |
 | PAG-39 | La actividad pagada no es formación continua | RES-CC-05 sobre el contenido de la evidencia | bloqueo |

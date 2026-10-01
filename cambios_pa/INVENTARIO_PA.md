@@ -22,12 +22,27 @@ Dos cambios concurrentes obligan a tocar procedimientos:
 | `sg_fupssSecgen14` | B — valida contrato con `@ext_cuotas` | `cambios_pa/sg_fups/` |
 | `sg_fupssSecgen15` | B — valida asignaciones con `@ext_cuotas` | `cambios_pa/sg_fups/` |
 | `sg_fupssSecgen17` | A+B — historial con meses nuevos y snapshot crudo | `cambios_pa/sg_fume/` |
+| `sg_fupssSecgen18` | A — bandeja de pagos migrada a `cod_estfum` | `cambios_pa/` · **desplegado** |
 
 ---
 
 ## Pendiente 🔲
 
-### `sg_fupssSecgen18` — **adaptar a `cod_estfum`**
+### Las transiciones de DGDP no tienen PA
+
+El encabezado llega a `2 En visación` y ahí se detiene. Faltan los procedimientos que lo
+muevan a `3 Observada`, `4 Aprobada`, `10 Rechazada` y `8 Enviada remuneraciones`, más el que
+rechaza un mes puntual (`cod_estfum = 4`) y el que registra descuentos de licencia y sin goce.
+
+Antes de escribirlos hay que resolver dos cosas:
+
+- **`sg_epag` no tiene dónde guardar la observación** ni quién visó. Dos columnas:
+  `observacion varchar(255)`, `rut_visa char(9)`, `fec_visa datetime`.
+- **El permiso del rol 2 no existe.** Hay que crear `provision-payment-approve` y asignarlo al
+  perfil DGDP en la tabla de permisos. A diferencia de `provision-payment-manage`, que es
+  derivado de ser responsable del centro de costo, éste sí va asignado.
+
+### Histórico — `sg_fupssSecgen18` adaptado a `cod_estfum`
 
 Alimenta la bandeja de pagos, que está en producción. Referencia columnas que dejan de existir:
 
@@ -81,7 +96,7 @@ previas llega vacío.
 
 ## Resumen
 
-**11 listos · 1 pendiente · 3 sin cambios.**
+**12 desplegados · 3 sin cambios · las transiciones de DGDP pendientes.**
 
 La decisión sobre la señal quedó cerrada: `ext_cuotas` es la única fuente. No
 se deriva de `cod_tfinan = 44` ni se mantiene `ind_anid` como alias. El único PA
