@@ -15,23 +15,37 @@ salen de alcance, igual que sg_esol conserva los suyos y agrega al final
   ESTADOS VIGENTES
      1  Propuesta               borrador. No compromete cupo ni saldo y es
                                 eliminable mientras nunca se haya enviado.
-     6  Solicitada pago         ENVIAR. Nace el flujo formal y se consume
-                                cupo y saldo.
-     2  En visacion             DGDP la tomo de la bandeja comun.
-     3  Observada               DGDP la devolvio a correccion. NO libera nada.
+     2  En visacion             ENVIAR. Nace el flujo formal y se consumen
+                                cupo y saldo. Los meses pasan a sg_efum = 2.
+     3  Observada               DGDP la devolvio a correccion. NO libera nada:
+                                los meses siguen en sg_efum = 2.
      4  Aprobada                validaciones conformes y descuentos revisados.
-     8  Enviada remuneraciones  se registro en Finanzas. TERMINAL, sin acuse.
+     8  Enviada remuneraciones  se registro en Finanzas. Los meses pasan a
+                                sg_efum = 3.
+    11  Devuelta Finanzas       Finanzas la devolvio. Los meses vuelven a
+                                sg_efum = 2. Desde aqui se puede reenviar,
+                                devolver al solicitante o rechazar.
     10  Rechazada               TERMINAL. Libera cupo, saldo y meses: los
                                 meses de esa cuota vuelven a sg_efum = 1.
 
+  La secuencia respeta el orden de los codigos originales:
+  1 -> 2 -> 3/4 -> 8 -> 11 -> 8, con 10 como salida terminal.
+
   ESTADOS QUE SE QUITAN
      5  Disponible pago      derivado por fecha, no se persiste
+     6  Solicitada pago      era el paso posterior a la aprobacion; en este
+                             flujo se funde con el 8
      7  Autorizada pago      era el acto de Finanzas; DGDP aprueba (4) y
                              envia (8), no hay acto intermedio
      9  Pagada               el pago ocurre fuera; SecGen no se entera
-    11  Devuelta Finanzas    no hay retorno desde Finanzas
-    12  Bloqueada            el bloqueo es del mes (sg_efum = 5), no del
+    12  Bloqueada            el bloqueo es del mes (sg_efum = 4), no del
                              encabezado
+
+  SOBRE EL 11 -- COMO SE ENTERA EL SISTEMA
+  Finanzas no opera en SecGen y no existe integracion de vuelta. La devolucion
+  la registra DGDP a mano, cuando Finanzas se lo comunica por fuera. Es una
+  decision de DGDP, no un acuse automatico, y por eso vive en el estado del
+  encabezado y no en una marca del mes.
 ===============================================================================
 */
 
@@ -51,7 +65,7 @@ GO
    error de integridad. */
 
 IF EXISTS (SELECT 1 FROM secgen_db.dbo.sg_epag
-            WHERE cod_estcuo IN (5, 7, 9, 11, 12))
+            WHERE cod_estcuo IN (5, 6, 7, 9, 12))
     SELECT 'Aviso: hay encabezados (sg_epag) usando estados fuera de alcance. Migrelos primero.' AS msg
 ELSE IF EXISTS (SELECT 1 FROM syscolumns c, sysobjects o
                  WHERE o.name = 'sg_fume' AND c.id = o.id
@@ -59,7 +73,7 @@ ELSE IF EXISTS (SELECT 1 FROM syscolumns c, sysobjects o
     SELECT 'Aviso: sg_fume todavia tiene cod_estcuo. Ejecute 03_migracion_sg_fume.sql y elimine esa columna antes de depurar sg_ecuo.' AS msg
 ELSE
 BEGIN
-    DELETE FROM secgen_db.dbo.sg_ecuo WHERE cod_estcuo IN (5, 7, 9, 11, 12)
+    DELETE FROM secgen_db.dbo.sg_ecuo WHERE cod_estcuo IN (5, 6, 7, 9, 12)
     SELECT 'sg_ecuo depurado' AS msg
 END
 GO
@@ -76,9 +90,9 @@ INSERT INTO #ecuo VALUES ( 1, 'Propuesta')
 INSERT INTO #ecuo VALUES ( 2, 'En visación')
 INSERT INTO #ecuo VALUES ( 3, 'Observada')
 INSERT INTO #ecuo VALUES ( 4, 'Aprobada')
-INSERT INTO #ecuo VALUES ( 6, 'Solicitada pago')
 INSERT INTO #ecuo VALUES ( 8, 'Enviada remuneraciones')
 INSERT INTO #ecuo VALUES (10, 'Rechazada')
+INSERT INTO #ecuo VALUES (11, 'Devuelta Finanzas')
 GO
 
 UPDATE secgen_db.dbo.sg_ecuo

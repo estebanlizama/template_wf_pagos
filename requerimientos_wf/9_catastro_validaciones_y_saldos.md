@@ -318,7 +318,7 @@ Registrados explícitamente como pendientes en [reglas_restricciones_du288_d09.m
 | Deudas institucionales (fondo crédito, fondos por rendir) | SISPER / Finanzas | Pago, con inhabilidad absoluta desde 2027-01-01 |
 | Licencias médicas | SISPER | Pago, por periodo cubierto |
 | Permisos sin goce de sueldo | SISPER | Pago, por periodo cubierto |
-| Receso universitario | Calendario institucional | Pago, con acreditación de trabajo efectivo |
+| ~~Receso universitario~~ | ~~Calendario institucional~~ | **Fuera de alcance** — ver PAG-35 |
 | Detalle de excepciones ANID certificadas | DIUFRO / DITT | Resolución, heredado por el pago |
 | Saldo presupuestario por ítem y etapa | FIN21 | Ambos; en pago es obligatorio |
 | Similitud de funciones con el contrato base | Manual / jefatura | Resolución |
@@ -365,7 +365,7 @@ Todo lo de esta parte está en estado `POR CREAR`, salvo lo que se indique. La c
 | PAG-32 | Constancia jurada de parentesco presentada | RES-IN-07, diferida desde la resolución | bloqueo |
 | PAG-33 | Sin licencia médica en el periodo cubierto | `sp_eaus` grupo 2 — fuente confirmada 30-09-2026 | bloqueo |
 | PAG-34 | Sin permiso sin goce de sueldo en el periodo cubierto | `sp_eaus` grupo 1 código 2 — fuente confirmada 30-09-2026 | bloqueo |
-| PAG-35 | Receso universitario no pagado salvo trabajo efectivo acreditado | nuevo | bloqueo con acreditación |
+| ~~PAG-35~~ | ~~Receso universitario no pagado salvo trabajo efectivo acreditado~~ | **Fuera de alcance 01-10-2026** — el respaldo documental acompaña la solicitud igual, caiga o no en receso, así que la distinción no cambia la decisión de pago | — |
 | PAG-36 | Proyecto vigente y no cerrado al momento de la ejecución | nuevo | bloqueo |
 | PAG-37 | Sin deuda institucional no regularizada (desde 2027-01-01) | RES-IN-08 revalidado | bloqueo desde esa fecha |
 | PAG-38 | Lo informado en `sg_fuc2` cubre lo comprometido en `sg_fuco` para los meses de la cuota | RES-JO-03 adaptado (`sg_fuc2`) | **bloquea el envío, no el registro** — decidido 01-10-2026 |
@@ -427,7 +427,7 @@ Las cuotas se materializan en `sg_fume` en el paso **Enviar** (MOD-12): antes de
 | D2 | Confirmación de `cod_tipmov = 21` | SAL-04, SAL-05 |
 | D3 | Fuente maestra de licencias y permisos sin goce. G01 indica que el dato existe en alguna base, pero aún no está identificada | PAG-33, PAG-34 |
 | D4 | Fuente de deuda institucional | RES-IN-08, PAG-37 |
-| D5 | Calendario institucional de receso | PAG-35 |
+| ~~D5~~ | ~~Calendario institucional de receso~~ | Sin dependencia: PAG-35 quedó fuera de alcance |
 | D6 | Catálogo documental aprobado | PAG-11 |
 | D7 | Permisos sobre `wf_sol2` / `wf_tra1` | control de saldo con detalle de compromisos |
 | D8 | **Sistema de control de asistencia: marcaje biométrico y reloj.** Fuente distinta de SISPER, no inventariada en ninguna integración actual | PAG-38 |

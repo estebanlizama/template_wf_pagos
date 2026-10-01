@@ -48,7 +48,7 @@ modificarla, y la interfaz no debe ofrecer ningún control que lo sugiera.
 | :-- | :--- | :--- |
 | 1 | Encabezado de página | Título, resolución, centro de costo, actividad, período general |
 | 2 | Estado | Badge de la cuota en curso, si existe |
-| 3 | Resumen de validaciones | Solo cuando hay incidencias; lista con severidad |
+| 3 | Validaciones normativas vigentes | Siempre visibles como tags, con la misma semántica de la resolución |
 | 4 | Funcionario | Selector si hay más de uno + marco autorizado, solo lectura |
 | 5 | Meses de ejecución | Tabla: mes, estado, monto, compensación, cuota |
 | 6 | Compensación realizada | Aparece al elegir un mes; calendario y contraste |
@@ -153,29 +153,51 @@ permiso.
 
 El panel normativo se **vuelve a correr completo** en esta vista. No se confía en que la
 resolución ya validó: entre el decreto y el pago pueden haber cambiado el contrato, el cargo, el
-saldo o la vigencia del responsable.
+saldo o la vigencia del responsable. Se consulta al abrir el detalle y se vuelve a consultar antes
+de enviar la cuota; no se reutiliza como resultado vigente el snapshot guardado por resolución.
 
 ### 4.1 Qué se revalida y con qué endpoint existente
 
 | Control | Endpoint |
 | :--- | :--- |
-| Perfil y contrato del funcionario | `/normative/staff-profile/{rutPerson}` |
-| Tope calculado | `/normative/calculated-cap/{rutPerson}` |
+| Perfil y contratos vigentes del funcionario | `/normative/staff-profile/{rutPerson}` |
+| Inhabilidad consolidada del contrato/cargo | `POST /normative/disablement-staff` |
 | Asignaciones inhabilitantes | `/normative/staff-assignments/{rutPerson}` |
 | Parentesco | `/normative/check-relationship` |
 | Tope por cargo | `/normative/staff-position-cap` |
-| PDS previas del funcionario | `/normative/staff-previous-provisions/{rutPerson}` |
+| PDS previas del funcionario | `/staff-previous-provisions/{rutPerson}` |
 | Saldo del centro de costo | `/cost-center-balance/{codUnifin}/{codCcto}` |
 | Validación de saldo | `/normative/cost-center-balance-validation` |
 | Calendario institucional | `/normative/institutional-calendar` |
 
-**Ninguno es nuevo.** Los nueve los invoca hoy el formulario de resolución.
+**Ninguno es nuevo.** El endpoint `/normative/calculated-cap/{rutPerson}` no se consulta aparte:
+en el backend actual es un alias temporal de `staff-profile` y repetirlo duplicaría la misma
+lectura. Para el jefe de proyecto se usa `/staff-previous-provisions/{rutPerson}`; la variante
+`/normative/staff-previous-provisions/{rutPerson}` exige rol DGDP.
 
 ### 4.2 Dónde se muestran
 
-En el bloque 3, con el mismo componente `Du288ValidationSummary` y la misma semántica de
-severidad que ya usa resolución: error bloquea, advertencia deja continuar, informativa solo
-acompaña.
+En el bloque 3, siempre visibles y con el patrón de tags `.pds-check` que utiliza el resumen de
+funcionarios de la resolución. No se usa un aviso agregado ni `Du288ValidationSummary` para los
+resultados normativos normales; ese componente queda reservado para errores de formulario al
+intentar guardar o enviar.
+
+Tags mínimos por funcionario:
+
+- Contrato vigente.
+- Cargo habilitado.
+- Asignaciones habilitadas.
+- Sin parentesco / Parentesco.
+- Tope validado / pendiente / excedido.
+- Jornada dentro del máximo semanal, considerando PDS previas.
+- Saldo disponible / insuficiente.
+- Calendario institucional consultado / no disponible.
+
+Cada tag conserva los estados y colores de resolución: verde confirma, amarillo advierte, rojo
+bloquea y gris indica pendiente o fuente no disponible. El texto y el icono siempre acompañan al
+color. Si una validación falla, cambia **ese tag** y su tooltip explica la causa; no aparece un
+banner global sustituyendo los resultados individuales. Un error o una validación pendiente que
+sea obligatoria deshabilita «Enviar a visación», pero no «Guardar borrador».
 
 ### 4.3 Lo que esta vista valida y resolución no
 

@@ -24,7 +24,8 @@ que DGDP vio y decidio ese dia -- y no como permiso vigente.
 QUE ESCRIBE CADA FLUJO
 -------------------------------------------------------------------------------
   RESOLUCION   escribe solo el 1. Lee los 4 (guarda de edicion y comparador).
-  PAGOS        escribe los 4, incluido el 1 al liberar meses por rechazo.
+  PAGOS        escribe los 4, incluido el 1 al liberar meses por rechazo y
+               el retorno de 3 a 2 cuando Finanzas devuelve la cuota.
 
 -------------------------------------------------------------------------------
 ESTADOS
@@ -45,13 +46,16 @@ ESTADOS
                       val_ciecc, fec_valida, rut_autori, fec_autori,
                       mto_deslic, mto_dessg.
 
-  3  Enviada a pago   HECHO. Su cuota se subio a Finanzas. TERMINAL: consume
-                      cupo de forma irreversible, sin acuse de vuelta.
-                      Columnas con dato: fec_envrem, mto_realpa.
+  3  Enviada a pago   HECHO. Su cuota se subio a Finanzas. Consume cupo.
+                      NO es terminal: si Finanzas devuelve la cuota
+                      (sg_ecuo = 11), el mes vuelve a 2 y puede reenviarse.
+                      Columnas con dato: fec_envrem, mto_realpa. En un reenvio
+                      ambas se sobrescriben: valen para el ultimo envio, no
+                      para el primero.
 
-  4  Rechazada        DECISION. DGDP descarto ESTE mes: licencia, sin goce,
-                      receso no acreditado o trabajo no acreditado. No se paga
-                      y no se vuelve a ofrecer. La causal queda en los val_*.
+  4  Rechazada        DECISION. DGDP descarto ESTE mes: licencia, sin goce
+                      o trabajo no acreditado. No se paga y no se vuelve a
+                      ofrecer. La causal queda en los val_*.
 
 -------------------------------------------------------------------------------
 LOS DOS RECHAZOS SON DISTINTOS
@@ -71,7 +75,8 @@ TRANSICIONES
    --  -> 1    sg_fumeuSecgen01 inserta el mes                   RESOLUCION
     1  -> 2    ENVIAR: se crea la cuota y su fila en sg_dpag     PAGOS
     2  -> 4    DGDP descarta el mes                              PAGOS
-    2  -> 3    la cuota se envia a Finanzas        TERMINAL      PAGOS
+    2  -> 3    la cuota se envia a Finanzas                      PAGOS
+    3  -> 2    Finanzas devuelve la cuota (sg_ecuo = 11)         PAGOS
     2  -> 1    la CUOTA es rechazada -> libera el mes            PAGOS
   1,4  -> X    la resolucion acorta el periodo -> DELETE fisico  RESOLUCION
 
@@ -82,7 +87,7 @@ TRANSICIONES
 COMO LOS LEE EL COMPARADOR (cupo del numeral 6)
 -------------------------------------------------------------------------------
   consume cupo, reversible     cod_estfum = 2
-  consume cupo, irreversible   cod_estfum = 3
+  consume cupo, en Finanzas    cod_estfum = 3
   no consume cupo              cod_estfum in (1, 4)
   disponible para una cuota    cod_estfum = 1 y la ejecucion ya paso
                                ((ano_prop*100+mes_prop) < @mes_actual
