@@ -1,5 +1,17 @@
 # Respaldo documental de la cuota — `id_evidenc`
 
+> [!WARNING]
+> **TODO — no se implementa hasta que se aclare dónde se guarda el archivo.**
+>
+> La columna `sg_epag.id_evidenc` existe y los endpoints de cuota la aceptan, pero **no hay
+> subida ni descarga**. El envío tampoco la exige: `sg_epaguSecgen02` no verifica que esté
+> presente, de modo que el flujo del solicitante funciona completo sin ella.
+>
+> Cuando se decida, lo que falta es: la tabla MySQL y el espacio de `id_evidenc` (§4), el `POST`
+> de subida, el `GET` de descarga, y agregar al envío la verificación de PAG-11.
+>
+> Lo de abajo es el análisis hecho, no un plan en curso.
+
 **Fecha:** 01-10-2026
 **Definición del negocio:** un documento por cuota —PDF u otro— que contiene **toda** la evidencia
 de esa solicitud de pago. Lo sube el **jefe de proyecto**.

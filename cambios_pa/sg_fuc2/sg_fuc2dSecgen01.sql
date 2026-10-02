@@ -118,7 +118,7 @@ begin
     return
 end
 
-select 'OK' as msg
+select 1 as status, 'OK' as code, 'Compensaciones eliminadas correctamente' as msg
 go
 
 grant execute on Analisis2.sg_fuc2dSecgen01 to UsuaVrac

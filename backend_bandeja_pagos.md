@@ -127,14 +127,12 @@ tres de las cinco.
 
 Detalle en `diagrama_bdd/diagrama_pagos_actualizada.md` §8.
 
-La **5** pasó de defensa en profundidad a candado del negocio: la PK
-`(id_funprse, nro_cuota, corr_fume)` admite el mismo mes en dos cuotas, y es justo la relación
-que arma la pantalla de gestión. Hoy lo impide solo la aplicación, filtrando por
-`cod_estfum = 1`.
+La **5** quedó **descartada**: este alcance no incluye DDL, así que la PK
+`(id_funprse, nro_cuota, corr_fume)` se mantiene aunque admita el mismo mes en dos cuotas.
 
-```sql
-create unique index UQ_sg_dpag_mes on secgen_db.dbo.sg_dpag (id_funprse, corr_fume)
-```
+La protección vive en los procedimientos: verificación previa, más una repetición con `holdlock`
+dentro de la transacción que serializa las llamadas concurrentes. Una corrección hecha por SQL
+directo queda fuera de alcance de esa guarda, y es el riesgo que se asume.
 
 Aparecen además dos faltantes que no estaban en esta lista: `sg_fum2` quedó sin las tres
 columnas de monto de `sg_fume` y todavía con `cod_estcuo`, y `sg_epag` no tiene historial de

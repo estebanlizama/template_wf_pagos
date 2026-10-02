@@ -269,7 +269,7 @@ begin
     return
 end
 
-select 'OK' as msg
+select 1 as status, 'OK' as code, 'Tramo de compensacion registrado correctamente' as msg
 go
 
 grant execute on Analisis2.sg_fuc2iSecgen01 to UsuaVrac

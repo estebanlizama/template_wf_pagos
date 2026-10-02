@@ -1,10 +1,52 @@
 # PA del Workflow de Pagos DU288
 
-Procedimientos del flujo de pago de prestaciones. Trabajan sobre el esquema
-vigente (`diagrama_secgen_actualizado.md`) sin cambios de DDL: la cuota es la
-fila de `sg_fume`, y su ciclo de pago avanza por `cod_estcuo`.
+> [!IMPORTANT]
+> **Dos carpetas, dos ambientes. No son versiones de lo mismo.**
+>
+> | | |
+> | :--- | :--- |
+> | `cambios_pa/` | **desarrollo** — lo que se está probando. Esta carpeta |
+> | `sissolic-procedimientos/` | **última release** — lo que corre en producción |
+>
+> Un PA puede diferir entre las dos y que ambas estén correctas: producción tiene el
+> esquema anterior y sus PA, desarrollo tiene el nuevo y los suyos. Comparar una contra
+> otra para "verificar" lleva a falsas alarmas.
+>
+> Para saber qué hay en un servidor concreto: `sp_helptext` o `syscomments`, contra ese
+> servidor.
 
-Formato según `template-du09/cambios_pa_solicitud_wf/reglas_estandarizacion_pa.md`.
+Procedimientos del flujo de pago, sobre el esquema vigente
+(`diagrama_bdd/diagrama_pagos_actualizada.md`) y **sin cambios de DDL**.
+
+## El grano, en tres niveles
+
+```
+sg_fups  (id_funprse)                           un funcionario y su marco autorizado
+  sg_fume  (id_funprse, corr_fume)              un MES propuesto   -> estado en sg_efum
+  sg_epag  (id_funprse, nro_cuota)              una CUOTA          -> estado en sg_ecuo
+    sg_dpag  (id_funprse, nro_cuota, corr_fume) qué meses abarca
+```
+
+La cuota **ya no es** la fila de `sg_fume`: son dos entidades con catálogos de estado
+distintos, y sus códigos no coinciden. Mientras DGDP visa u observa la cuota, el mes no
+se mueve.
+
+## Quién es dueño de qué
+
+| | Dueño | En la release |
+| :--- | :--- | :--- |
+| `sg_epag` · `sg_dpag` · `sg_fuc2` · `sg_ecuo` | pagos | no, son nuevos |
+| `sg_fumesSecgen02` · `sg_fumeuSecgen02` | pagos | no, son nuevos |
+| `sg_fume/sg_fumeuSecgen01` · `sg_fupssSecgen17` · `sg_fups/*` | resolución | **sí, con el esquema anterior** |
+
+La última fila es la que importa para planificar: esos PA **ya existen en producción**, pero con
+`nro_cuota` y `cod_estcuo`. Su migración a `corr_fume` / `cod_estfum` viaja junto con el cambio
+de esquema, y **tiene que salir antes o con** lo de pagos — no después.
+
+Pagos **no modifica** un PA de resolución para sus propias necesidades: crea uno nuevo.
+El detalle de cada cambio está en [QUE_CAMBIO_Y_POR_QUE.md](QUE_CAMBIO_Y_POR_QUE.md).
+
+Formato según `reglas_bdd_pa/reglas_estandarizacion_pa.md`.
 
 ## sg_fupssSecgen18 — listado de prestaciones pagables
 

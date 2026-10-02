@@ -1,15 +1,13 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
-            where a.uid = b.uid
-              and a.type = 'P'
-              and b.name = 'Analisis2'
-              and a.name = 'sg_epagdSecgen01')
-begin
-    drop procedure Analisis2.sg_epagdSecgen01
-end
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_epagdSecgen01')
+   drop procedure Analisis2.sg_epagdSecgen01
+
 go
 
 /* Procedimiento : sg_epagdSecgen01
@@ -19,23 +17,16 @@ go
    @nro_cuota           -> Numero de cuota a eliminar. (Obligatorio)
    @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
-   Objetivo : Elimina una cuota en borrador y libera los meses que tenia
-   asociados.
-
-   Solo borra en cod_estcuo = 1. Una cuota que ya salio a visacion no se
-   elimina aunque vuelva observada: su rastro es parte del tramite y la salida
-   para deshacerla es el rechazo, que la deja en 10 y conserva la fila.
-
-   No toca cod_estfum porque en estado 1 los meses nunca se comprometieron.
-   Basta con borrar sg_dpag para que vuelvan a estar disponibles.
+   Objetivo : Eliminar una cuota en borrador y liberar los meses de
+   ejecucion que tenia asociados.
 
    Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
 */
-
 create procedure Analisis2.sg_epagdSecgen01
-    @id_funprse int     = NULL,
-    @nro_cuota  tinyint = NULL,
-    @rut_person char(9) = NULL
+    @id_funprse int = null,
+    @nro_cuota tinyint = null,
+    @rut_person char(9) = null
 as
 if @id_funprse is null or @id_funprse <= 0
 begin
@@ -111,7 +102,7 @@ end
 
 commit tran
 
-select 'Cuota eliminada correctamente' msg
+select 1 as status, 'OK' as code, 'Cuota eliminada correctamente' as msg
 go
 
 grant execute on Analisis2.sg_epagdSecgen01 to UsuaVrac

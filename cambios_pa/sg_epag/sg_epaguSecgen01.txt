@@ -1,15 +1,13 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
-            where a.uid = b.uid
-              and a.type = 'P'
-              and b.name = 'Analisis2'
-              and a.name = 'sg_epaguSecgen01')
-begin
-    drop procedure Analisis2.sg_epaguSecgen01
-end
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_epaguSecgen01')
+   drop procedure Analisis2.sg_epaguSecgen01
+
 go
 
 /* Procedimiento : sg_epaguSecgen01
@@ -23,33 +21,20 @@ go
    @mes_pago            -> Mes en que se paga la cuota. (Obligatorio)
    @id_evidenc          -> Identificador del respaldo adjunto. (Opcional)
 
-   Objetivo : Modifica un encabezado de cuota y el conjunto de meses que
-   abarca, mientras siga siendo editable.
-
-   Editable es cod_estcuo 1 (Propuesta) o 3 (Observada). La 3 se incluye a
-   proposito: devolver una cuota para que la corrijan y dejarla de solo lectura
-   seria devolverla a ninguna parte.
-
-   Los meses se reemplazan completos en vez de aplicar diferencias: el conjunto
-   es chico y una sustitucion no puede dejar una asociacion huerfana si el
-   cliente manda una lista incompleta.
-
-   En estado 1 ningun mes de la cuota esta comprometido, asi que el reemplazo
-   no toca cod_estfum. En estado 3 los meses siguen comprometidos porque
-   observar no libera, de modo que se exige que la lista nueva sea del mismo
-   conjunto: cambiar los meses de una cuota ya enviada es rechazarla y rehacerla.
+   Objetivo : Modificar el mes de pago, el respaldo y los meses que abarca
+   una cuota todavia editable.
 
    Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
 */
-
 create procedure Analisis2.sg_epaguSecgen01
-    @id_funprse int          = NULL,
-    @nro_cuota  tinyint      = NULL,
-    @rut_person char(9)      = NULL,
-    @meses_csv  varchar(500) = NULL,
-    @ano_pago   smallint     = NULL,
-    @mes_pago   tinyint      = NULL,
-    @id_evidenc int          = NULL
+    @id_funprse int = null,
+    @nro_cuota tinyint = null,
+    @rut_person char(9) = null,
+    @meses_csv varchar(500) = null,
+    @ano_pago smallint = null,
+    @mes_pago tinyint = null,
+    @id_evidenc int = null
 as
 if @id_funprse is null or @id_funprse <= 0
 begin
@@ -221,6 +206,20 @@ end
 
 begin tran
 
+if exists (
+    select 1
+      from #corr c,
+           secgen_db.dbo.sg_dpag dpag holdlock
+     where dpag.id_funprse = @id_funprse
+       and dpag.corr_fume  = c.corr_fume
+       and dpag.nro_cuota <> @nro_cuota
+)
+begin
+    select 'Error: Algun mes fue tomado por otra cuota mientras se guardaba' msg
+    if @@transtate = 2 rollback tran
+    return
+end
+
 update secgen_db.dbo.sg_epag
    set ano_pago   = @ano_pago,
        mes_pago   = @mes_pago,
@@ -259,7 +258,7 @@ end
 
 commit tran
 
-select 'Cuota actualizada correctamente' msg
+select 1 as status, 'OK' as code, 'Cuota actualizada correctamente' as msg
 go
 
 grant execute on Analisis2.sg_epaguSecgen01 to UsuaVrac

@@ -607,17 +607,16 @@ cuando el jefe de proyecto empiece a crear encabezados.
 La PK es `(id_funprse, nro_cuota, corr_fume)`, así que `(3, 1, 1)` y `(3, 2, 1)` conviven: el mes
 1 quedaría dentro de la cuota 1 **y** de la cuota 2, y se pagaría dos veces.
 
-Hoy lo impide la aplicación: al entrar a una cuota el mes pasa a `cod_estfum = 2` y el selector
-solo ofrece los que están en 1. Pero esa guarda vive en el código, y es precisamente esta
-pantalla la que arma la relación. Si una transacción falla a medias o alguien corrige por SQL,
-no hay nada que lo detenga.
+**No se agrega el índice**: este alcance no modifica el esquema desplegado.
 
-```sql
-create unique index UQ_sg_dpag_mes on secgen_db.dbo.sg_dpag (id_funprse, corr_fume)
-```
+La protección queda en los procedimientos, en dos capas. `sg_epagiSecgen01` y `sg_epaguSecgen01`
+verifican antes de la transacción que ninguno de los meses pedidos esté ya en `sg_dpag`, y repiten
+la verificación con `holdlock` justo después del `begin tran`. Ese bloqueo se mantiene hasta el
+commit, así que dos llamadas simultáneas se serializan: la segunda encuentra el mes tomado y hace
+rollback.
 
-El índice no estorba al rechazo: cuando una cuota cae, su fila de `sg_dpag` se borra y el mes
-vuelve a `cod_estfum = 1`, quedando libre para otra cuota.
+Lo que ninguna de las dos capas cubre es una corrección hecha directamente por SQL. Es el riesgo
+que se asume al no agregar el índice.
 
 ### 8.2 `sg_fum2` quedó desfasado de `sg_fume`
 

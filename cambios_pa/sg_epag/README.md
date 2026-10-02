@@ -83,15 +83,25 @@ desincroniza de la que ya usa resolución.
 
 ---
 
-## Antes de desplegar
+## Cómo se evita que un mes caiga en dos cuotas
 
-```sql
-create unique index UQ_sg_dpag_mes on secgen_db.dbo.sg_dpag (id_funprse, corr_fume)
-```
+La PK de `sg_dpag` es `(id_funprse, nro_cuota, corr_fume)`, así que admite `(3,1,1)` y `(3,2,1)`:
+el mismo mes en dos cuotas. **No se agrega un índice único** — el esquema desplegado es el
+contrato y este alcance no incluye DDL.
 
-`sg_epagiSecgen01` y `sg_epaguSecgen01` ya verifican que un mes no esté en otra cuota, pero esa
-guarda vive en el procedimiento y no sobrevive a una corrección hecha por SQL. La PK
-`(id_funprse, nro_cuota, corr_fume)` admite `(3,1,1)` y `(3,2,1)` — el mismo mes pagado dos veces.
+La guarda vive entonces en los procedimientos, en dos capas:
+
+1. **Antes de la transacción**, `sg_epagiSecgen01` y `sg_epaguSecgen01` verifican que ninguno de
+   los meses pedidos esté ya en `sg_dpag`. Esto atrapa el caso normal y devuelve un mensaje claro.
+2. **Dentro de la transacción**, la misma verificación se repite con `holdlock` justo después del
+   `begin tran`. El bloqueo compartido se mantiene hasta el commit, de modo que dos llamadas
+   simultáneas se serializan: la segunda espera, encuentra el mes tomado y aborta con rollback.
+
+Sin la segunda capa, dos envíos concurrentes pasarían ambos la verificación previa y ambos
+insertarían.
+
+**Lo que queda sin cubrir** es una corrección hecha directamente por SQL, que ningún procedimiento
+puede impedir. Es un riesgo asumido al no agregar el índice.
 
 Conviene confirmar también que la FK compuesta hacia `sg_fume` está en el catálogo:
 
@@ -104,15 +114,16 @@ sp_helpconstraint 'secgen_db.dbo.sg_dpag'
 ## Orden de despliegue
 
 ```
-1. create unique index UQ_sg_dpag_mes
+1. sg_ecuo/sg_ecuosSecgen01 · sg_ecuosSecgen02   catálogo, solo lectura
 2. sg_fume/sg_fumesSecgen01   lectura de meses
 3. sg_fume/sg_fumeuSecgen02   monto y ejecución real del mes
-4. sg_fups/sg_fupssSecgen19   detalle de la resolución
-5. sg_epag/sg_epagsSecgen01   lista de cuotas
+4. sg_fuc2/los tres              compensación realizada
+5. sg_epag/sg_epagsSecgen01 · sg_epagsSecgen02   lectura de cuotas
 6. sg_epag/sg_epagiSecgen01 · sg_epaguSecgen01 · sg_epagdSecgen01
 7. sg_epag/sg_epaguSecgen02   envío
 8. Backend y frontend
 ```
 
-Los pasos 2 a 7 son solo lectura y escritura de tablas que hoy nadie consume, así que pueden
-desplegarse sin ventana: nada existente cambia de comportamiento hasta que el backend los llame.
+Todos leen o escriben tablas que hoy nadie consume, así que pueden
+desplegarse sin ventana: ninguno modifica el esquema y nada existente cambia de comportamiento
+hasta que el backend los llame.

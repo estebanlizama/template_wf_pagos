@@ -81,8 +81,21 @@ Con `@fec_comrea` borra solo los tramos de ese día, para quitar uno sin rehacer
 
 ## Contrato de retorno
 
-`select '<texto>' as msg`. `OK` cuando prosperó; un texto descriptivo cuando no, ya redactado para
-el usuario final y **sin nombres de tabla**. El backend lo propaga tal cual en un 422.
+Los PA de mutación siguen §6 del estándar:
+
+```sql
+-- exito
+select 1 as status, 'OK' as code, '<texto>' as msg
+
+-- error
+select '<texto>' as msg
+```
+
+El backend distingue por **`status = 1`**, no por el texto. Los mensajes de error vienen ya
+redactados para el usuario final y **sin nombres de tabla**, así que se propagan tal cual en un 422.
+
+Los PA de lectura no devuelven `msg` en el camino normal: solo al abortar, y en ese caso la fila
+no trae las columnas de datos.
 
 ---
 

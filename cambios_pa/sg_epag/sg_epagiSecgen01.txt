@@ -1,15 +1,13 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
-            where a.uid = b.uid
-              and a.type = 'P'
-              and b.name = 'Analisis2'
-              and a.name = 'sg_epagiSecgen01')
-begin
-    drop procedure Analisis2.sg_epagiSecgen01
-end
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_epagiSecgen01')
+   drop procedure Analisis2.sg_epagiSecgen01
+
 go
 
 /* Procedimiento : sg_epagiSecgen01
@@ -22,32 +20,19 @@ go
    @mes_pago            -> Mes en que se paga la cuota. (Obligatorio)
    @id_evidenc          -> Identificador del respaldo adjunto. (Opcional)
 
-   Objetivo : Crea un encabezado de cuota en estado Propuesta y le asocia los
-   meses indicados.
-
-   La cuota nace en cod_estcuo = 1 y los meses NO cambian de estado: siguen en
-   cod_estfum = 1. Comprometerlos es efecto del envio (sg_epaguSecgen02), no de
-   guardar un borrador. Si crear la cuota ya los comprometiera, un borrador
-   abandonado dejaria los meses bloqueados y consumiendo cupo sin que nadie
-   haya pedido nada.
-
-   El tope de cuotas sale de sg_fups.tot_cuotas, salvo que ext_cuotas sea S:
-   con extension autorizada el numeral 6 no limita la cantidad.
-
-   Un mes solo puede entrar a una cuota. La verificacion esta aqui y ademas
-   corresponde un indice unico sobre sg_dpag (id_funprse, corr_fume): la guarda
-   del procedimiento no sobrevive a una correccion hecha por SQL.
+   Objetivo : Crear un encabezado de cuota en estado Propuesta y asociarle
+   los meses de ejecucion indicados.
 
    Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
 */
-
 create procedure Analisis2.sg_epagiSecgen01
-    @id_funprse int          = NULL,
-    @rut_person char(9)      = NULL,
-    @meses_csv  varchar(500) = NULL,
-    @ano_pago   smallint     = NULL,
-    @mes_pago   tinyint      = NULL,
-    @id_evidenc int          = NULL
+    @id_funprse int = null,
+    @rut_person char(9) = null,
+    @meses_csv varchar(500) = null,
+    @ano_pago smallint = null,
+    @mes_pago tinyint = null,
+    @id_evidenc int = null
 as
 if @id_funprse is null or @id_funprse <= 0
 begin
@@ -204,6 +189,19 @@ end
 
 begin tran
 
+if exists (
+    select 1
+      from #corr c,
+           secgen_db.dbo.sg_dpag dpag holdlock
+     where dpag.id_funprse = @id_funprse
+       and dpag.corr_fume  = c.corr_fume
+)
+begin
+    select 'Error: Algun mes fue tomado por otra cuota mientras se guardaba' msg
+    if @@transtate = 2 rollback tran
+    return
+end
+
 insert into secgen_db.dbo.sg_epag (
     id_funprse,
     nro_cuota,
@@ -245,7 +243,8 @@ end
 
 commit tran
 
-select 'Cuota creada correctamente' msg, @nro_cuota nro_cuota
+select 1 as status, 'OK' as code, 'Cuota creada correctamente' as msg,
+       @nro_cuota as nro_cuota
 go
 
 grant execute on Analisis2.sg_epagiSecgen01 to UsuaVrac

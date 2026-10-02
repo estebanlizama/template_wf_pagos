@@ -1,15 +1,13 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
-            where a.uid = b.uid
-              and a.type = 'P'
-              and b.name = 'Analisis2'
-              and a.name = 'sg_epaguSecgen02')
-begin
-    drop procedure Analisis2.sg_epaguSecgen02
-end
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_epaguSecgen02')
+   drop procedure Analisis2.sg_epaguSecgen02
+
 go
 
 /* Procedimiento : sg_epaguSecgen02
@@ -19,28 +17,16 @@ go
    @nro_cuota           -> Numero de cuota a enviar. (Obligatorio)
    @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
-   Objetivo : Envia una cuota a visacion de DGDP. Es la transaccion
-   autoritativa del lado solicitante: deja el encabezado en cod_estcuo = 2 y
-   compromete sus meses en cod_estfum = 2.
-
-   Desde cod_estcuo = 1 los meses estan propuestos y pasan a comprometidos.
-   Desde cod_estcuo = 3 los meses ya estan comprometidos, porque observar no
-   libera: reenviar solo mueve el encabezado.
-
-   Las validaciones de aqui son estructurales -- que la cuota tenga meses, que
-   cada mes tenga monto y que la suma quepa en lo autorizado. El panel
-   normativo (tope, inhabilidad, parentesco, saldo del centro de costo) lo
-   revalida la aplicacion con los PA de resolucion antes de llamar a este
-   procedimiento; duplicar esas reglas en SQL crearia una segunda version que
-   se desincroniza.
+   Objetivo : Enviar una cuota a visacion de DGDP, comprometiendo sus meses
+   de ejecucion en la misma transaccion.
 
    Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
 */
-
 create procedure Analisis2.sg_epaguSecgen02
-    @id_funprse int     = NULL,
-    @nro_cuota  tinyint = NULL,
-    @rut_person char(9) = NULL
+    @id_funprse int = null,
+    @nro_cuota tinyint = null,
+    @rut_person char(9) = null
 as
 if @id_funprse is null or @id_funprse <= 0
 begin
@@ -213,7 +199,8 @@ end
 
 commit tran
 
-select 'Cuota enviada a visacion correctamente' msg, @mto_cuota mto_cuota
+select 1 as status, 'OK' as code, 'Cuota enviada a visacion correctamente' as msg,
+       @mto_cuota as mto_cuota
 go
 
 grant execute on Analisis2.sg_epaguSecgen02 to UsuaVrac

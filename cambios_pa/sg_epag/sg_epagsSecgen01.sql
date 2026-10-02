@@ -1,15 +1,13 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
-            where a.uid = b.uid
-              and a.type = 'P'
-              and b.name = 'Analisis2'
-              and a.name = 'sg_epagsSecgen01')
-begin
-    drop procedure Analisis2.sg_epagsSecgen01
-end
+if exists (select 1 from sysobjects a, sysusers b
+              where a.uid  = b.uid
+                and a.type = 'P'
+                and b.name = 'Analisis2'
+                and a.name = 'sg_epagsSecgen01')
+   drop procedure Analisis2.sg_epagsSecgen01
+
 go
 
 /* Procedimiento : sg_epagsSecgen01
@@ -19,27 +17,16 @@ go
    @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
    @id_funprse          -> Limita a un funcionario de la solicitud. (Opcional)
 
-   Objetivo : Encabezados de cuota de las prestaciones de una resolucion, con
-   su estado, el mes de pago y el total que suman los meses que abarcan.
-
-   Devuelve los tres montos de la cuota: mto_cuota es lo solicitado, suma de
-   los mto_apagar de sus meses; mto_deslic y mto_dessg son los descuentos que
-   aplica DGDP; y mto_realpa es el monto final que se envia a Finanzas, el
-   unico que se persiste en el encabezado.
-
-   Lo solicitado se suma aqui y no en la aplicacion para que la pantalla y las
-   validaciones del envio lean el mismo numero.
-
-   mes_prop_min y mes_prop_max acotan el periodo que cubre la cuota sin
-   obligar a traer el detalle de meses, que entrega sg_fumesSecgen01.
+   Objetivo : Listar las cuotas de pago de una resolucion con sus montos y
+   el periodo de ejecucion que cubren.
 
    Creacion: ELA 2026/10/01
+   Actualizacion: Sin registro
 */
-
 create procedure Analisis2.sg_epagsSecgen01
-    @nro_solici int      = NULL,
-    @rut_person char(9)  = NULL,
-    @id_funprse int      = NULL
+    @nro_solici int = null,
+    @rut_person char(9) = null,
+    @id_funprse int = null
 as
 if @nro_solici is null or @nro_solici <= 0
 begin

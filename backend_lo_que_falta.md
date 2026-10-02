@@ -1,97 +1,61 @@
-# Backend de pagos — qué falta para el flujo completo
+# Backend de pagos — estado y lo que falta
 
-**Fecha:** 01-10-2026
+**Fecha:** 02-10-2026
 **Rama:** `bandeja_pagos`
+**Base:** esquema desplegado, sin DDL.
 
 ---
 
-## 1. Lo que ya está
+## 1. Lo que está hecho
 
-### Desplegado y funcionando
+**16 endpoints**, 14 de ellos con guard de jefe de proyecto. `tsc` limpio, 199 tests, `eslint` sin
+hallazgos en lo tocado.
 
-| | |
+| Bloque | Endpoints |
 | :--- | :--- |
-| Bandeja del solicitante | `sg_fupssSecgen18` + 2 endpoints |
-| Permiso `provision-payment-manage` | derivado de ser responsable vigente de un CC DU288 |
-| Módulo activo | en `ACTIVE_MODULES` de backend y frontend |
-| Catálogo `sg_efum` + CRUD | 4 PA y 4 endpoints |
+| Bandeja | `payable-provisions` · `access-summary` |
+| Compensación realizada | leer realizadas · leer comprometidas · registrar tramo · borrar |
+| Meses | de una resolución · de una cuota · fijar monto y ejecución real |
+| Cuotas | listar · crear · editar · eliminar · **enviar** |
+| Catálogo de estados | listar · por código (solo lectura) |
 
-### Escrito, sin desplegar
+**15 PA**, todos conformes al estándar: ASCII 7-bit, CRLF, estructura canónica, contrato
+`status / code / msg` en los de mutación y filtro por `es_ecct` en los 11 de pago.
 
-| Grupo | PA | Endpoints |
-| :--- | :--- | :--- |
-| Compensación realizada | `sg_fuc2` × 3 | 4 |
-| Cuotas | `sg_epag` × 5 | 5 |
-| Catálogo de estados de cuota | `sg_ecuo` × 4 | 1 |
-
-**12 PA y 12 endpoints** en el módulo de pagos. `tsc` limpio, 184 tests, `eslint` sin hallazgos.
+**Autorización en dos capas.** `assertIsProjectManager` en el servicio centralizado —Control 8,
+junto a los otros siete— más el filtro dentro de cada PA.
 
 ---
 
 ## 2. Lo que falta — lado solicitante
 
-### 2.1 Detalle de la resolución
+### 2.1 Revalidación normativa antes del envío
 
-La bandeja lista prestaciones, pero no hay con qué abrir una. Falta:
+`sg_epaguSecgen02` valida lo estructural y los saldos dentro de la transacción. Pero V5 exige
+revalidar el panel completo con datos frescos, y **nadie lo orquesta**.
 
-| # | Qué | Estado |
-| :-- | :--- | :--- |
-| S1 | PA de detalle: funcionarios de la resolución con su marco y avance | **escrito, fuera del repo** — `sg_fupssSecgen19` |
-| S2 | PA de meses con estado, montos y la cuota que los contiene | **bloqueado** — ver 2.2 |
-| S3 | PA que fija `mto_apagar` y la ejecución real de un mes | **escrito, fuera del repo** — `sg_fumeuSecgen02` |
-| S4 | Endpoints de S1, S2 y S3 | — |
+Los ocho PA ya existen y los usa resolución —`sg_fupssSecgen12` a `17`, `sg_cctosSecgen06`,
+`es_cfersSecgen01`—. Falta el servicio que los invoque antes del submit y aborte si alguno
+bloquea.
 
-S1 y S3 están escritos pero quedaron fuera del repositorio cuando se decidió ir por partes. Se
-pueden recuperar.
+**Es la pieza que más pesa del lado solicitante.** Hoy una cuota se envía con un contrato vencido
+o un cargo cambiado sin que nada la detenga.
 
-### 2.2 El PA de meses está roto
+### 2.2 Pruebas de la capa de repositorio
 
-`sg_fumesSecgen01` **ya existe en la base** y lee columnas que la migración renombró:
+Los 15 tests nuevos cubren los modelos. Falta probar los helpers del repositorio: `toMonthCsv`,
+`assertPaymentPeriod` y `assertMutationResult`. Son funciones puras y el último decide si una
+operación se da por buena.
 
-```sql
-SELECT fm.nro_cuota, fm.cod_estcuo ... LEFT JOIN sg_ecuo e ON fm.cod_estcuo = e.cod_estcuo
-```
+---
 
-`sg_fume` ya no tiene `nro_cuota` ni `cod_estcuo`. **Nadie lo llama hoy** — está declarado como
-`selectStaffMonths` en el mapa de consultas del backend y ninguna línea lo invoca —, así que no
-hay un error en producción esperando. Pero el nombre está tomado.
+### 2.3 Evidencia — **TODO, parqueado**
 
-Dos salidas: migrarlo a `corr_fume` / `cod_estfum` y ampliarlo con lo que la pantalla necesita, o
-dejarlo morir y crear uno nuevo con otro nombre. Migrarlo es más limpio: la entrada muerta del
-mapa de consultas también se limpia.
+`id_evidenc` existe en el modelo y los endpoints la aceptan, pero **no se implementa hasta que se
+aclare dónde se guarda el archivo**. El envío no la exige, así que el flujo del solicitante
+funciona completo sin ella.
 
-### 2.3 Evidencia de la cuota
-
-`sg_epag.id_evidenc` está en el modelo y en los endpoints, pero **nada sube ni descarga el
-archivo**. El binario va en MySQL, no en Sybase, y hay que decidir dónde:
-
-| # | Qué | Bloquea |
-| :-- | :--- | :--- |
-| S5 | Decidir la tabla MySQL y el espacio de `id_evidenc` | todo lo demás |
-| S6 | `POST` de subida — multipart, hex a MySQL | el envío, que la exige |
-| S7 | `GET` de descarga, autorizado igual que el resto del módulo | la visación |
-
-Detalle en [`evidencia_de_la_cuota.md`](evidencia_de_la_cuota.md).
-
-### 2.4 La revalidación normativa del envío
-
-`sg_epaguSecgen02` valida lo **estructural** y los saldos dentro de la transacción. Pero V5 exige
-revalidar el panel normativo completo con datos frescos, y **nadie lo orquesta todavía**.
-
-Los nueve PA ya existen y los usa resolución:
-
-```
-staff-profile · calculated-cap · staff-assignments · check-relationship
-staff-position-cap · staff-previous-provisions · cost-center-balance
-cost-center-balance-validation · institutional-calendar
-```
-
-| # | Qué |
-| :-- | :--- |
-| S8 | Servicio que los invoca antes del submit y aborta si alguno bloquea |
-| S9 | Endpoint de solo lectura para que la pantalla muestre el panel sin enviar |
-
-S8 es la pieza que cierra V5. Sin ella, el envío pasa con un contrato vencido.
+Ver el aviso en [`evidencia_de_la_cuota.md`](evidencia_de_la_cuota.md).
 
 ---
 
@@ -102,85 +66,69 @@ S8 es la pieza que cierra V5. Sin ella, el envío pasa con un contrato vencido.
 ### 3.1 El permiso
 
 `provision-payment-approve` no está en `permissions-const.ts`. A diferencia de
-`provision-payment-manage`, que es derivado, éste **sí se asigna** en la tabla de permisos al
-perfil DGDP.
+`provision-payment-manage`, que es derivado de ser responsable del centro de costo, éste **se
+asigna** en la tabla de permisos al perfil DGDP.
 
-| # | Qué |
-| :-- | :--- |
-| D1 | Crear el permiso y asignarlo al perfil |
-| D2 | Exponerlo en `/auth/user` junto a los demás |
+Y necesita su propio guard en el servicio centralizado, equivalente a `assertIsProjectManager`.
 
-### 3.2 Columnas que faltan en `sg_epag`
+### 3.2 Columnas que faltan en `sg_epag` — requiere DDL
 
-Al sacar `sg_apso` del alcance, la cuota se quedó sin dónde registrar la observación:
+Al dejar `sg_apso` fuera del alcance, la cuota se quedó sin dónde registrar la observación:
 
 ```sql
 alter table secgen_db.dbo.sg_epag
   add observacion varchar(255) null, rut_visa char(9) null, fec_visa datetime null
 ```
 
-Sin eso, DGDP puede devolver una cuota pero no decir por qué.
+Sin eso DGDP puede devolver una cuota pero no decir por qué. **Como no hay ventana de DDL, esta
+parte del flujo queda condicionada.**
 
 ### 3.3 Los PA de las transiciones
 
-| # | PA | Transición | Efecto en los meses |
-| :-- | :--- | :--- | :--- |
-| D3 | bandeja de visación | lista cuotas en estado 2 | — |
-| D4 | observar | 2 → 3 | ninguno |
-| D5 | aprobar | 2 → 4 | ninguno |
-| D6 | rechazar | 2 · 4 → 10 | 2 → 1, libera cupo y saldo |
-| D7 | cerrar y enviar a Finanzas | 4 → 8 | 2 → 3, escribe `mto_realpa` |
-| D8 | registrar devolución de Finanzas | 8 → 11 | 3 → 2 |
-| D9 | aplicar descuentos de un mes | — | escribe `mto_deslic`, `mto_dessg` |
-| D10 | excluir un mes no pagable | — | ese mes → 4 |
+| PA | Transición | Efecto en los meses |
+| :--- | :--- | :--- |
+| bandeja de visación | lista cuotas en estado 2 | — |
+| observar | 2 → 3 | ninguno |
+| aprobar | 2 → 4 | ninguno |
+| rechazar | 2 · 4 → 10 | 2 → 1, libera cupo y saldo |
+| cerrar y enviar a Finanzas | 4 → 8 | 2 → 3, escribe `mto_realpa` |
+| registrar devolución de Finanzas | 8 → 11 | 3 → 2 |
+| aplicar descuentos de un mes | — | escribe `mto_deslic`, `mto_dessg` |
+| excluir un mes no pagable | — | ese mes → 4 |
 
-**D7 tiene una obligación extra:** `sg_epag.mto_realpa` y `sg_fume.mto_realpa` guardan la misma
-cifra, una agregada y otra por mes. El cierre debe escribir ambas en la misma transacción.
+**Ocho PA.** El de cierre tiene una obligación extra: `sg_epag.mto_realpa` y `sg_fume.mto_realpa`
+guardan la misma cifra, agregada y por mes, y deben escribirse en la misma transacción.
 
 ### 3.4 Endpoints y modelos
 
-| # | Qué |
-| :-- | :--- |
-| D11 | Bandeja de visación, filtrada por el permiso asignado |
-| D12 | Un endpoint por transición, con el mismo criterio que el submit: `POST` a un sub-recurso, no `PATCH` del estado |
-| D13 | Modelos de respuesta y de request para descuentos y observación |
+Bandeja de visación filtrada por el permiso asignado, un endpoint por transición —`POST` a un
+sub-recurso, igual que el submit— y los modelos de descuento y observación.
 
 ---
 
-## 4. Lo que bloquea el despliegue de lo ya escrito
+## 4. Orden sugerido
 
-```sql
-create unique index UQ_sg_dpag_mes on secgen_db.dbo.sg_dpag (id_funprse, corr_fume)
-```
-
-La PK `(id_funprse, nro_cuota, corr_fume)` admite el mismo mes en dos cuotas. Los PA lo
-verifican, pero esa guarda no sobrevive a dos envíos simultáneos ni a una corrección por SQL — y
-los endpoints de cuota son justamente los que arman esa relación.
-
----
-
-## 5. Orden sugerido
-
-| | Bloque | Desbloquea |
+| | Bloque | Depende de |
 | :-- | :--- | :--- |
-| 1 | Índice único de `sg_dpag` | desplegar los 12 PA escritos |
-| 2 | Desplegar `sg_fuc2`, `sg_epag`, `sg_ecuo` | la pantalla de detalle puede escribir |
-| 3 | S1 · S2 · S3 — detalle, meses y montos | la pantalla de detalle puede leer |
-| 4 | S5 · S6 · S7 — evidencia | el envío deja de estar incompleto |
-| 5 | S8 — revalidación normativa | cierra V5 |
-| 6 | D1 · D2 — permiso de DGDP | la segunda mitad del flujo |
-| 7 | D3 a D13 — visación y cierre | flujo completo |
+| 1 | Desplegar los 15 PA en desarrollo | — |
+| 2 | Servicio de revalidación normativa | — |
+| 3 | Tests del repositorio | — |
+| 4 | Permiso `provision-payment-approve` + guard | asignación en la tabla de permisos |
+| 5 | `ALTER` de `sg_epag` | **ventana de DDL** |
+| 6 | Los ocho PA de DGDP y sus endpoints | 4 y 5 |
+| — | Evidencia | **parqueado** hasta aclarar dónde se guarda |
 
-Los bloques **1 a 5** cierran el lado del solicitante: crear, editar, adjuntar y enviar una cuota
-válida. Ahí la pantalla del jefe de proyecto queda operativa aunque DGDP todavía no pueda
-responder.
+Los bloques **1 a 3** cierran el lado del solicitante y no dependen de nadie más. Con eso la
+pantalla del jefe de proyecto queda operativa de punta a punta, aunque DGDP todavía no pueda
+responder y la cuota viaje sin respaldo adjunto.
 
 ---
 
-## 6. Resumen
+## 5. Resumen
 
 | | |
 | :--- | :--- |
-| Lado solicitante | **~70%** — falta detalle, evidencia y la revalidación del envío |
-| Lado DGDP | **0%** |
-| Decisiones abiertas que bloquean | espacio de `id_evidenc`, columnas de observación en `sg_epag` |
+| Lado solicitante | **~90%** — falta la revalidación del envío |
+| Lado DGDP | **0%** — y condicionado a una ventana de DDL |
+| Parqueado | evidencia, hasta aclarar dónde se guarda el archivo |
+| Bloqueantes externos | permiso de DGDP · `ALTER` de `sg_epag` |
