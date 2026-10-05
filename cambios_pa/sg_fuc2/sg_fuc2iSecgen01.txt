@@ -226,38 +226,6 @@ begin
     return
 end
 
-if exists (
-    select 1
-    from secgen_db.dbo.sg_fuco fo
-    where fo.id_funprse = @id_funprse
-      and @inicio_dt < dateadd(
-            day,
-            case when fo.hora_ter < fo.hora_ini then 1 else 0 end,
-            dateadd(
-                minute,
-                datepart(hh, fo.hora_ter) * 60 + datepart(mi, fo.hora_ter),
-                dateadd(
-                    day,
-                    datediff(day, convert(datetime, '19000101'), fo.fec_compro),
-                    convert(datetime, '19000101')
-                )
-            )
-          )
-      and dateadd(
-            minute,
-            datepart(hh, fo.hora_ini) * 60 + datepart(mi, fo.hora_ini),
-            dateadd(
-                day,
-                datediff(day, convert(datetime, '19000101'), fo.fec_compro),
-                convert(datetime, '19000101')
-            )
-          ) < @termino_dt
-)
-begin
-    select 'Error: El tramo se superpone con una compensacion comprometida' as msg
-    return
-end
-
 insert into secgen_db.dbo.sg_fuc2
     (id_funprse, corr_fume, fec_comrea, hora_ini, hora_ter)
 values

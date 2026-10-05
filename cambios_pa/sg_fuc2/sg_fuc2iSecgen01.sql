@@ -21,7 +21,7 @@ go
    @hora_ter            -> Hora de termino del tramo. (Obligatorio)
 
    Objetivo : Registrar un tramo de compensacion efectivamente realizado por un
-   funcionario en un mes de ejecucion.
+   funcionario, sin superar el total comprometido para ese mes.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
@@ -50,6 +50,13 @@ declare @dia_ini int
 declare @dia_ter int
 declare @jor_ini int
 declare @jor_ter int
+declare @ano_prop smallint
+declare @mes_prop tinyint
+declare @min_compro int
+declare @min_infor int
+declare @min_nuevo int
+declare @min_saldo int
+declare @msg varchar(255)
 
 if @id_funprse is null or @corr_fume is null or @fec_comrea is null
    or @hora_ini is null or @hora_ter is null
@@ -103,7 +110,9 @@ begin
     return
 end
 
-select @cod_estfum = cod_estfum
+select @cod_estfum = cod_estfum,
+       @ano_prop   = ano_prop,
+       @mes_prop   = mes_prop
 from secgen_db.dbo.sg_fume
 where id_funprse = @id_funprse
   and corr_fume = @corr_fume
@@ -178,6 +187,12 @@ select @jor_ter = 17 * 60 + 18
 select @dia_ini = datediff(day, convert(datetime, '19000101'), @inicio_dt) % 7
 select @dia_ter = datediff(day, convert(datetime, '19000101'), @termino_dt) % 7
 
+if @dia_ini >= 5 or (@hora_ter < @hora_ini and @dia_ter >= 5)
+begin
+    select 'Error: La compensacion solo puede registrarse de lunes a viernes' as msg
+    return
+end
+
 if @dia_ini between 0 and 4
    and @min_ini < @jor_ter
    and (case when @hora_ter < @hora_ini then 1440 else @min_ter end) > @jor_ini
@@ -226,35 +241,39 @@ begin
     return
 end
 
-if exists (
-    select 1
-    from secgen_db.dbo.sg_fuco fo
-    where fo.id_funprse = @id_funprse
-      and @inicio_dt < dateadd(
-            day,
-            case when fo.hora_ter < fo.hora_ini then 1 else 0 end,
-            dateadd(
-                minute,
-                datepart(hh, fo.hora_ter) * 60 + datepart(mi, fo.hora_ter),
-                dateadd(
-                    day,
-                    datediff(day, convert(datetime, '19000101'), fo.fec_compro),
-                    convert(datetime, '19000101')
-                )
-            )
-          )
-      and dateadd(
-            minute,
-            datepart(hh, fo.hora_ini) * 60 + datepart(mi, fo.hora_ini),
-            dateadd(
-                day,
-                datediff(day, convert(datetime, '19000101'), fo.fec_compro),
-                convert(datetime, '19000101')
-            )
-          ) < @termino_dt
-)
+select @min_compro = isnull(sum(
+    datepart(hh, fc.hora_ter) * 60 + datepart(mi, fc.hora_ter)
+  - datepart(hh, fc.hora_ini) * 60 - datepart(mi, fc.hora_ini)
+  + case when fc.hora_ter < fc.hora_ini then 1440 else 0 end), 0)
+from secgen_db.dbo.sg_fuco fc
+where fc.id_funprse = @id_funprse
+  and datepart(yy, fc.fec_compro) = @ano_prop
+  and datepart(mm, fc.fec_compro) = @mes_prop
+
+select @min_infor = isnull(sum(
+    datepart(hh, fc.hora_ter) * 60 + datepart(mi, fc.hora_ter)
+  - datepart(hh, fc.hora_ini) * 60 - datepart(mi, fc.hora_ini)
+  + case when fc.hora_ter < fc.hora_ini then 1440 else 0 end), 0)
+from secgen_db.dbo.sg_fuc2 fc
+where fc.id_funprse = @id_funprse
+  and fc.corr_fume = @corr_fume
+
+select @min_nuevo = @min_ter - @min_ini
+                  + case when @hora_ter < @hora_ini then 1440 else 0 end
+select @min_saldo = @min_compro - @min_infor
+
+if @min_saldo <= 0
 begin
-    select 'Error: El tramo se superpone con una compensacion comprometida' as msg
+    select 'Error: El mes ya tiene informadas todas las horas comprometidas' as msg
+    return
+end
+
+if @min_nuevo > @min_saldo
+begin
+    select @msg = 'Error: Supera las horas comprometidas del mes. Quedan '
+                + convert(varchar(10), @min_saldo / 60) + ' h '
+                + convert(varchar(10), @min_saldo % 60) + ' min por informar'
+    select @msg as msg
     return
 end
 

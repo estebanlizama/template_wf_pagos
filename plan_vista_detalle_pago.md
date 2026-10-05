@@ -156,6 +156,23 @@ resolución ya validó: entre el decreto y el pago pueden haber cambiado el cont
 saldo o la vigencia del responsable. Se consulta al abrir el detalle y se vuelve a consultar antes
 de enviar la cuota; no se reutiliza como resultado vigente el snapshot guardado por resolución.
 
+La reconsulta distingue dos tipos de dato:
+
+- **Vigente y mutable:** contrato guardado, cargo/inhabilidades, asignaciones, parentesco, tope por
+  cargo, carga semanal y saldo del centro de costo. Se consulta nuevamente y puede bloquear, con
+  la excepción temporal del saldo descrita en el TODO siguiente.
+- **Autorizado e histórico:** cantidad de cuotas y tope decretado. No se reemplaza ni se
+  reinterpreta; se muestra como referencia y se compara con el dato vigente.
+
+El tope muestra ambos valores cuando existe una diferencia: «Autorizado en la resolución» y
+«Vigente hoy». El monto de la cuota se valida contra el tope vigente. Una diferencia sin exceso se
+muestra como advertencia; una cuota que excede el tope vigente bloquea el envío.
+
+La carga semanal reutiliza la regla de la solicitud de resolución: suma horas del contrato,
+honorarios, horario de esta prestación y horarios reales de las PDS previas concurrentes. El envío
+se bloquea cuando el total supera 56 horas o cuando no se logra consultar uno de los horarios que
+participa en el cálculo.
+
 ### 4.1 Qué se revalida y con qué endpoint existente
 
 | Control | Endpoint |
@@ -193,11 +210,23 @@ Tags mínimos por funcionario:
 - Saldo disponible / insuficiente.
 - Calendario institucional consultado / no disponible.
 
+Fuera del panel normativo, el marco autorizado muestra explícitamente **cuotas solicitadas / 
+autorizadas** y **cuotas por solicitar**. Este contador se obtiene de la resolución y del estado de
+las cuotas ya creadas; no requiere una consulta normativa adicional.
+
 Cada tag conserva los estados y colores de resolución: verde confirma, amarillo advierte, rojo
 bloquea y gris indica pendiente o fuente no disponible. El texto y el icono siempre acompañan al
 color. Si una validación falla, cambia **ese tag** y su tooltip explica la causa; no aparece un
 banner global sustituyendo los resultados individuales. Un error o una validación pendiente que
 sea obligatoria deshabilita «Enviar a visación», pero no «Guardar borrador».
+
+La razón junto al botón de envío cita el primer tag bloqueante. El aviso genérico no sustituye el
+resultado de cada validación.
+
+> **TODO PAG-SALDO:** la fuente de saldo está falseada para permitir las pruebas del flujo. Mientras
+> no exista una respuesta financiera definitiva, «Centro de costo sin saldo» se muestra como tag
+> amarillo informativo y **no bloquea** el envío a visación. Restituir el estado rojo bloqueante al
+> habilitar la fuente real.
 
 ### 4.3 Lo que esta vista valida y resolución no
 
