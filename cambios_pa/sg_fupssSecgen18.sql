@@ -16,7 +16,8 @@ go
 
    Entrada :
    @rut_person          -> RUT del responsable vigente del centro de costo. (Opcional)
-   @ano                 -> Ano de ejecucion. Usa el actual si no se envia. (Opcional)
+   @ano                 -> Ano de ejecucion. Usa el actual si no se envia; 0 trae todos
+                           los anos, para comprobar permisos sin acotar por fecha. (Opcional)
    @mes                 -> Mes de corte, trae las cuotas hasta @ano/@mes inclusive. (Opcional)
 
    Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
@@ -129,7 +130,7 @@ and
 and
     soli.nro_resolu is not null
 and
-    datepart(yy, fu.f_inicio) in (@ano, @ano - 1)
+    (@ano = 0 or datepart(yy, fu.f_inicio) in (@ano, @ano - 1))
 group by
     fu.id_funprse, fu.nro_solici, fu.rut,
     pers.nom_dest, pers.nom_nombre, pers.nom_appate, pers.nom_apmate,
@@ -140,6 +141,7 @@ group by
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, soli.f_solicit
 having
     @mes is null
+    or @ano = 0
     or sum(case when (fume.ano_prop * 100 + fume.mes_prop) <= (@ano * 100 + @mes) then 1 else 0 end) > 0
 order by
     soli.f_solicit desc, fu.id_funprse

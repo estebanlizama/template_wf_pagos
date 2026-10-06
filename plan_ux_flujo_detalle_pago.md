@@ -3,7 +3,7 @@
 **Fecha:** 05-10-2026  
 **Revisión:** 2 — jerarquía de acciones, iconos, etiquetas, modales y espaciado  
 **Ruta:** `/prestacion-de-servicios/pagos/:nroSolici`  
-**Estado:** propuesta para revisión; no implementada  
+**Estado:** implementado el 05-10-2026 (ver §16)  
 **Alcance:** frontend Nuxt 2/Vue 2. No requiere cambios de base de datos, PA ni contratos API.
 
 ## 1. Objetivo
@@ -527,3 +527,61 @@ se puede componer con la tabla actual, se crea un componente local `Du288Payment
 - Las validaciones normativas se vuelven a consultar antes del envío.
 - «Centro de costo sin saldo» continúa como TODO informativo no bloqueante hasta habilitar la fuente
   financiera definitiva.
+
+---
+
+## 16. Registro de implementación — 05-10-2026
+
+Aplicado completo. Lint, `lint:du288-ui` (39 archivos) y pruebas PDS (11 archivos) en verde.
+
+### Lo que se construyó
+
+| | |
+| :--- | :--- |
+| `Du288PaymentWorkspace.vue` | contenedor maestro-detalle local, con ranuras `list` y `panel` y estado inactivo explicativo |
+| `Du288PaymentMonthsSection.vue` | la tabla pasó a navegador compacto: etiqueta de estado, etiqueta de compensación y una acción por icono en columna estable |
+| `Du288ExecutedCompensationSection.vue` | panel embebido, sin «Cerrar edición», con modo lectura y «Cargar compromiso completo» como icono del contraste |
+| `Du288InstallmentsSection.vue` | lista navegable con verbo por estado: Continuar borrador, Corregir cuota, Ver cuota |
+| `Du288InstallmentFormSection.vue` | compositor persistente, un solo guardado en su pie, modo lectura y resumen de selección discontinua |
+| `Du288PaymentValidationsSection.vue` | resumen corto en el título, recarga por icono y foco al primer bloqueo |
+| Página `_nroSolici/index.vue` | coordina el área activa, la exclusión mutua y el descarte de cambios |
+
+### Decisiones tomadas al implementar
+
+**La edición del monto por mes salió de la lista.** El plan pide que la fila muestre el monto, no
+que lo edite; y el compositor ya tiene ese campo para modalidad Variable. Mantener los dos abría
+dos caminos al mismo `sg_fumeuSecgen02`. Quedó solo en el compositor, y `saveMonthAmount` se
+eliminó de la página por quedar sin uso.
+
+**Los totales de compensación se cargan al abrir el detalle, no al abrir el panel.** La lista de
+meses deriva «No requerida / Pendiente / Parcial / Completa» de comprometido contra informado, así
+que necesita esos datos antes de pintarse. Se detectó en la vista: el mes aparecía como «No
+requerida» teniendo 4 h comprometidas. `fetchExecutedCompensations` sin `monthSequence` devuelve
+todo lo del funcionario, que es justo lo que hace falta; el filtro por mes queda en el cliente.
+
+**El compositor necesita esperar el render.** Vive dentro de la ranura `panel`, que no existe
+hasta que el área se activa, así que `openInstallmentEditor` hace `await this.$nextTick()` antes
+de llamar a `open()`. Sin eso la referencia no existía y el panel quedaba vacío.
+
+**Los cambios sin guardar se miden, no se suponen.** `isDirty` compara el conjunto de meses y el
+mes de pago contra lo que se cargó al abrir; solo entonces se pide confirmación al cambiar de
+tarea. Así guardar y volver a entrar no dispara una advertencia falsa.
+
+### Verificado sobre la vista
+
+- La acción del mes abre el panel contiguo, sin desplazamiento a otra sección.
+- Abrir una cuota cierra el editor de compensación y viceversa.
+- «Cerrar edición» ya no existe.
+- «Guardar borrador» existe una sola vez, en el pie del compositor.
+- El pie final contiene únicamente «Enviar a validación».
+- La etiqueta y el verbo del icono concuerdan: *Completa* → «Revisar compensación de Septiembre
+  2026».
+- El título del compositor cambia según el estado: *Continuar borrador* en una cuota propuesta.
+- Sin scroll horizontal de página en 768 px ni en 375 px.
+
+### Pendiente de este plan
+
+- Parámetros `mes` y `cuota` en la URL para restaurar contexto al recargar (§10). No se agregaron:
+  el contexto se reconstruye al entrar y no hay un caso de uso que lo exija todavía.
+- Pruebas con 6 y 12 meses y con cuota observada: la prestación de prueba tiene un solo mes y una
+  cuota propuesta, así que esos caminos quedaron cubiertos solo por código, no por datos reales.
