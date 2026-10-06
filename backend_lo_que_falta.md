@@ -71,17 +71,13 @@ asigna** en la tabla de permisos al perfil DGDP.
 
 Y necesita su propio guard en el servicio centralizado, equivalente a `assertIsProjectManager`.
 
-### 3.2 Columnas que faltan en `sg_epag` — requiere DDL
+### 3.2 Auditoría de decisión — no está en el esquema vigente
 
-Al dejar `sg_apso` fuera del alcance, la cuota se quedó sin dónde registrar la observación:
-
-```sql
-alter table secgen_db.dbo.sg_epag
-  add observacion varchar(255) null, rut_visa char(9) null, fec_visa datetime null
-```
-
-Sin eso DGDP puede devolver una cuota pero no decir por qué. **Como no hay ventana de DDL, esta
-parte del flujo queda condicionada.**
+La definición actual de `sg_epag` no contiene columnas para observación, RUT revisor ni fecha.
+Los PA se ajustaron para persistir solo el estado y no seleccionar ni actualizar esas columnas.
+El archivo `datos_base/05_auditoria_revision_dgdp.sql` queda como extensión opcional; no
+aplicarlo contra el esquema vigente. Persistir el motivo requerirá aprobar una extensión de BDD
+o un mecanismo de historial separado.
 
 ### 3.3 Los PA de las transiciones
 
@@ -101,8 +97,9 @@ guardan la misma cifra, agregada y por mes, y deben escribirse en la misma trans
 
 ### 3.4 Endpoints y modelos
 
-Bandeja de visación filtrada por el permiso asignado, un endpoint por transición —`POST` a un
-sub-recurso, igual que el submit— y los modelos de descuento y observación.
+La bandeja y las decisiones DGDP están implementadas en la integración; el motivo se valida para
+observar/rechazar, pero la BDD vigente no lo persiste. Los PA para envío a Finanzas, devolución,
+descuentos y exclusión individual de meses siguen fuera de esta entrega.
 
 ---
 

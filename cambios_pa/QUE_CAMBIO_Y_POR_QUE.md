@@ -28,8 +28,11 @@ Ninguno existía. No tocan nada de resolución.
 | `sg_ecuosSecgen02` | un estado por código |
 | `sg_fumesSecgen02` | meses de una resolución, con montos y cuota |
 | `sg_fumeuSecgen02` | fija `mto_apagar` y la ejecución real de un mes |
+| `sg_epagsSecgen03` | bandeja DGDP de cuotas en visación |
+| `sg_epagsSecgen04` | detalle de meses de una cuota en visación |
+| `sg_epaguSecgen03` | decide una cuota: observada, aprobada o rechazada |
 
-**Trece PA nuevos.**
+**Dieciséis PA nuevos**, incluyendo los tres de revisión DGDP.
 
 Los dos últimos leen y escriben `sg_fume`, que es una tabla de resolución — pero son
 **procedimientos nuevos**, no modificaciones. Crear un PA que consulta una tabla ajena no afecta a
@@ -70,17 +73,17 @@ Dieciséis, listados en [`pa_reutilizados.md`](pa_reutilizados.md). El caso más
 
 ## Ajustes transversales aplicados a los nuevos
 
-Los trece de la categoría A pasaron por tres ajustes después de escritos. Conviene saberlos
+Los dieciséis de la categoría A pasaron por tres ajustes después de escritos. Conviene saberlos
 porque explican por qué el archivo no se parece al primer borrador.
 
 ### 1. Estructura canónica
 
-Los seis de `sg_epag` se escribieron antes de revisar `reglas_estandarizacion_pa.md` y tenían
-cinco desviaciones: `Objetivo` de tres párrafos, sin `Actualizacion: Sin registro`, línea en
-blanco entre `*/` y `create procedure`, `= NULL` en mayúsculas y bloque `drop` con `begin/end`.
-
-La prosa que estaba en las cabeceras se movió al README. El estándar pide `Objetivo` de una o dos
-líneas y prohíbe duplicar documentación ahí.
+Los seis PA iniciales de `sg_epag` se escribieron antes de revisar
+`reglas_estandarizacion_pa.md`. En esta revisión se alinearon las cabeceras, el bloque `drop`,
+el espacio después de `as`, los alias/retornos de error y los finales de línea. También se
+retiraron comentarios de desarrollo del cuerpo. Los tres PA DGDP incorporan la cabecera
+canónica completa. El estándar pide un `Objetivo` breve y prohíbe comentarios informales dentro
+del código fuente.
 
 ### 2. Contrato de retorno
 
@@ -99,11 +102,12 @@ texto del mensaje, que se rompía con cualquier cambio de redacción.
 
 ### 3. Autorización dentro del PA
 
-Todos los de pago reciben `@rut_person` y filtran contra `fin21_db..es_ecct`: solo operan sobre
-prestaciones de centros de costo donde esa persona es responsable vigente.
+Los PA de gestión del solicitante reciben `@rut_person` y filtran contra `fin21_db..es_ecct`:
+solo operan sobre prestaciones de centros de costo donde esa persona es responsable vigente.
 
-Es el mismo criterio de `sg_fupssSecgen18`, el de la bandeja. Los PA de resolución no lo hacen
-porque allá la autorización vive en el backend; en pagos está en las dos capas.
+La revisión DGDP usa un criterio distinto: RUT autenticado con contrato activo y asignación
+vigente `sp_orde.cod_organi = 696`. No valida el rol/etapa de resolución ni el cargo de
+director DGDP. Los tres PA de revisión comprueban esa asignación en base de datos.
 
 ---
 
@@ -126,3 +130,11 @@ segunda verificación, ambas pasarían la primera y ambas insertarían.
 | Extender `sg_fumesSecgen01` con parámetros de pago | Convertía un PA de resolución en compartido |
 | Índice único sobre `sg_dpag` | El alcance no incluye DDL |
 | `sg_fupssSecgen19` | Detalle de la resolución: queda para cuando se construya esa pantalla |
+
+## Estandarización vigente
+
+La lista de comprobación está en `reglas_bdd_pa/reglas_estandarizacion_pa.md` y en su copia
+`template-du09/cambios_pa_solicitud_wf/reglas_estandarizacion_pa.md`. Para los nueve PA de
+`sg_epag` se revisaron los cinco bloques requeridos, el uso de minúsculas en SQL, la cabecera
+ASCII, la ausencia de comentarios de desarrollo, el retorno estándar (`status = 1` y
+`code = 'OK'` al éxito; solo `msg` en error) y la paridad ASCII/CRLF de cada `.txt` con su `.sql`.

@@ -2,12 +2,11 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_epagsSecgen01')
-   drop procedure Analisis2.sg_epagsSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_epagsSecgen01')
+    drop procedure Analisis2.sg_epagsSecgen01
 go
 
 /* Procedimiento : sg_epagsSecgen01
@@ -28,14 +27,17 @@ create procedure Analisis2.sg_epagsSecgen01
     @rut_person char(9) = null,
     @id_funprse int = null
 as
+
 if @nro_solici is null or @nro_solici <= 0
 begin
-    select 'Falta el numero de solicitud. Se aborta el procedimiento' msg return
+    select 'Falta el numero de solicitud. Se aborta el procedimiento' as msg
+    return
 end
 
 if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
 begin
-    select 'Falta el rut del jefe de proyecto. Se aborta el procedimiento' msg return
+    select 'Falta el rut del jefe de proyecto. Se aborta el procedimiento' as msg
+    return
 end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
@@ -54,7 +56,8 @@ if not exists (select 1
                   and soli.cod_estsol = 11
                   and soli.nro_resolu is not null)
 begin
-    select 'La resolucion no existe, no esta archivada o no esta a su cargo' msg return
+    select 'La resolucion no existe, no esta archivada o no esta a su cargo' as msg
+    return
 end
 
 select

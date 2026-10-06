@@ -26,21 +26,33 @@ Dos cambios concurrentes obligan a tocar procedimientos:
 
 ---
 
-## Pendiente 🔲
+## Gestión de cuotas DGDP
 
-### Las transiciones de DGDP no tienen PA
+El flujo de revisión de cuotas ya tiene PA de consulta y decisión en
+`cambios_pa/sg_epag/`:
 
-El encabezado llega a `2 En visación` y ahí se detiene. Faltan los procedimientos que lo
-muevan a `3 Observada`, `4 Aprobada`, `10 Rechazada` y `8 Enviada remuneraciones`, más el que
-rechaza un mes puntual (`cod_estfum = 4`) y el que registra descuentos de licencia y sin goce.
+| PA | Función |
+| :--- | :--- |
+| `sg_epagsSecgen03` | Bandeja de cuotas en estado `2` para revisión DGDP |
+| `sg_epagsSecgen04` | Detalle de meses de una cuota en revisión |
+| `sg_epaguSecgen03` | Registrar decisión: `3` Observada, `4` Aprobada o `10` Rechazada |
 
-Antes de escribirlos hay que resolver dos cosas:
+La autorización se valida dentro de estos PA con el RUT autenticado, contrato activo y
+asignación vigente en `sisper_db..sp_orde` con `cod_organi = 696`. No corresponde usar
+la etapa/rol del flujo de resolución ni el permiso del director DGDP. Según la definición
+vigente de `sg_epag`, la decisión persiste el estado; el rechazo libera los meses y devuelve
+sus estados a propuesta. La observación se exige en la solicitud de observar/rechazar, pero
+no se guarda en la BDD actual. `../datos_base/05_auditoria_revision_dgdp.sql` es una propuesta
+opcional de extensión, no parte del despliegue compatible con el diagrama. El cambio de estado
+`8 Enviada remuneraciones`, el rechazo individual de meses (`cod_estfum = 4`) y el registro de
+descuentos siguen fuera de este paquete de revisión.
 
-- **`sg_epag` no tiene dónde guardar la observación** ni quién visó. Dos columnas:
-  `observacion varchar(255)`, `rut_visa char(9)`, `fec_visa datetime`.
-- **El permiso del rol 2 no existe.** Hay que crear `provision-payment-approve` y asignarlo al
-  perfil DGDP en la tabla de permisos. A diferencia de `provision-payment-manage`, que es
-  derivado de ser responsable del centro de costo, éste sí va asignado.
+### Pendiente 🔲
+
+- Desplegar y validar en Sybase los tres PA DGDP contra el esquema actual.
+- Definir si se requiere persistir el motivo y los datos del revisor; eso requiere extender la BDD.
+- Definir los PA restantes fuera de la decisión sobre cuotas: envío a remuneraciones,
+  rechazo individual de meses y registro de descuentos.
 
 ### Histórico — `sg_fupssSecgen18` adaptado a `cod_estfum`
 
@@ -96,9 +108,10 @@ previas llega vacío.
 
 ## Resumen
 
-**12 desplegados · 3 sin cambios · las transiciones de DGDP pendientes.**
+**12 PA migrados/desplegados en el flujo de resolución · 3 sin cambios · los tres PA de revisión de cuotas DGDP están en archivos y pendientes de despliegue Sybase.**
 
 La decisión sobre la señal quedó cerrada: `ext_cuotas` es la única fuente. No
-se deriva de `cod_tfinan = 44` ni se mantiene `ind_anid` como alias. El único PA
-pendiente es **`sg_fupssSecgen18`** por la migración completa de estados de
-`sg_fume`; la lectura de `ext_cuotas` dentro de ese PA ya quedó corregida.
+se deriva de `cod_tfinan = 44` ni se mantiene `ind_anid` como alias. En la
+migración A/B, el único PA que aún requiere completar el despliegue por el cambio
+de estados de `sg_fume` es **`sg_fupssSecgen18`**; la lectura de `ext_cuotas`
+dentro de ese PA ya quedó corregida.

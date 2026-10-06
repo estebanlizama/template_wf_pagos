@@ -1,16 +1,20 @@
 # PA del encabezado de cuota — `sg_epag` / `sg_dpag`
 
-Gestión de cuotas del **jefe de proyecto**: crear, editar, eliminar el borrador y enviarlo a
-visación de DGDP. Todos autorizan contra `fin21_db..es_ecct` igual que `sg_fupssSecgen18`: el RUT
-llega del token y el PA solo opera sobre prestaciones de centros de costo a cargo de esa persona.
+Gestión de cuotas del **jefe de proyecto** y revisión de **DGDP**. Los PA existentes del jefe de
+proyecto autorizan contra `fin21_db..es_ecct`; los PA `sg_epagsSecgen03/04` y
+`sg_epaguSecgen03` verifican contrato activo más `sp_orde.cod_organi = 696`, RUT autenticado
+coincidente y `vigente = 'S'`. El RUT llega del token.
 
 | PA | Qué hace | Estados que admite |
 | :--- | :--- | :--- |
-| `sg_epagsSecgen01` | Lista las cuotas de una resolución con su total y período | — lectura |
+| `sg_epagsSecgen01` | Lista las cuotas de una resolución con su total y período, usando columnas de `sg_epag` definidas en la BDD | — lectura |
 | `sg_epagiSecgen01` | Crea el encabezado en **1 Propuesta** y le asocia meses | — |
 | `sg_epaguSecgen01` | Edita mes de pago, respaldo y el conjunto de meses | 1, 3 |
 | `sg_epagdSecgen01` | Elimina el borrador y libera sus meses | 1 |
 | `sg_epaguSecgen02` | **Envía** a visación: `→ 2` y compromete los meses | 1, 3 |
+| `sg_epagsSecgen03` | Bandeja DGDP: cuotas en visación | 2 |
+| `sg_epagsSecgen04` | Detalle DGDP: meses de una cuota en revisión | 2 |
+| `sg_epaguSecgen03` | Aprobar, observar o rechazar y actualizar el estado de la cuota | 2 |
 
 ---
 
@@ -28,7 +32,8 @@ llega del token y el PA solo opera sobre prestaciones de centros de costo a carg
   enviar rem →  8 Enviada remun.       2 → 3 Enviada a pago
 ```
 
-Las tres últimas transiciones son de DGDP y todavía no tienen PA.
+Las transiciones DGDP se limitan a aprobar, observar o rechazar desde estado 2. El envío a
+remuneraciones (estado 8) sigue sin PA.
 
 **Crear no compromete.** El borrador deja los meses en `cod_estfum = 1`. Si crear ya los
 comprometiera, un borrador abandonado bloquearía meses y consumiría cupo sin que nadie haya pedido
@@ -86,8 +91,9 @@ desincroniza de la que ya usa resolución.
 ## Cómo se evita que un mes caiga en dos cuotas
 
 La PK de `sg_dpag` es `(id_funprse, nro_cuota, corr_fume)`, así que admite `(3,1,1)` y `(3,2,1)`:
-el mismo mes en dos cuotas. **No se agrega un índice único** — el esquema desplegado es el
-contrato y este alcance no incluye DDL.
+el mismo mes en dos cuotas. No se agrega índice único; la aprobación/rechazo usa las PAs
+transaccionales del módulo. El motivo de observación/rechazo no queda persistido: la definición
+vigente de `sg_epag` no incluye una columna para guardarlo.
 
 La guarda vive entonces en los procedimientos, en dos capas:
 
@@ -122,8 +128,13 @@ sp_helpconstraint 'secgen_db.dbo.sg_dpag'
 6. sg_epag/sg_epagiSecgen01 · sg_epaguSecgen01 · sg_epagdSecgen01
 7. sg_epag/sg_epaguSecgen02   envío
 8. Backend y frontend
+9. `datos_base/04_roles_privilegios_pagos.sql`
+10. `sg_usacs/sg_usacsSecgen01` y actualizar `sg_epagsSecgen01`
+11. `sg_epagsSecgen03/04` y `sg_epaguSecgen03`
+12. Backend y frontend DGDP
 ```
 
-Todos leen o escriben tablas que hoy nadie consume, así que pueden
-desplegarse sin ventana: ninguno modifica el esquema y nada existente cambia de comportamiento
-hasta que el backend los llame.
+Todos los PA usan las columnas declaradas para `sg_epag` en el diagrama vigente. La decisión
+actualiza el estado y el rechazo libera los meses; el motivo, RUT revisor y fecha no se persisten
+porque esa tabla no contiene campos para auditoría. El SQL `datos_base/05_auditoria_revision_dgdp`
+queda como propuesta opcional de extensión y no forma parte de este orden de despliegue.

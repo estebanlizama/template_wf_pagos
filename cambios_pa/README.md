@@ -16,7 +16,8 @@
 > servidor.
 
 Procedimientos del flujo de pago, sobre el esquema vigente
-(`diagrama_bdd/diagrama_pagos_actualizada.md`) y **sin cambios de DDL**.
+(`diagrama_bdd/diagrama_pagos_actualizada.md`). Estos archivos contienen PA; los cambios de
+esquema propuestos, como la auditoría DGDP opcional, se mantienen aparte en `datos_base/`.
 
 ## El grano, en tres niveles
 

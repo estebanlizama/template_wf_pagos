@@ -2,12 +2,11 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_epagsSecgen02')
-   drop procedure Analisis2.sg_epagsSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_epagsSecgen02')
+    drop procedure Analisis2.sg_epagsSecgen02
 go
 
 /* Procedimiento : sg_epagsSecgen02

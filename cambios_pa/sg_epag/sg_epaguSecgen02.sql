@@ -2,12 +2,11 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_epaguSecgen02')
-   drop procedure Analisis2.sg_epaguSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_epaguSecgen02')
+    drop procedure Analisis2.sg_epaguSecgen02
 go
 
 /* Procedimiento : sg_epaguSecgen02
@@ -28,19 +27,23 @@ create procedure Analisis2.sg_epaguSecgen02
     @nro_cuota tinyint = null,
     @rut_person char(9) = null
 as
+
 if @id_funprse is null or @id_funprse <= 0
 begin
-    select 'Falta la prestacion. Se aborta el procedimiento' msg return
+    select 'Falta la prestacion. Se aborta el procedimiento' as msg
+    return
 end
 
 if @nro_cuota is null or @nro_cuota <= 0
 begin
-    select 'Falta el numero de cuota. Se aborta el procedimiento' msg return
+    select 'Falta el numero de cuota. Se aborta el procedimiento' as msg
+    return
 end
 
 if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
 begin
-    select 'Falta el rut del jefe de proyecto. Se aborta el procedimiento' msg return
+    select 'Falta el rut del jefe de proyecto. Se aborta el procedimiento' as msg
+    return
 end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
@@ -71,7 +74,8 @@ if not exists (select 1
                   and isnull(prse.cod_modprs, 1) = 2
                   and soli.cod_estsol = 11)
 begin
-    select 'La prestacion no existe, no esta archivada o no esta a su cargo' msg return
+    select 'La prestacion no existe, no esta archivada o no esta a su cargo' as msg
+    return
 end
 
 select @cod_estcuo = cod_estcuo
@@ -81,12 +85,14 @@ select @cod_estcuo = cod_estcuo
 
 if @cod_estcuo is null
 begin
-    select 'La cuota indicada no existe' msg return
+    select 'La cuota indicada no existe' as msg
+    return
 end
 
 if @cod_estcuo not in (1, 3)
 begin
-    select 'Error: La cuota no esta en un estado que permita enviarla' msg return
+    select 'Error: La cuota no esta en un estado que permita enviarla' as msg
+    return
 end
 
 select @cant_meses = count(*)
@@ -96,7 +102,8 @@ select @cant_meses = count(*)
 
 if @cant_meses = 0
 begin
-    select 'Error: La cuota no tiene meses asociados' msg return
+    select 'Error: La cuota no tiene meses asociados' as msg
+    return
 end
 
 select @sin_monto = count(*)
@@ -110,7 +117,8 @@ select @sin_monto = count(*)
 
 if @sin_monto > 0
 begin
-    select 'Error: Hay meses de la cuota sin monto a pagar' msg return
+    select 'Error: Hay meses de la cuota sin monto a pagar' as msg
+    return
 end
 
 if @cod_estcuo = 1
@@ -130,7 +138,8 @@ begin
 
     if @mal_estado > 0
     begin
-        select 'Error: Algun mes dejo de estar disponible. Revise la cuota' msg return
+        select 'Error: Algun mes dejo de estar disponible. Revise la cuota' as msg
+        return
     end
 end
 
@@ -159,7 +168,8 @@ select @mto_usado = isnull(sum(case when fume.cod_estfum = 3 then fume.mto_realp
 
 if @mto_usado + @mto_cuota > @mto_total
 begin
-    select 'Error: El monto de la cuota excede el total autorizado de la prestacion' msg return
+    select 'Error: El monto de la cuota excede el total autorizado de la prestacion' as msg
+    return
 end
 
 begin tran
@@ -173,7 +183,7 @@ update secgen_db.dbo.sg_epag
 
 if @@error <> 0
 begin
-    select 'Error al enviar la cuota a visacion' msg
+    select 'Error al enviar la cuota a visacion' as msg
     if @@transtate = 2 rollback tran
     return
 end
@@ -191,7 +201,7 @@ begin
 
     if @@error <> 0
     begin
-        select 'Error al comprometer los meses de la cuota' msg
+        select 'Error al comprometer los meses de la cuota' as msg
         if @@transtate = 2 rollback tran
         return
     end

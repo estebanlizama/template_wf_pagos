@@ -25,8 +25,8 @@ Es criterio de autorización, no filtro. Recibirlo por parámetro dejaría a cua
 **✅ La autorización vive en el procedimiento, no solo en el backend.**
 Todos los PA de pago validan contra `es_ecct` igual que `sg_fupssSecgen18`. Así la escritura no depende de que quien llame se acuerde de comprobarlo. Es **más estricto que los PA de resolución**, que autorizan en la capa de aplicación.
 
-**📋 DGDP se identifica por asignación concreta.**
-`provision-payment-approve`, **asignado** en la tabla de permisos al perfil DGDP — a diferencia del permiso del solicitante, que es derivado. **Todavía no existe.**
+**✅ El revisor DGDP de pagos se deriva por asignación concreta.**
+El perfil de validación requiere contrato activo y `sp_orde.cod_organi = 696`, `sp_orde.rut_person` igual al RUT autenticado y `vigente = 'S'`. No usa `cod_design`, `sp_desg`, `eta/apso` ni el rol Director DGDP. Es un perfil independiente del Director DGDP de resoluciones.
 
 ---
 
@@ -218,26 +218,24 @@ Esto simplifica un diseño previo de la fase DU09 —`sg_fuev` + `sg_tevi`, evid
 | Cuotas · `sg_epag` × 6 PA + 5 endpoints | 📦 sin desplegar |
 | Catálogo `sg_ecuo` + CRUD · 4 PA + 4 endpoints | 📦 sin desplegar |
 | Meses y montos · `sg_fumesSecgen01` migrado, `sg_fumeuSecgen02` | 📦 sin desplegar |
+| Bandeja y detalle DGDP · `sg_epagsSecgen03/04` + resolución `sg_epaguSecgen03` | 📦 construido, SQL pendiente de aplicar |
 
-**15 PA de pago**, todos conformes al estándar de estandarización. Backend con `tsc` en 0, 184 tests y `eslint` limpio.
+**15 PA del flujo solicitante** se habían construido antes de esta integración. Esta implementación agrega dos PA de lectura DGDP y uno de resolución. La compilación local se vuelve a verificar; la aplicación Sybase sigue pendiente.
 
-**Lado DGDP: 0%.**
+**Lado DGDP:** acceso derivado, bandeja estado 2, detalle de meses y resoluciones 2 → 3/4/10 construidas; SQL pendiente de aplicar en Sybase.
 
 ---
 
 ## 13. Pendientes de base de datos
 
-**Sin cambios de esquema.** El modelo desplegado es el contrato; el índice único sobre
-`sg_dpag` quedó descartado y su función la cubren los procedimientos con `holdlock`.
+El índice único sobre `sg_dpag` quedó descartado y su función la cubren los procedimientos con `holdlock`. La revisión DGDP se ajusta al esquema actual de `sg_epag`: se persiste el estado, mientras que motivo, RUT revisor y fecha no se guardan. `datos_base/05_auditoria_revision_dgdp.sql` es una extensión opcional y no forma parte de la aplicación al esquema vigente.
 
-Lo único pendiente en base es depurar el catálogo de estados de cuota, que es data y no esquema:
+Pendiente en base: depurar el catálogo de estados de cuota. La extensión opcional de auditoría DGDP está fuera del esquema vigente:
 
 ```sql
 delete from secgen_db.dbo.sg_ecuo where cod_estcuo in (5, 6, 7, 9, 12)
 
--- 3. Columnas para la observación de DGDP
-alter table secgen_db.dbo.sg_epag
-  add observacion varchar(255) null, rut_visa char(9) null, fec_visa datetime null
+-- Ver script idempotente datos_base/05_auditoria_revision_dgdp.sql
 ```
 
 El **1** es el más urgente: la PK de `sg_dpag` admite el mismo mes en dos cuotas, y los endpoints recién construidos son justamente los que arman esa relación.
