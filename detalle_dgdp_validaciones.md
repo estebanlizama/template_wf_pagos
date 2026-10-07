@@ -432,3 +432,140 @@ pudo consultar lo informado, oculta las columnas del reloj con el aviso de que
 la fuente no está disponible, y marca cada día como «Comprometido y no
 informado». Al desplegar `sg_fuc2sSecgen02` y `sp_as01sSecgen01` la tabla se
 completa sin más cambios de código.
+
+---
+
+## 9. Pasada visual del 07-10-2026
+
+Ajustes contra `estandar_visual/estandar_visual_obligatorio_du288.md`, tomando
+como referencia las pantallas de solicitud y el detalle de pago del solicitante.
+
+| § | Hallazgo | Corrección |
+| :--- | :--- | :--- |
+| 6.2 | Los antecedentes usaban una rejilla propia de `dt`/`dd` | Pasan a `.pds-ui-read-field`, `.pds-ui-read-label` y `.pds-ui-read-value` |
+| 6.2 | Valores ausentes con guion suelto | Usan el texto único del catálogo |
+| 7 | Los botones de dictamen medían 31 px | `pds-ui-action-button`: 40 px, radio y ancho mínimo comunes |
+| 8.1 | Chips de 27 caracteres en la tabla de jornada | «No informado» y «Sin compromiso», con la explicación en el `title` |
+| 11 | El modal usaba el pie por defecto de BootstrapVue | Pie propio: cancelar `outline-secondary` a la izquierda, acción con spinner, `pds-ui-modal`, sin cerrar con `Esc` mientras guarda |
+| 13 | La bandeja dejaba 15 px de scroll horizontal a 375 px | El encabezado deja de usar `.row`, cuyos márgenes negativos sacaban el contenido del contenedor |
+| 13 | Tres botones de 132 px mínimos no caben en 375 px | En móvil pasan a ancho completo y en columna |
+| 15 | «Hace 1 días» | Concordancia singular/plural |
+
+Verificado a 375 px: sin scroll horizontal de página en ninguna de las dos
+pantallas, las cuatro tablas con scroll interno controlado, la rejilla de
+antecedentes en una columna y los botones de dictamen a 40 px de alto y ancho
+completo.
+
+### 9.1 Nota de entorno
+
+`sg_epagsSecgen03` ya está aplicado: la bandeja muestra antigüedad, «Cuota 1 de
+2», alertas de compensación y respaldo, y el monto con descuentos. Siguen sin
+aplicar `sg_fuc2sSecgen02` y `sp_as01sSecgen01`, que son los de la sección de
+jornada.
+
+### 9.2 Desvío registrado, no corregido
+
+El §6.2 pide «Sin información» o «No aplica» para el valor ausente; el catálogo
+del proyecto usa «No informado» y lo comparten todas las pantallas. Se mantuvo
+la convención del proyecto en vez de introducir un tercer literal solo en esta
+vista.
+
+---
+
+## 10. Sección de ejecución y calendario · 07-10-2026
+
+Agregada al detalle DGDP, antes de la sección de jornada. Tres bloques:
+
+1. **Semana de ejecución** — una fila por día de la semana con sus tramos y
+   horas, y el total semanal. Sale de `sg_fuho`, que es recurrente: define días
+   de la semana, no fechas.
+2. **Feriados dentro del período** — fecha, día, nombre del feriado, horas
+   comprometidas ese día y el estado «No consideradas», con el total restado
+   en el encabezado. Solo se listan los feriados que **efectivamente restan
+   horas**; el resto se resume en una línea, porque un receso completo son
+   decenas de fechas y listarlas con un guion esconde las que sí cambian el
+   total.
+3. **Calendario del período** — mes a mes, con navegación acotada al rango y un
+   color por fuente: ejecución comprometida, compensación comprometida,
+   compensación informada, feriado y día con marca. El feriado manda sobre el
+   resto porque ese día no se ejecuta ni se compensa. Leyenda nombrada, porque
+   el §14 no permite que el color sea el único indicador.
+
+Los feriados salen de `es_cfersSecgen01` vía `/normative/institutional-calendar`,
+la misma fuente que ya consultaba el panel normativo, que hasta ahora solo
+contaba cuántas fechas había.
+
+### 10.1 TODO de pruebas — RUT de asistencia sustituido
+
+`ATTENDANCE_TEST_RUT = '06706447K'` en
+`service-provision-payment-procedures.repository.ts`. Mientras esté definido,
+la consulta de asistencia usa ese RUT en lugar del funcionario revisado, porque
+es el único con marcas cargadas en el ambiente.
+
+**Para retirarlo basta dejar la constante vacía**; no hay otro punto que tocar.
+La respuesta expone `attendanceTestRut` y la sección de jornada pinta un aviso
+en amarillo diciendo que esas marcas no son del funcionario de la cuota, para
+que nadie las lea como reales.
+
+---
+
+## 11. Rediseño de la vista · 07-10-2026
+
+El problema no era qué faltaba sino el orden y la fragmentación: **tres bloques
+distintos hablaban de los mismos días** —semana de ejecución, feriados,
+calendario— y un cuarto, la tabla de jornada, repetía la comparación en otra
+forma. El revisor tenía que reconstruir mentalmente el cruce.
+
+### 11.1 Orden nuevo, por lo que decide
+
+| # | Sección | Por qué ahí |
+| :-- | :--- | :--- |
+| 1 | Validaciones normativas | Es lo primero que puede bloquear la aprobación |
+| 2 | Meses y montos | Lo que se paga, con los descuentos editables |
+| 3 | Jornada y ejecución | El cumplimiento de la compensación (PAG-38) |
+| 4 | Otras prestaciones | Concurrencia y doble pago |
+| 5 | Dictamen | La decisión, después de haber visto lo anterior |
+| 6 | Validación presupuestaria | Contexto |
+| 7 | Antecedentes de la prestación | Contexto, solo lectura |
+
+Antes la pantalla abría con 17 campos de antecedentes y el saldo; ahora abre
+con lo que decide y el contexto queda abajo, disponible sin estorbar.
+
+### 11.2 Una sola sección de tiempo, con calendario interactivo
+
+Las cuatro vistas del tiempo se fundieron en una:
+
+- **Encabezado con el veredicto**: comprometido, informado, cobertura, total
+  semanal y horas no consideradas por feriado.
+- **Semana de ejecución** y **feriados que restan horas**, como tablas de apoyo.
+- **Calendario del mes**, que ahora es la forma de navegar: cada día es un
+  botón con un color por fuente —ejecución comprometida, compensación
+  comprometida, compensación informada, feriado, día con marca— y al elegirlo
+  se despliega abajo **el detalle de ese día** con las tres fuentes juntas.
+
+La tabla día a día desapareció: el calendario cubre lo mismo sin obligar a leer
+filas de «Sin compromiso». La selección usa el patrón de foco del §5.4 —borde y
+resplandor, sin relleno— para no competir con los colores de las fuentes.
+
+Ejemplo del cruce que antes había que armar a mano: el 13/01/2016 muestra
+«Compensación comprometida 17:18–23:59 · 6 h 41 min» contra «Compensación
+informada 17:18–18:18 · 1 h».
+
+### 11.3 Descuentos editables
+
+La columna «Descuentos» pasó a dos campos por mes —licencia médica y permiso
+sin goce— con recálculo en vivo de «A pagar» y de los totales, validación de
+que no superen lo solicitado, y un botón de guardar que solo se habilita si
+algo cambió. Solo se editan mientras la cuota está en visación.
+
+**PA nuevo:** `sg_fumeuSecgen03`. Valida el alcance DGDP, que la cuota siga en
+estado 2 y que los descuentos no superen `mto_apagar`; escribe `mto_deslic`,
+`mto_dessg`, deriva `val_licmed`/`val_singoce`, deja `mto_realpa` resuelto y
+sella `fec_valida`, todo en una transacción. Endpoint
+`PUT .../dgdp/provisions/{id}/months/{corr}/deductions`, con el permiso de
+**resolución** y no el de lectura, porque cambia lo que se pagará.
+
+### 11.4 Pendiente de despliegue
+
+`sg_fumeuSecgen03`, `sp_as01sSecgen01` y el reinicio del backend para que tome
+el RUT de asistencia de prueba.

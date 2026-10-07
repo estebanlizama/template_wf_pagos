@@ -192,7 +192,7 @@ Esto simplifica un diseño previo de la fase DU09 —`sg_fuev` + `sg_tevi`, evid
 
 `sg_fume.id_evidenc` queda sin uso: la evidencia pertenece a la cuota, no a cada mes.
 
-**🔶 Falta decidir dónde vive el binario.** Va en MySQL, no en Sybase. Si se reutiliza `MySecGen.sg_doju_<año>`, `id_evidenc` puede chocar con los números de solicitud que ya ocupan `id_docum`. Lo más limpio es una tabla propia con su correlativo.
+**✅ Decisión aplicada:** el binario vive en MySQL en `MySecGen.sg_doju_<año>`, con un `id_docum` negativo derivado de `(id_funprse, nro_cuota)`. Así se conserva el identificador en `sg_epag.id_evidenc` sin colisionar con los números positivos de solicitud. La aplicación valida PDF de hasta 20 MB, asocia el ID al guardar la cuota y bloquea el envío si el archivo no existe. Antes del despliegue se debe confirmar que `sg_doju.id_docum` sea un entero con signo en el MySQL del ambiente.
 
 ---
 

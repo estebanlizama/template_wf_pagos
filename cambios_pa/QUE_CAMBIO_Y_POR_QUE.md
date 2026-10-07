@@ -20,7 +20,7 @@ Ninguno existía. No tocan nada de resolución.
 | `sg_epagiSecgen01` | crea el encabezado en estado 1 y asocia meses |
 | `sg_epaguSecgen01` | edita mes de pago, respaldo y meses · estados 1 y 3 |
 | `sg_epagdSecgen01` | elimina el borrador · solo estado 1 |
-| `sg_epaguSecgen02` | **envía** a visación · 1\|3 → 2 |
+| `sg_epaguSecgen02` | **envía** a visación · 1\|3 → 2; exige que la cuota tenga `id_evidenc` antes de comprometer sus meses |
 | `sg_fuc2sSecgen01` | lista compensaciones realizadas |
 | `sg_fuc2iSecgen01` | registra un tramo |
 | `sg_fuc2dSecgen01` | borra los tramos de un mes |

@@ -3,7 +3,9 @@
 **Fecha:** 05-10-2026
 **Decisión de negocio:** el jefe de proyecto adjunta un PDF de justificación a la solicitud de pago.
 El identificador del documento se guarda en la cuota.
-**Estado:** análisis previo a implementar. Hay **una decisión pendiente** (§3).
+**Estado:** integración implementada en la aplicación. Se seleccionó reutilizar `sg_doju_<año>`
+con un identificador negativo derivado de la cuota (opción B de §3). Falta comprobar en el MySQL
+del ambiente que `id_docum` sea un entero con signo y desplegar la validación de envío de la PA.
 
 Sustituye el TODO de [`evidencia_de_la_cuota.md`](evidencia_de_la_cuota.md), que quedó parado
 justamente en este punto.
@@ -99,8 +101,10 @@ Funciona, es barato y es reversible. Pero es un namespace escondido en un bit.
 
 **No recomendada.** Es la que el análisis previo ya había descartado.
 
-> **Qué hace falta de ti:** elegir entre A y B. El resto (§4 a §7) es idéntico en ambos casos;
-> solo cambia la tabla y cómo se arma el `id_docum`.
+**Decisión aplicada:** se reutiliza `sg_doju_<año>` con `id_docum = -(id_funprse * 100 + nro_cuota)`.
+Las cuotas autorizadas no superan 12, así que el bloque de 100 valores por funcionario evita
+colisiones entre cuotas y el signo evita colisiones con los números positivos de solicitud. El
+ambiente debe confirmar que `id_docum` es `INT` con signo antes de instalar la integración.
 
 ---
 
@@ -126,22 +130,22 @@ solicitud de pago completa, no a cada mes.
 
 | | Endpoint | Nota |
 | :-- | :--- | :--- |
-| 1 | `POST /payments/provisions/{id}/installments/{nro}/evidence` | multipart; convierte a hex, inserta o reemplaza, devuelve `id_evidenc` y lo persiste en la cuota |
-| 2 | `GET /payments/provisions/{id}/installments/{nro}/evidence` | devuelve el binario con su `Content-Type`; `?action=download` fuerza descarga |
-| 3 | `DELETE` del mismo recurso | solo mientras la cuota esté en estado 1 o 3 |
+| 1 | `POST /requests/service-provision/payments/{requestId}/provisions/{staffProvisionId}/installments/{installmentNumber}/evidence` | multipart; valida PDF y tamaño, guarda/reemplaza en `doju`, y persiste el `id_evidenc` en la cuota |
+| 2 | `GET` del mismo recurso | autorizado para el jefe responsable y el revisor DGDP asignado; devuelve PDF y admite `?action=download` |
+| 3 | Borrado de cuota en borrador | elimina también el binario de evidencia asociado |
 
 Los tres reutilizan el patrón que ya existe en `request.controller.ts`: `buffer.toString('hex')`,
 prefijo `0x`, y el servicio MySQL aparte del de Sybase.
 
-**Autorización:** el mismo guardia del módulo, `requireProjectManager`. La descarga la necesita
-además DGDP cuando exista su lado, así que conviene que el guardia de lectura sea más amplio que el
-de escritura desde el principio.
+**Autorización:** la escritura exige `requireProjectManager`; la lectura confirma además que la
+cuota pertenece a la solicitud del responsable o aparece en la bandeja DGDP del revisor.
 
 ### 5.2 Procedimientos
 
 Ninguno nuevo para guardar: `sg_epagiSecgen01` y `sg_epaguSecgen01` ya reciben `@id_evidenc`.
 
-Sí hace falta **una línea en `sg_epaguSecgen02`** para la regla PAG-11, que hoy no se verifica:
+La aplicación valida que el PDF exista en MySQL antes del envío. También se añadió una validación
+de `id_evidenc` en `sg_epaguSecgen02` para la regla PAG-11:
 
 ```sql
 if @id_evidenc is null
@@ -190,9 +194,8 @@ El pie de **Enviar a validación** suma este bloqueo a los que ya muestra, con s
 
 | | Pregunta | Por qué importa |
 | :-- | :--- | :--- |
-| 1 | ¿Solo PDF, o se aceptan otros formatos? | el sistema no valida tipo hoy; conviene fijarlo y verificarlo en el servidor, no solo con `accept` |
-| 2 | ¿Tamaño máximo? | el `longblob` aguanta, pero la carga y el retorno no deberían ser ilimitados |
-| 3 | ¿Qué año particiona la tabla? | `uploadRequestDocument` usa `getLastAnoProcess()`, no el año de la solicitud. Conviene usar el mismo criterio para no inventar uno nuevo |
-| 4 | Al eliminar una cuota en borrador, ¿se borra su archivo? | hoy `sg_epagdSecgen01` borra `sg_dpag` y `sg_epag`; el binario quedaría huérfano en MySQL |
+| 1 | ¿El `id_docum` de `sg_doju_<año>` es firmado? | confirmar en el MySQL del ambiente antes del despliegue |
+| 2 | ¿Qué año particiona la tabla? | la aplicación sigue `getLastAnoProcess()`, como la subida documental existente |
+| 3 | Tamaño máximo | la aplicación limita el PDF a 20 MB |
 
-La **4** conviene resolverla junto con la implementación: es la única que deja basura si se omite.
+Al eliminar una cuota en borrador, el backend elimina también el PDF asociado.

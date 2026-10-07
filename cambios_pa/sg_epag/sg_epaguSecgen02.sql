@@ -50,6 +50,7 @@ select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
 declare @mes_actual int
 declare @cod_estcuo tinyint
+declare @id_evidenc int
 declare @cant_meses int
 declare @sin_monto  int
 declare @mal_estado int
@@ -78,7 +79,8 @@ begin
     return
 end
 
-select @cod_estcuo = cod_estcuo
+select @cod_estcuo = cod_estcuo,
+       @id_evidenc = id_evidenc
   from secgen_db.dbo.sg_epag
  where id_funprse = @id_funprse
    and nro_cuota  = @nro_cuota
@@ -92,6 +94,12 @@ end
 if @cod_estcuo not in (1, 3)
 begin
     select 'Error: La cuota no esta en un estado que permita enviarla' as msg
+    return
+end
+
+if @id_evidenc is null
+begin
+    select 'Error: Debe adjuntar el PDF justificativo antes de enviar la cuota' as msg
     return
 end
 

@@ -40,6 +40,7 @@ La carpeta `plantillas/` contiene formatos para taller, pregunta/decisión, requ
 - La autorización DGDP para pagos es `sp_orde.cod_organi = 696`, `rut_person` coincidente con el RUT autenticado y `vigente = 'S'`, además de contrato activo. No usar `cod_design = 696`, `sp_desg` ni el rol Director DGDP.
 - La bandeja revisora lista estado 2. El detalle permite estado 2 → 3/4/10 y el rechazo devuelve los meses a propuesta y los desvincula de la cuota rechazada. La BDD actual solo persiste el estado de cuota; no guarda motivo, RUT ni fecha de revisión.
 - Las rutas CRUD existentes del jefe de proyecto siguen sujetas a la autorización del centro de costo además del perfil/privilegios.
+- El respaldo de una cuota es un único PDF en `MySecGen.sg_doju_<año>`; `sg_epag.id_evidenc` guarda `-(id_funprse * 100 + nro_cuota)`. La aplicación limita la carga a 20 MB y verifica el archivo antes del envío. Confirmar que `id_docum` sea firmado en MySQL antes del despliegue.
 - Los artefactos de esta integración están en `cambios_pa/sg_usacs/`, `cambios_pa/sg_epag/sg_epagsSecgen03-04` y `cambios_pa/sg_epag/sg_epaguSecgen03`, con pares `.sql`/`.txt` alineados al esquema vigente. `datos_base/05_auditoria_revision_dgdp` es una propuesta opcional que amplía el esquema y no se requiere para estos PA.
 
 - Distinguir siempre entre **confirmado**, **respuesta preliminar** y **pendiente**.
@@ -62,5 +63,6 @@ Los procedimientos todavía no están aplicados al servidor. Preparar y ejecutar
 3. `cambios_pa/sg_epag/sg_epagsSecgen01.sql` instala el listado de cuotas compatible con la BDD.
 4. `cambios_pa/sg_epag/sg_epagsSecgen03.sql` y `sg_epagsSecgen04.sql` instalan la bandeja y el detalle.
 5. `cambios_pa/sg_epag/sg_epaguSecgen03.sql` instala aprobar/observar/rechazar por estado.
+6. `cambios_pa/sg_epag/sg_epaguSecgen02.sql` exige `id_evidenc` antes de comprometer meses y enviar la cuota.
 
 Cada artefacto tiene un `.txt` idéntico para certificación. Validar en el ambiente Sybase las consultas de contrato y los nombres/tipos de columnas locales antes de publicar el backend y frontend que las consumen.
