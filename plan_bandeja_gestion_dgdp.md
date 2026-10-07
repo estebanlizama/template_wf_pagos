@@ -16,7 +16,7 @@ El RUT se obtiene de la sesión. Se deriva el perfil de permisos de revisión ú
 1. **Backend y permisos:** exponer el permiso derivado en `/auth/user`; proteger endpoints nuevos de cola y detalle con ese permiso, y revalidar el criterio dentro de Sybase al leer.
 2. **Datos:** crear PA de lectura acotados a estado 2 que entreguen datos de solicitud, funcionario, centro de costo, período, montos, meses vinculados y evidencia disponible; registrar SQL y TXT de certificación.
 3. **Frontend:** agregar un acceso independiente en Prestaciones para quien tenga el permiso DGDP; listar cuotas en visación y navegar al detalle.
-4. **Detalle y resoluciones:** mostrar funcionario, prestación, centro de costo, resolución, monto, meses, descuentos informados y cantidad de compensaciones; permitir aprobar, observar o rechazar. Observar/rechazar exigen motivo. Se guarda la última observación, RUT revisor y fecha; rechazo devuelve meses a Propuesta y libera su relación para asociarlos a otra cuota.
+4. **Detalle y resoluciones:** mostrar funcionario, prestación, centro de costo, resolución, monto, meses, descuentos informados y cantidad de compensaciones; permitir aprobar, observar o rechazar. Observar/rechazar exigen motivo. El rechazo devuelve los meses a Propuesta y libera su relación para asociarlos a otra cuota. La observación no se persiste: el esquema vigente no tiene columnas para motivo, RUT revisor ni fecha, como indica el apartado de límites.
 5. **Entrega:** mantener SQL/TXT de certificación, revisar contratos y documentación de rol; ejecutar compilación/tipado y no afirmar despliegue de Sybase.
 
 ## Criterios de aceptación

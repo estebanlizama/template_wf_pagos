@@ -13,14 +13,20 @@ go
 
    Entrada :
    @rut_person          -> RUT del revisor DGDP. (Obligatorio)
+   @cod_estcuo          -> Estado de cuota a listar. 0 lista todas las
+                           enviadas. Sin valor lista las que estan en
+                           visacion. (Opcional)
 
-   Objetivo : Listar las cuotas en visacion disponibles para el revisor DGDP.
+   Objetivo : Listar las cuotas enviadas por el jefe de proyecto que la
+   revision DGDP puede ver, con sus montos, descuentos informados, meses
+   cubiertos y compensaciones registradas.
 
    Creacion: ELA 2026/10/06
    Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epagsSecgen03
-    @rut_person char(9) = null
+    @rut_person char(9)  = null,
+    @cod_estcuo tinyint  = null
 as
 
 if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
@@ -28,6 +34,15 @@ begin
     select 'Falta el RUT del revisor DGDP.' as msg
     return
 end
+
+if @cod_estcuo is not null and @cod_estcuo not in (0, 2, 3, 4, 8, 10, 11)
+begin
+    select 'El estado de cuota solicitado no corresponde a la bandeja DGDP.' as msg
+    return
+end
+
+if @cod_estcuo is null
+    select @cod_estcuo = 2
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
@@ -60,6 +75,7 @@ select
     rtrim(isnull(ecuo.des_estcuo, '')) as des_estcuo,
     epag.rut_solici,
     epag.fec_solici,
+    datediff(dd, epag.fec_solici, getdate()) as dias_espera,
     epag.id_evidenc,
     fu.rut as rut_funcionario,
     case when len(isnull(pers.nom_dest, '')) <= 1 then pers.nom_nombre else pers.nom_dest end as nom_nombre,
@@ -74,13 +90,32 @@ select
     rslc.num_resolu as num_resolu_ext,
     fu.mto_total,
     fu.mto_tope,
+    fu.tot_cuotas,
+    fu.ext_cuotas,
     fu.cod_tpps,
     epag.ano_pago,
     epag.mes_pago,
     count(dpag.corr_fume) as cant_meses,
     isnull(sum(fume.mto_apagar), 0) as mto_cuota,
+    isnull(sum(fume.mto_deslic), 0) as mto_deslic,
+    isnull(sum(fume.mto_dessg), 0) as mto_dessg,
     min(fume.ano_prop * 100 + fume.mes_prop) as mes_prop_min,
-    max(fume.ano_prop * 100 + fume.mes_prop) as mes_prop_max
+    max(fume.ano_prop * 100 + fume.mes_prop) as mes_prop_max,
+    (select count(*)
+       from secgen_db.dbo.sg_dpag d2,
+            secgen_db.dbo.sg_fuc2 c2
+      where d2.id_funprse = epag.id_funprse
+        and d2.nro_cuota  = epag.nro_cuota
+        and c2.id_funprse = d2.id_funprse
+        and c2.corr_fume  = d2.corr_fume) as cant_compens,
+    (select count(*)
+       from secgen_db.dbo.sg_dpag d3
+      where d3.id_funprse = epag.id_funprse
+        and d3.nro_cuota  = epag.nro_cuota
+        and not exists (select 1
+                          from secgen_db.dbo.sg_fuc2 c3
+                         where c3.id_funprse = d3.id_funprse
+                           and c3.corr_fume  = d3.corr_fume)) as cant_sincomp
 from secgen_db.dbo.sg_epag epag
 inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
 inner join secgen_db.dbo.sg_prse prse on prse.nro_solici = fu.nro_solici
@@ -91,7 +126,8 @@ left join secgen_db.dbo.sg_fume fume on fume.id_funprse = dpag.id_funprse and fu
 left join sisper_db..sp_pers pers on pers.rut_person = fu.rut
 left join fin21_db..es_ccto ccto on ccto.cod_ccto = prse.cod_ccto and ccto.cod_unifin = prse.cod_unifin
 left join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
-where epag.cod_estcuo = 2
+where epag.cod_estcuo <> 1
+  and (@cod_estcuo = 0 or epag.cod_estcuo = @cod_estcuo)
   and isnull(prse.cod_modprs, 1) = 2
   and soli.cod_estsol = 11
   and soli.nro_resolu is not null
@@ -100,7 +136,8 @@ group by fu.nro_solici, epag.id_funprse, epag.nro_cuota, epag.cod_estcuo,
     fu.rut, pers.nom_dest, pers.nom_nombre, pers.nom_appate, pers.nom_apmate,
     prse.actividad, prse.cod_unifin, prse.cod_ccto, ccto.nom_ab_cct,
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, fu.mto_total,
-    fu.mto_tope, fu.cod_tpps, epag.ano_pago, epag.mes_pago
+    fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, epag.ano_pago,
+    epag.mes_pago
 order by epag.fec_solici, fu.nro_solici, epag.id_funprse, epag.nro_cuota
 go
 

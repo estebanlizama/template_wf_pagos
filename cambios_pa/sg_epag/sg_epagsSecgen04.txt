@@ -16,7 +16,8 @@ go
    @id_funprse          -> Prestacion del funcionario. (Obligatorio)
    @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
 
-   Objetivo : Consultar los meses asociados a una cuota en visacion DGDP.
+   Objetivo : Consultar los meses asociados a una cuota ya enviada por el
+   jefe de proyecto, para resolverla o para consultar su historial.
 
    Creacion: ELA 2026/10/06
    Actualizacion: Sin registro
@@ -62,10 +63,10 @@ if not exists (
       from secgen_db.dbo.sg_epag
      where id_funprse = @id_funprse
        and nro_cuota = @nro_cuota
-       and cod_estcuo = 2
+       and cod_estcuo in (2, 3, 4, 8, 10, 11)
 )
 begin
-    select 'La cuota no existe o ya no esta en visacion.' as msg
+    select 'La cuota no existe o no esta disponible para revision DGDP.' as msg
     return
 end
 
