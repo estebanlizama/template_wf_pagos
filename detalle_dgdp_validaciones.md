@@ -569,3 +569,278 @@ sella `fec_valida`, todo en una transacción. Endpoint
 
 `sg_fumeuSecgen03`, `sp_as01sSecgen01` y el reinicio del backend para que tome
 el RUT de asistencia de prueba.
+
+---
+
+## 12. Calendario por capas · 07-10-2026
+
+Ajuste pedido: el calendario debe venir **primero** y permitir ver los cruces,
+con cada fuente por separado.
+
+### 12.1 Cuatro capas, no un color fundido
+
+Cada día del calendario muestra **una marca por fuente**, una al lado de la
+otra, en este orden:
+
+1. **Ejecución comprometida** — el día de la semana que fija `sg_fuho`. No se
+   pinta cuando ese día es feriado: ese día no se ejecuta.
+2. **Compensación comprometida** — `sg_fuco`.
+3. **Compensación informada** — `sg_fuc2`.
+4. **Marca de reloj control** — `sp_as01`.
+
+El feriado no es una marca sino el fondo del día, porque es una condición de la
+fecha y no una actividad. Antes las cuatro condiciones se fundían en un color
+por celda, de modo que un día con compromiso **y** con compensación informada
+se veía igual que uno con solo una de las dos: justo el cruce que había que
+observar quedaba escondido.
+
+Al elegir un día se despliega su detalle con las fuentes que aplican, con horas
+y tramos.
+
+### 12.2 Lo que viene después del calendario
+
+- **Semana de ejecución**: son tres atributos, así que pasó de tabla a una fila
+  de chips con el total y las horas no consideradas.
+- **Feriados del período**: es solo información de apoyo, así que salió del
+  flujo y quedó en un modal de desglose, accesible desde el encabezado del
+  calendario.
+- **Resumen por mes**: la tabla que sí se compara. Por cada mes entrega
+  comprometido, informado, la diferencia que falta por explicar, los días con
+  marca y los minutos fuera de turno acreditados.
+
+### 12.3 Verificación
+
+El componente quedó bien formado y ESLint y las 12 suites pasan. La
+comprobación visual de esta última pasada quedó incompleta: el panel del
+navegador dejó de responder. Lo verificado antes de ese punto —orden de
+secciones, campos de descuento, calendario interactivo y detalle del día— sigue
+siendo válido, pero las cuatro capas, la semana compacta, el modal de feriados
+y el resumen por mes no se vieron renderizados.
+
+### 12.4 Corrección: las capas eran ilegibles
+
+Los puntos de 7 px no permitían distinguir qué ocurrió cada día: el color era
+el único indicador y la ausencia no se veía en absoluto. Se reemplazaron por
+**tres iniciales dentro de la celda** — `C` comprometido, `I` informado, `B`
+biométrico — donde lo que **no** ocurrió también se muestra, en gris. Así un
+día comprometido e informado pero sin marca se lee de inmediato.
+
+La ejecución comprometida pasó a ser el fondo de la celda, como el feriado:
+ambas son condiciones de la fecha, no actividades que se marquen.
+
+En el resumen por mes, «Días con marca» dejó de ser un conteo y pasó a
+enumerar **qué días** se marcó biométricamente. Un número no permitía
+compararlos con los días comprometidos, que es la pregunta real.
+
+Verificado: `13: C+ I+ B·` — comprometido e informado, sin marca biométrica.
+Las `B` aparecen todas apagadas porque `sp_as01sSecgen01` sigue sin aplicarse.
+
+---
+
+## 13. La asistencia ya entrega datos · 07-10-2026
+
+### 13.1 El RUT se estaba truncando
+
+La consulta volvía vacía sin error. La causa: `normalizeRut` elimina todo lo
+que no sea dígito, de modo que `06706447K` llegaba al PA como `006706447`, que
+no existe. `sp_pers.rut_person` guarda el **dígito verificador dentro de los 9
+caracteres**, así que un RUT terminado en K se pierde.
+
+Se agregó `normalizeRutWithCheckDigit`, que conserva la K. `normalizeRut` sigue
+sirviendo para los PA de pago, donde el parámetro es el RUT numérico del
+responsable del centro de costo. Por eso el problema no se había visto: los
+RUT de los revisores de prueba terminan en dígito.
+
+Con el arreglo llegan **182 días, 103 con marca**, y el excedente calcula bien:
+el 08/01/2016 marcó 573 minutos contra 530 de turno, es decir 43 minutos fuera
+de turno con salida a las 18:05.
+
+### 13.2 Tres estados, no dos
+
+Los datos reales traen `cod_estasi` con tres valores: `Completo` (entrada y
+salida), `Incompleto` (una sola marca) y `Estado inicial` (sin marcas). Antes
+la vista solo distinguía «marcó» de «no marcó» usando `min_marcados`, que viene
+vacío cuando falta una marca: los días incompletos se veían como si la persona
+no hubiera ido.
+
+Ahora son tres:
+
+| Marca | Significado |
+| :--- | :--- |
+| `B` relleno | Marca completa: acredita presencia y permite medir tiempo |
+| `B` con borde | Marca incompleta: acredita presencia, no permite medir tiempo |
+| `B` en gris | Sin marca |
+
+Esto cierra la condición 4 de `cruce_con_nuestra_bdd.md` —«definir qué hacer
+con los días Incompletos»— con una decisión visible: se muestran como presencia
+parcial y **no suman excedente**.
+
+El detalle del día informa el estado y, cuando la marca es parcial, explica por
+qué no se puede medir el tiempo.
+
+### 13.3 Lectura del calendario, con datos reales
+
+```
+ 4: C· I· B~    marca incompleta, sin compromiso ni informe
+ 5: C· I+ B+    informado y marcado, sin compromiso
+13: C+ I+ B+    comprometido, informado y marcado
+```
+
+Y el resumen por mes ya enumera los días efectivamente marcados:
+`Enero 2016 · 5, 8, 11, 12, 13, 14, 15, 18, 19, 20, 21 · 2 h 42 min fuera de turno`.
+
+### 13.4 Corrección de un dato engañoso
+
+Los meses fuera de la cuota mostraban «Cubierto» con 0 minutos comprometidos.
+No hay nada que cubrir: ahora dicen «Sin compromiso».
+
+---
+
+## 14. Sin porcentajes de cumplimiento · 08-10-2026
+
+Corrección de criterio pedida por el usuario: **no se puede afirmar que la
+prestación se ejecutó**. Ni la declaración del jefe de proyecto ni el reloj
+control lo acreditan, así que la vista no debe dar porcentajes ni veredictos.
+
+| Antes | Ahora |
+| :--- | :--- |
+| Chip «Cobertura 100 %» | Comprometido y Informado en horas; si falta, «Falta informar N h» |
+| «Cumplimiento jornada 100 %» en el encabezado | «Comprometido 25 h» y «Informado 25 h», separados |
+| Chip verde «Cubierto» por mes | «Sin diferencia», en texto neutral |
+
+El reloj control se describe como lo que es: «acredita que hubo tiempo, no a
+qué se dedicó. Es un antecedente para ponderar, no una prueba de que la
+prestación se ejecutó».
+
+### 14.1 El biométrico solo donde se evalúa
+
+La marca `B` aparece únicamente en días con **ejecución comprometida, o
+compensación comprometida o informada**. En un día sin nada que contrastar el
+reloj no dice nada de la prestación, y su marca era ruido. El resumen por mes
+aplica el mismo criterio.
+
+### 14.2 Antecedentes de contrato
+
+Siguiendo la solicitud de resolución, el bloque de antecedentes agrega
+vigencia, calidad jurídica, jornada contractual, horas de contrato, unidad y
+fecha de inicio del contrato. El revisor necesita saber bajo qué vínculo se
+ejecuta la prestación.
+
+### 14.3 Ejecución comprometida, explicada una vez
+
+Pasó de una fila de cifras sueltas a un bloque con una línea de ayuda —«Días y
+horas que la resolución fijó para esta prestación. Se repiten cada semana del
+período»— y los días como chips, con el total y lo que resta por feriado en una
+sola línea.
+
+### 14.4 Pendiente
+
+La jornada institucional fija de 08:30–17:18 sigue usada como referencia en las
+reglas de compensación, pero el turno real varía por persona y por día y llega
+en el propio registro de asistencia (`hora_turno_ent`/`hora_turno_sal`). El
+detalle del día ya muestra el turno real; las reglas que asumen el horario fijo
+quedan por revisar.
+
+---
+
+## 15. Catastro aplicado a la vista · 08-10-2026
+
+Contraste del catastro contra el código, y correcciones de **pertinencia**: no
+basta con que la consulta exista, tiene que evaluarse en el período correcto y
+con la severidad que el pago exige.
+
+### 15.1 Tres defectos de pertinencia corregidos
+
+**1. Alcance temporal.** El panel evaluaba contra el período completo de la
+prestación. Las reglas de pago deben mirar **los meses que cubre la cuota**:
+eso es lo que se está pagando. `revalidateNormative` recibe ahora `periodFrom`
+y `periodTo`; la vista DGDP pasa del primer día del mes más antiguo al último
+del más reciente entre los meses de la cuota. Sin esos parámetros mantiene el
+comportamiento del solicitante.
+
+**2. PAG-32, constancia de parentesco.** La resolución difiere la constancia al
+pago (RES-IN-07 es informativa **porque** se difiere). La vista la mostraba
+como advertencia no bloqueante, de modo que no se exigía en ninguna parte del
+flujo. Con `requireRelationshipCertificate`, en DGDP un parentesco que exige
+constancia queda como **error bloqueante**.
+
+**3. Aprobar no revalidaba.** El panel se podía refrescar a mano, pero aprobar
+no forzaba consulta fresca ni miraba el resultado. Ahora aprobar vuelve a
+consultar el panel y se detiene si hay controles bloqueantes o pendientes,
+nombrándolos. Observar y rechazar no lo exigen: son salidas negativas y un
+control bloqueante suele ser justamente el motivo.
+
+### 15.2 Estado real por grupo
+
+| Grupo | Estado |
+| :--- | :--- |
+| Contrato y cargo | ✓ consultado y revalidado a la fecha de pago. PAG-41 sigue como advertencia; su severidad está sin decidir |
+| Asignaciones | ✓ ahora evaluadas con el período de la cuota |
+| Parentesco | ✓ bloquea cuando exige constancia. **Falta** adjuntar y ver esa constancia |
+| Tope y monto | ◐ el tope se controla. De los cuatro saldos, el presupuestario llega como advertencia no bloqueante |
+| Carga horaria y PDS previas | ✓ consultadas, con alerta de concurrencia |
+| Compensación | ✓ comprometido contra informado, por día y por mes. Depende de `sg_fuc2sSecgen02` |
+| Ausencias | ✗ PAG-33 y PAG-34 sin fuente. Se **registra** el descuento, no se **detecta** la ausencia |
+| Proyecto y deuda | ✗ PAG-36 y PAG-37 sin fuente |
+| Formación continua y evidencia | ✗ la cuota guarda `id_evidenc`, pero no hay visor del PDF |
+| Calendario | ✓ feriados en el calendario y descontados de las horas comprometidas |
+
+### 15.3 Lo que sigue abierto, por orden de impacto
+
+1. **Saldo presupuestario bloqueante.** En resolución el saldo está apagado y
+   acá llega como advertencia. En el pago es la plata que se gira: debe decidirse
+   si bloquea la aprobación.
+2. **Visor del respaldo de la cuota.** Bloqueado por dónde vive el binario en
+   MySQL.
+3. **Ausencias automáticas.** Requiere el PA de `sp_as21` por período.
+4. **Auditoría del dictamen.** `sg_epaguSecgen03` no persiste motivo, RUT ni
+   fecha.
+5. **RUT de asistencia de prueba.** `ATTENDANCE_TEST_RUT` sigue activo y debe
+   retirarse antes de usar la asistencia como antecedente real.
+
+---
+
+## 16. Decisiones del 08-10-2026
+
+### 16.1 El saldo del centro de costo bloquea
+
+Decidido por el usuario. `revalidateNormative` recibe `balanceBlocks`; la
+visación DGDP lo pasa en `true` y el control queda como **error bloqueante**.
+El borrador del solicitante conserva la advertencia, porque ahí todavía no se
+gira nada.
+
+### 16.2 Ausencias desde la propia asistencia
+
+`sp_as01sSecgen01` ya consultaba `sp_as21`, pero devolvía el motivo usando
+`res_ausen` —truncado a 15 caracteres por el catálogo— y sin el grupo, de modo
+que no se podía distinguir una licencia de un permiso.
+
+Se corrigió:
+
+- el motivo sale de **`des_ausen`**, completo;
+- se arrastran `tip_agraus`/`cod_agraus` y se derivan dos banderas por día:
+  **`tie_licmed`** (grupo 2, licencias médicas) y **`tie_singoce`**
+  (grupo 1 código 2, permiso sin goce).
+
+Con eso la vista gana un apartado **Ausencias en el período**, que agrupa los
+días en tramos consecutivos del mismo tipo y muestra desde, hasta, días, tipo y
+motivo, con el total de días con licencia y sin goce. Es la base de los
+descuentos que el revisor ingresa en el bloque de meses.
+
+Sin registro de asistencia la sección **no afirma que no hubo ausencias**: dice
+que no se pudo saber, que es distinto.
+
+Esto no cierra PAG-33 y PAG-34 por sí solo —siguen siendo controles que deben
+bloquear, no solo informar— pero elimina la parte que faltaba: la fuente.
+
+### 16.3 La auditoría del dictamen no necesita tabla nueva
+
+`diagrama_bdd/diagrama_pagos_actualizada.md` §8.3 ya lo resuelve: **`sg_apso`
+tiene la forma exacta** — `nro_solici`, `id_funprse` anulable, `comentario`,
+`rut_usua`, `cod_estapr`, `f_aprobac` y el par `cod_flusol`/`cod_etapa`. Solo
+necesita un `cod_flusol` propio del flujo de pagos.
+
+Queda sin efecto lo que decía este documento sobre persistir la observación con
+una extensión de esquema: `05_auditoria_revision_dgdp.sql` deja de ser el
+camino. El trabajo es registrar la decisión en `sg_apso` al resolver, y leer
+desde ahí el historial que pide PP02-F02.

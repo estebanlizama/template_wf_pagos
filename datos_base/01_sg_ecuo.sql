@@ -88,7 +88,7 @@ GO
 
 INSERT INTO #ecuo VALUES ( 1, 'Propuesta')
 INSERT INTO #ecuo VALUES ( 2, 'En visación')
-INSERT INTO #ecuo VALUES ( 3, 'Observada')
+INSERT INTO #ecuo VALUES ( 3, 'Devolver')
 INSERT INTO #ecuo VALUES ( 4, 'Aprobada')
 INSERT INTO #ecuo VALUES ( 8, 'Enviada remuneraciones')
 INSERT INTO #ecuo VALUES (10, 'Rechazada')

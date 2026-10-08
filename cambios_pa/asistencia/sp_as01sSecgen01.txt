@@ -127,17 +127,23 @@ begin
     from sisper_db..sp_pasi
 
     create table #ausencias (
-        cod_asist  int          not null,
-        res_ausen  varchar(255) null
+        cod_asist   int          not null,
+        res_ausen   varchar(255) null,
+        tie_licmed  char(1)      null,
+        tie_singoce char(1)      null
     )
 
     declare @c_asist int
     declare @c_ant   int
     declare @motivo  varchar(60)
     declare @acum    varchar(255)
+    declare @tipgru  tinyint
+    declare @codgru  tinyint
+    declare @licmed  char(1)
+    declare @singoce char(1)
 
     declare cur_ausen cursor for
-        select a.cod_asist, f.res_ausen
+        select a.cod_asist, f.des_ausen, e.tip_agraus, e.cod_agraus
         from sisper_db..sp_as01 a
         inner join sisper_db..sp_as21 e
             on e.cod_asist = a.cod_asist
@@ -150,12 +156,14 @@ begin
     for read only
 
     open cur_ausen
-    fetch cur_ausen into @c_asist, @motivo
+    fetch cur_ausen into @c_asist, @motivo, @tipgru, @codgru
 
     while @@sqlstatus = 0
     begin
         select @c_ant = @c_asist
-        select @acum  = null
+        select @acum   = null
+        select @licmed = 'N'
+        select @singoce = 'N'
 
         while @@sqlstatus = 0 and @c_asist = @c_ant
         begin
@@ -164,10 +172,17 @@ begin
             else
                 select @acum = @acum + ' | ' + @motivo
 
-            fetch cur_ausen into @c_asist, @motivo
+            if @tipgru = 2
+                select @licmed = 'S'
+
+            if @tipgru = 1 and @codgru = 2
+                select @singoce = 'S'
+
+            fetch cur_ausen into @c_asist, @motivo, @tipgru, @codgru
         end
 
-        insert into #ausencias (cod_asist, res_ausen) values (@c_ant, @acum)
+        insert into #ausencias (cod_asist, res_ausen, tie_licmed, tie_singoce)
+        values (@c_ant, @acum, @licmed, @singoce)
     end
 
     close cur_ausen
@@ -259,6 +274,8 @@ begin
         b.des_estasi                                  as des_estasi,
         case when au.cod_asist is null then 'N' else 'S' end as tie_ausenc,
         au.res_ausen                                  as res_ausen,
+        isnull(au.tie_licmed, 'N')                    as tie_licmed,
+        isnull(au.tie_singoce, 'N')                   as tie_singoce,
         case when ju.cod_asist is null then 'N' else 'S' end as tie_justif,
         ju.excusa                                     as excusa,
         case when fe.cod_tipfer is null then 'N' else 'S' end as es_feriado,

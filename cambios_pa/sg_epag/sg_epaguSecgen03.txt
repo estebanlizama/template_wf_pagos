@@ -41,11 +41,6 @@ begin
     select 'La resolucion indicada no es valida.' as msg
     return
 end
-if @cod_estcuo in (3, 10) and ltrim(rtrim(isnull(@observacion, ''))) = ''
-begin
-    select 'Ingrese el motivo de la observacion o rechazo.' as msg
-    return
-end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
