@@ -21,7 +21,8 @@ go
    @mes_ejec            -> Mes de ejecucion real. (Opcional)
 
    Objetivo : Fijar el monto a pagar y la ejecucion real de un mes de
-   ejecucion.
+   ejecucion. Valida que la cuota no quede sobre el tope y versiona en
+   sg_fum2 el estado anterior del mes cuando el monto cambia.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
@@ -68,6 +69,12 @@ select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
 declare @cod_estfum tinyint
 declare @cod_estcuo tinyint
+declare @nro_cuota  int
+declare @ext_cuotas char(1)
+declare @mto_tope   int
+declare @mto_otros  int
+declare @mto_actual int
+declare @correlativ int
 
 if not exists (select 1
                  from secgen_db.dbo.sg_fups fu,
@@ -97,7 +104,8 @@ begin
     select 'El mes indicado no existe' msg return
 end
 
-select @cod_estcuo = epag.cod_estcuo
+select @cod_estcuo = epag.cod_estcuo,
+       @nro_cuota  = epag.nro_cuota
   from secgen_db.dbo.sg_dpag dpag,
        secgen_db.dbo.sg_epag epag
  where dpag.id_funprse = @id_funprse
@@ -110,6 +118,102 @@ begin
     select 'Error: El mes ya no admite cambios de monto' msg return
 end
 
+select @ext_cuotas = isnull(ext_cuotas, 'N'),
+       @mto_tope   = isnull(mto_tope, 0)
+  from secgen_db.dbo.sg_fups
+ where id_funprse = @id_funprse
+
+if @nro_cuota is not null and @ext_cuotas <> 'S' and @mto_tope > 0
+begin
+    select @mto_otros = isnull(sum(fume.mto_apagar), 0)
+      from secgen_db.dbo.sg_dpag dpag,
+           secgen_db.dbo.sg_fume fume
+     where dpag.id_funprse = @id_funprse
+       and dpag.nro_cuota  = @nro_cuota
+       and dpag.corr_fume <> @corr_fume
+       and fume.id_funprse = dpag.id_funprse
+       and fume.corr_fume  = dpag.corr_fume
+
+    if @mto_otros + @mto_apagar > @mto_tope
+    begin
+        select 'Error: El monto deja la cuota sobre el tope autorizado' msg return
+    end
+end
+
+select @mto_actual = isnull(mto_apagar, 0)
+  from secgen_db.dbo.sg_fume
+ where id_funprse = @id_funprse
+   and corr_fume  = @corr_fume
+
+begin tran
+
+if @mto_actual <> @mto_apagar
+begin
+    select @correlativ = isnull(max(correlativ), 0) + 1
+      from secgen_db.dbo.sg_fum2 holdlock
+     where id_funprse = @id_funprse
+       and corr_fume  = @corr_fume
+
+    if @correlativ > 255
+    begin
+        select 'Error: Se alcanzo el maximo de versiones del mes' msg
+        if @@transtate = 2
+            rollback tran
+        return
+    end
+
+    insert into secgen_db.dbo.sg_fum2 (
+        id_funprse,
+        corr_fume,
+        correlativ,
+        ano_prop,
+        mes_prop,
+        cod_estcuo,
+        ano_ejec,
+        mes_ejec,
+        mto_apagar,
+        id_evidenc,
+        val_licmed,
+        val_inabili,
+        val_singoce,
+        val_ciecc,
+        fec_valida,
+        rut_autori,
+        fec_autori,
+        fec_envrem
+    )
+    select
+        id_funprse,
+        corr_fume,
+        @correlativ,
+        ano_prop,
+        mes_prop,
+        cod_estfum,
+        ano_ejec,
+        mes_ejec,
+        mto_apagar,
+        id_evidenc,
+        val_licmed,
+        val_inabili,
+        val_singoce,
+        val_ciecc,
+        fec_valida,
+        rut_autori,
+        fec_autori,
+        fec_envrem
+      from secgen_db.dbo.sg_fume
+     where id_funprse = @id_funprse
+       and corr_fume  = @corr_fume
+
+    if @@error <> 0
+    begin
+        select 'Error al versionar el mes antes de cambiar el monto' msg
+        if @@transtate = 2
+            rollback tran
+        return
+    end
+end
+
 update secgen_db.dbo.sg_fume
    set mto_apagar = @mto_apagar,
        ano_ejec   = isnull(@ano_ejec, ano_ejec),
@@ -119,8 +223,13 @@ update secgen_db.dbo.sg_fume
 
 if @@error <> 0
 begin
-    select 'Error al actualizar el monto del mes' msg return
+    select 'Error al actualizar el monto del mes' msg
+    if @@transtate = 2
+        rollback tran
+    return
 end
+
+commit tran
 
 select 1 as status, 'OK' as code, 'Monto del mes actualizado correctamente' as msg
 go

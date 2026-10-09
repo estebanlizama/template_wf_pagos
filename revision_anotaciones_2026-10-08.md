@@ -165,15 +165,159 @@ pagarse"*.
 
 ---
 
-## Resumen
+## Resumen — decisiones tomadas y estado
 
-| # | Anotación | Estado | Bloqueante para avanzar |
+Decisiones del cliente del 08-10-2026, ya aplicadas salvo lo indicado.
+
+| # | Anotación | Decisión | Estado |
 | :--- | :--- | :--- | :--- |
-| 1 | Cuotas en la resolución | No implementado | Decidir columna vs. frase |
-| 2 | Pago de la última dentro del último mes | No implementado | **Sí** — dos lecturas posibles |
-| 3 | Editar lo propuesto por mes en fijo | No implementado | Decidir qué pasa con el remanente (ver 4.b) |
-| 4.a | Horas comprometidas en la última cuota | Implementado, pero para todas | Confirmar que las intermedias sí admiten pago parcial |
-| 4.b | Saldo no acumulable | Calculado; hoy bloquea | Decidir: bloquear o dejar perder |
+| 1 | Cuotas en la resolución | Línea propia en el bloque de datos del decreto, no columna de la tabla | **Implementado** (pantalla y PDF) |
+| 2 | Pago de la última cuota | Solo la última: se paga **desde** el mes de término de la ejecución. Sin techo y sin piso para las anteriores | **Implementado** (formulario + 2 PA, pendiente desplegar) |
+| 3 | Editar el monto por mes | Editable también en fijo, acotado a lo propuesto (C-10) y al tope de la cuota | **Implementado** (formulario + PA, pendiente desplegar) |
+| 3b | Auditoría del cambio | Valor nuevo en `sg_fume`, versión anterior en `sg_fum2` | **Implementado** (PA, pendiente desplegar) |
+| 4.a | Horas comprometidas | Bloquea solo la última; en las anteriores advierte | **Implementado** (frontend; falta el PA) |
+| 4.b | Saldo no acumulable | Se pierde: se informa, no se bloquea | **Implementado** |
 
-Las anotaciones 3 y 4.b son la misma decisión vista desde dos lados: si el
-monto de un mes puede bajar, hay que decir qué ocurre con la diferencia.
+### 1 · Cuotas en la resolución
+
+Se agrega `Cuotas en que se distribuye el pago : 2 cuotas` después de
+`Cantidad de horas contratadas`, en:
+
+- `ResolutionDetail.completeDocumentCards` (pantalla), desde `tot_cuotas` del funcionario;
+- `resolution.controller.formatDeclaredInstallments` + `prse-resolution.document.html` (PDF).
+
+Con varios funcionarios de distinto número se enumeran por nombre en vez de
+inventar un total único.
+
+### 2 · Mes de pago mínimo
+
+La regla alcanza **solo a la última cuota** (aclaración del 08-10-2026): se paga
+desde el mes de término de la ejecución, nunca antes. Con dos cuotas es la
+segunda la que queda sujeta.
+
+Las cuotas anteriores **no tienen piso**: se pagan cuando corresponda. Y no hay
+techo para ninguna — una cuota atrasada sigue siendo válida (C-08).
+
+| Dónde | Condición |
+| :--- | :--- |
+| `Du288InstallmentFormSection.minimumPaymentPeriod` | `isLastAvailableQuota ? lastExecutionPeriod : 0` |
+| `sg_epagiSecgen01` | `@cuotas_hoy + 1 = @tot_cuotas` |
+| `sg_epaguSecgen01` | `@nro_cuota = @tot_cuotas` |
+
+El mes de término sale de `max(sg_fume.ano_prop * 100 + mes_prop)` de la
+prestación, no de los meses que la cuota toma: la última cuota podría no
+incluir el mes final y la regla igual aplica (C-06).
+
+### 3 · Monto por mes editable
+
+El input deja de ser exclusivo de variable. En fijo el reparto por resto mayor
+(**T-08**) pasa a ser **propuesta**, con `max` = monto propuesto del mes, porque
+C-10 solo permite bajar. El total de la cuota sigue acotado por `capExceeded`
+(tope) y `balanceExceeded` (saldo autorizado).
+
+`sg_fumeuSecgen02` suma dos cosas:
+
+1. **Tope de la cuota.** Si el mes pertenece a una cuota y la prestación no tiene
+   extensión, `suma(otros meses) + monto nuevo <= mto_tope`.
+2. **Versión en `sg_fum2`.** Antes de actualizar, y solo si el monto cambia,
+   inserta la fila actual de `sg_fume` con `correlativ = max + 1`.
+
+Todo dentro de una transacción: la versión y el nuevo valor entran juntos o no
+entra ninguno.
+
+#### Lo que `sg_fum2` no puede guardar
+
+La tabla es espejo de `sg_fume` **menos tres columnas** y con el nombre viejo del
+estado (§8.2 de `diagrama_pagos_actualizada.md`):
+
+| | `sg_fume` | `sg_fum2` |
+| :--- | :--- | :--- |
+| estado | `cod_estfum` | `cod_estcuo` ← el PA escribe aquí `cod_estfum` |
+| monto enviado | `mto_realpa` | **no está** |
+| descuento licencia | `mto_deslic` | **no está** |
+| descuento sin goce | `mto_dessg` | **no está** |
+
+Para esta anotación alcanza: lo que se versiona es `mto_apagar`, que sí está.
+**No alcanza** para el otro camino de escritura, el de DGDP
+(`sg_fumeuSecgen03`, que escribe `mto_deslic`/`mto_dessg`): si esos cambios
+también deben quedar versionados, `sg_fum2` necesita las tres columnas.
+
+Tampoco queda **cuándo ni quién** hizo el cambio. `rut_autori`/`fec_autori` de
+`sg_fume` son de la autorización DGDP y escribirlos desde aquí falsearía ese
+dato, así que el PA no los toca. Si se quiere la marca del editor hace falta
+una columna nueva.
+
+### 4.b · El saldo se pierde
+
+`resolveRemainingInstallmentCapacity` ya calculaba el remanente que no cabe en
+las cuotas que quedan. Deja de bloquear: ahora el formulario informa
+*"Con este reparto, $X del total autorizado no podrá pagarse: el tope no se
+acumula entre cuotas"* y permite guardar. Es T-03 aplicado tal cual.
+
+### 4.a · Resuelto: bloquea solo la última, advierte en las anteriores
+
+Decisión del 09-10-2026:
+
+| Cuota | Compensación incompleta |
+| :--- | :--- |
+| Anterior a la última | **no bloquea** — se envía (C-07, pago parcial), con advertencia visible |
+| Última | **bloquea** — no se envía hasta completar las horas |
+
+La advertencia de las anteriores dice a qué lleva la deuda: *"Quedan horas
+comprometidas sin compensar. Esta cuota se puede enviar, pero si la
+compensación no se completa en horas, la última cuota no se podrá pagar."*
+
+"Última" se decide con la misma condición que el PA —`nro_cuota = tot_cuotas`—
+para que pantalla y base no discrepen (`isSendingLastInstallment`).
+
+**Sigue pendiente:** el bloqueo vive solo en el frontend. `sg_epaguSecgen02` no
+valida compensaciones, así que una llamada directa a la API enviaría la última
+cuota sin ellas. Llevar la regla al PA es trabajo aparte, con su despliegue.
+
+### 5 · Editar una cuota con meses ya comprometidos
+
+Decisión del 08-10-2026: una cuota devuelta tiene que poder cambiar también
+**qué meses abarca**, no solo montos y mes de pago.
+
+Antes, `sg_epaguSecgen01` rechazaba con *"Una cuota observada no puede cambiar
+los meses que abarca"*. El motivo era real: sacar un mes lo dejaba en
+`cod_estfum = 2` sin cuota y fuera de `disponible`. La guarda se levanta y el
+PA se hace cargo del estado, dentro de la misma transacción que rehace
+`sg_dpag`:
+
+| Al guardar una cuota en estado 3 | `cod_estfum` |
+| :--- | :--- |
+| mes que sale de la cuota (queda sin fila en `sg_dpag`) | vuelve a **1 Propuesta** |
+| mes que entra a la cuota | pasa a **2 Comprometida** |
+
+La liberación se escribe como *"mes en 2 sin fila en `sg_dpag`"*, no como
+*"mes que estaba en esta cuota"*: así además corrige cualquier mes que hubiera
+quedado huérfano antes.
+
+Montos y compensaciones ya eran editables en estado 3 — los PA usan
+`cod_estfum = 1 or cod_estcuo = 3`.
+
+### 6 · Editar / Cancelar edición / Guardar edición
+
+El formulario de cuota abre **en consulta**. Las tres acciones:
+
+| Acción | Qué hace |
+| :--- | :--- |
+| **Editar cuota** | habilita mes de pago, selección de meses y montos; guarda una copia del estado actual |
+| **Cancelar edición** | restaura esa copia y vuelve a consulta; nada se persiste |
+| **Guardar edición** | persiste montos (`sg_fumeuSecgen02`) y encabezado + meses (`sg_epaguSecgen01`) |
+
+Una cuota nueva abre directamente en edición, porque no hay nada que consultar.
+
+El estado que el formulario emite al contenedor
+(`{ open, editing, valid, dirty }`) suma `editing`; `dirty` solo puede ser
+verdadero dentro del modo edición, así que el aviso de cambios sin guardar deja
+de dispararse por abrir una cuota a mirar.
+
+### PA que quedan por desplegar
+
+| PA | Qué cambió |
+| :--- | :--- |
+| `sg_epagiSecgen01` | mes de pago mínimo al crear la cuota |
+| `sg_epaguSecgen01` | mes de pago mínimo al editar la cuota + cambio de meses en estado 3 con `cod_estfum` coherente |
+| `sg_fumeuSecgen02` | tope de la cuota + versión en `sg_fum2` |

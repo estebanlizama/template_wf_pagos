@@ -2,7 +2,7 @@
 
 **Fecha:** 06-10-2026
 **Ruta:** `/prestacion-de-servicios/pagos/:nroSolici`
-**Estado:** propuesta. No implementado.
+**Estado:** **aplicado por completo** el 09-10-2026. Ver §7 para la auditoría y §7.1 para la decisión de §1.3.
 **Alcance:** frontend. Un punto necesita decisión de negocio (§1.3) y ninguno requiere PA nuevo.
 
 ---
@@ -202,3 +202,52 @@ La decisión de §1.3 conviene tomarla antes del paso 1; el resto no la necesita
   que corresponde. Conviene revisarlo al hacer §1.1.
 - **No se toca resolución.** La tabla presupuestaria de pagos es una vista aparte que reutiliza el
   patrón, no el componente, porque aquel está acoplado al formulario de solicitud.
+
+---
+
+## 7. Auditoría contra el código — 09-10-2026
+
+El plan quedaba marcado como "no implementado", pero sus cinco bloques se
+fueron aplicando entre el 05 y el 09 de octubre, varios dentro de la
+reestructura de la solicitud de pago. Estado real, verificado en el código:
+
+| § | Bloque | Estado | Dónde |
+| :--- | :--- | :--- | :--- |
+| 1.1 | Persistir el saldo y mostrar la tabla | **aplicado** | `SET_COST_CENTER_BALANCE` en el store; `Du288PaymentBudgetSection.vue` |
+| 1.2 | La etiqueta deja de ser un TODO | **aplicado** | las tres etiquetas son "Centro de costo con saldo", "Centro de costo sin saldo" y "Saldo no disponible", sin sufijo |
+| 1.3 | ¿El saldo bloquea el envío? | **pendiente — decisión de negocio** | `BALANCE_VALIDATION_BLOCKS_SUBMISSION = false` |
+| 2 | Días de ejecución en su propia sección | **aplicado, con variante** | `Du288PaymentScheduleSection.vue`; desde la reestructura vive en un modal del bloque de contexto, no como sección apilada |
+| 3 | Cuotas: orden visual | **aplicado** | `stacked` en el workspace y rejilla `auto-fill`; la lista ya es el primer bloque accionable |
+| 4.1 | Tope del período distinto del mensual | **aplicado** | `resolvePaymentPeriodCap` + `periodCapExceeded` |
+| 4.1 | Suma ≤ pendiente por pagar | **aplicado** | `balanceExceeded` contra `availableAuthorizedAmount` |
+| 4.1 | Cupo de cuotas avisado en el compositor | **aplicado** | `isLastAvailableQuota` |
+| 4.1 | Reparto fijo no editable | **revertido por decisión posterior** | el 08-10-2026 se decidió que en fijo el reparto es **propuesta** y se puede bajar (C-10); ver `revision_anotaciones_2026-10-08.md` §3 |
+| 4.2 | Pendiente por pagar al store | **aplicado** | getter `paymentBalance` (`resolvePaymentAmountBalance`) |
+| 4.3 | Bloquear sobre tope y sobre pendiente | **aplicado** | ambos cortan `isValid` del compositor |
+
+### 7.1 §1.3 — resuelto: el saldo bloquea el envío
+
+Decisión del 09-10-2026: **el saldo del centro de costo bloquea también el
+envío del jefe de proyecto**, no solo la aprobación DGDP. Mostrar el saldo en
+rojo y dejar enviar igual era una contradicción que se descubría una etapa más
+tarde.
+
+`BALANCE_VALIDATION_BLOCKS_SUBMISSION = true`. La etiqueta pasa de `warning` a
+`error` y entra en `hasBlockingNormativeValidations`, que ya corta
+`submitFromBar`.
+
+**Consecuencia inmediata:** una prestación cuyo centro de costo no tenga fondos
+deja de poder enviarse. En los datos de prueba el centro de costo 9050-2
+devuelve saldo `$0`, así que esa solicitud queda bloqueada hasta que la
+consulta financiera devuelva saldo real. Es el comportamiento pedido, no un
+defecto.
+
+### 7.2 Advertencias del §6 que siguen vigentes
+
+- Las validaciones de topes y pendiente **siguen siendo de pantalla**. Ni
+  `sg_epagiSecgen01` ni `sg_epaguSecgen02` las replican, salvo
+  "suma ≤ monto autorizado" al enviar. Una llamada directa a la API las salta.
+  Excepción: el tope **por cuota** sí quedó en el PA, en `sg_fumeuSecgen02`,
+  al abrirse la edición del monto por mes.
+- El saldo se sigue consultando con un **monto estimado**, no con el de la
+  cuota que se enviará.

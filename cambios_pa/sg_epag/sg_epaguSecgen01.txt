@@ -21,7 +21,8 @@ go
    @id_evidenc          -> Identificador del respaldo adjunto. (Opcional)
 
    Objetivo : Modificar el mes de pago, el respaldo y los meses que abarca
-   una cuota todavia editable.
+   una cuota todavia editable. En una cuota observada ajusta cod_estfum: el
+   mes que sale vuelve a propuesto y el que entra queda comprometido.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
@@ -80,8 +81,8 @@ declare @pos        int
 declare @chunk      varchar(20)
 declare @pedidos    int
 declare @validos    int
-declare @actuales   int
-declare @comunes    int
+declare @mes_ultejec int
+declare @tot_cuotas  tinyint
 
 select @mes_actual = datepart(yy, getdate()) * 100 + datepart(mm, getdate())
 
@@ -169,24 +170,6 @@ begin
     return
 end
 
-select @actuales = count(*)
-  from secgen_db.dbo.sg_dpag
- where id_funprse = @id_funprse
-   and nro_cuota  = @nro_cuota
-
-select @comunes = count(*)
-  from #corr c,
-       secgen_db.dbo.sg_dpag dpag
- where dpag.id_funprse = @id_funprse
-   and dpag.nro_cuota  = @nro_cuota
-   and dpag.corr_fume  = c.corr_fume
-
-if @cod_estcuo = 3 and (@pedidos <> @actuales or @comunes <> @actuales)
-begin
-    select 'Error: Una cuota observada no puede cambiar los meses que abarca' as msg
-    return
-end
-
 select @validos = count(*)
   from #corr c,
        secgen_db.dbo.sg_fume fume,
@@ -217,6 +200,20 @@ if exists (select 1
               and dpag.nro_cuota <> @nro_cuota)
 begin
     select 'Error: Algun mes ya esta asignado a otra cuota' as msg
+    return
+end
+
+select @tot_cuotas = tot_cuotas
+  from secgen_db.dbo.sg_fups
+ where id_funprse = @id_funprse
+
+select @mes_ultejec = max(ano_prop * 100 + mes_prop)
+  from secgen_db.dbo.sg_fume
+ where id_funprse = @id_funprse
+
+if @nro_cuota = @tot_cuotas and (@ano_pago * 100 + @mes_pago) < isnull(@mes_ultejec, 0)
+begin
+    select 'Error: La ultima cuota no se paga antes del mes de termino de la ejecucion' as msg
     return
 end
 
@@ -270,6 +267,41 @@ begin
     select 'Error al asociar los meses a la cuota' as msg
     if @@transtate = 2 rollback tran
     return
+end
+
+if @cod_estcuo = 3
+begin
+    update secgen_db.dbo.sg_fume
+       set cod_estfum = 1
+      from secgen_db.dbo.sg_fume fume
+     where fume.id_funprse = @id_funprse
+       and fume.cod_estfum = 2
+       and not exists (select 1
+                         from secgen_db.dbo.sg_dpag dpag
+                        where dpag.id_funprse = fume.id_funprse
+                          and dpag.corr_fume  = fume.corr_fume)
+
+    if @@error <> 0
+    begin
+        select 'Error al liberar los meses que salieron de la cuota' as msg
+        if @@transtate = 2 rollback tran
+        return
+    end
+
+    update secgen_db.dbo.sg_fume
+       set cod_estfum = 2
+      from secgen_db.dbo.sg_fume fume,
+           #corr c
+     where fume.id_funprse = @id_funprse
+       and fume.corr_fume  = c.corr_fume
+       and fume.cod_estfum = 1
+
+    if @@error <> 0
+    begin
+        select 'Error al comprometer los meses que entraron a la cuota' as msg
+        if @@transtate = 2 rollback tran
+        return
+    end
 end
 
 commit tran

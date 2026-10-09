@@ -74,6 +74,7 @@ declare @pos         int
 declare @chunk       varchar(20)
 declare @pedidos     int
 declare @validos     int
+declare @mes_ultejec int
 
 select @mes_actual = datepart(yy, getdate()) * 100 + datepart(mm, getdate())
 
@@ -190,6 +191,16 @@ if exists (select 1
               and dpag.corr_fume  = c.corr_fume)
 begin
     select 'Error: Algun mes ya esta asignado a otra cuota' as msg
+    return
+end
+
+select @mes_ultejec = max(ano_prop * 100 + mes_prop)
+  from secgen_db.dbo.sg_fume
+ where id_funprse = @id_funprse
+
+if @cuotas_hoy + 1 = @tot_cuotas and (@ano_pago * 100 + @mes_pago) < isnull(@mes_ultejec, 0)
+begin
+    select 'Error: La ultima cuota no se paga antes del mes de termino de la ejecucion' as msg
     return
 end
 
