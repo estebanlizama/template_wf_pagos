@@ -47,6 +47,8 @@ begin
         ccto.cod_ftfn,
         rtrim(isnull(ftfn.des_ftfn, '')) as des_ftfn,
         rtrim(isnull(ccto.nom_ab_cct, '')) as nom_ab_cct,
+        ccto.afec_du9,
+        ccto.con_topdu9,
         fu.mto_total,
         fu.monto_mes,
         fu.tot_cuotas,
