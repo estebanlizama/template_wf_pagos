@@ -16,14 +16,16 @@ go
 
    Entrada :
    @rut_person          -> RUT del responsable vigente del centro de costo. (Opcional)
-   @ano                 -> Ano de ejecucion. Usa el actual si no se envia. (Opcional)
+   @ano                 -> Ano de ejecucion. Usa el actual si no se envia; 0 trae todos
+                           los anos, para comprobar permisos sin acotar por fecha. (Opcional)
    @mes                 -> Mes de corte, trae las cuotas hasta @ano/@mes inclusive. (Opcional)
 
    Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
    costo que la persona tiene a cargo, con el avance de pago de sus cuotas
+   y los datos presupuestarios del centro de costo
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/09/29
+   Actualizacion: ELA 2026/10/13
 */
 
 create procedure Analisis2.sg_fupssSecgen18
@@ -58,6 +60,17 @@ select
     rtrim(isnull(ccto.nom_ab_cct, '')) as nom_ab_cct,
     ccto.afec_du9,
     ccto.con_topdu9,
+    max(ccto.cod_tfinan)                      as cod_tfinan,
+    rtrim(isnull(max(tfin.des_tfinan), ''))   as des_tfinan,
+    max(ccto.cod_ftfn)                        as cod_ftfn,
+    rtrim(isnull(max(ftfn.des_ftfn), ''))     as des_ftfn,
+    rtrim(isnull(max(ufin.des_unifin), ''))   as des_unifin,
+    max(fu.cod_contra)                        as cod_contra,
+    max(fu.cod_cargo)                         as cod_cargo,
+    max(fu.cod_sitm)                          as cod_sitm,
+    rtrim(isnull(max(fu.itm_global), ''))     as itm_global,
+    max(prse.cod_modprs)                      as cod_modprs,
+    rtrim(isnull(max(tmod.des_modprs), ''))   as des_modprs,
     prse.cc_global,
     prse.pry_global,
     prse.rut_jefpro,
@@ -112,6 +125,18 @@ left join
     on ccto.cod_ccto = prse.cod_ccto
     and ccto.cod_unifin = prse.cod_unifin
 left join
+    fin21_db..es_tfin tfin
+    on tfin.cod_tfinan = ccto.cod_tfinan
+left join
+    fin21_db..sf_ftfn ftfn
+    on ftfn.cod_ftfn = ccto.cod_ftfn
+left join
+    fin21_db..es_ufin ufin
+    on ufin.cod_unifin = prse.cod_unifin
+left join
+    secgen_db.dbo.sg_tmod tmod
+    on tmod.cod_modprs = prse.cod_modprs
+left join
     secgen_db.dbo.sg_rslc rslc
     on rslc.nro_resolu = soli.nro_resolu
 left join
@@ -131,7 +156,7 @@ and
 and
     soli.nro_resolu is not null
 and
-    datepart(yy, fu.f_inicio) in (@ano, @ano - 1)
+    (@ano = 0 or datepart(yy, fu.f_inicio) in (@ano, @ano - 1))
 group by
     fu.id_funprse, fu.nro_solici, fu.rut,
     pers.nom_dest, pers.nom_nombre, pers.nom_appate, pers.nom_apmate,
@@ -143,6 +168,7 @@ group by
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, soli.f_solicit
 having
     @mes is null
+    or @ano = 0
     or sum(case when (fume.ano_prop * 100 + fume.mes_prop) <= (@ano * 100 + @mes) then 1 else 0 end) > 0
 order by
     soli.f_solicit desc, fu.id_funprse

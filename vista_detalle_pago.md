@@ -412,3 +412,146 @@ quitar) y la bandeja DGDP con observar/aprobar/rechazar también.
 5. **Punto 10** — enviar a Finanzas, para que el flujo termine.
 6. **Puntos 1 y 11** — juntos, cuando haya ventana de DDL.
 7. **Puntos 7 y 8** — reglas sin implementar; el 8 necesita una definición antes.
+
+---
+
+## 9. Lo aplicado el 13-10-2026 — puntos 2, 3, 4 y 6
+
+Los puntos 1, 5, 7, 8, 10 y 11 de §8 quedan **descartados o fuera de alcance**
+por decisión del 13-10-2026: el motivo de la devolución no tiene dónde
+guardarse en el esquema vigente, y la cuota se devuelve únicamente al
+solicitante, que ya sabe cuál es la suya.
+
+### 9.1 Punto 2 y 4 — el régimen y los antecedentes presupuestarios
+
+El diagnóstico de §8.1 era de dos causas, y las dos están cerradas.
+
+**La conexión que faltaba.** El detalle se arma con los recursos del flujo de
+resolución, que nunca cargan la fila de la bandeja. Se agregó
+`GET /requests/service-provision/payments/provisions/{id}/summary`, que
+reutiliza `sg_fupssSecgen18` con `@ano = 0` y filtra la prestación en el
+controlador. No necesita guarda extra: el PA ya acota por responsable vigente
+del centro de costo, así que pedir una prestación ajena devuelve vacío.
+
+En el frontend viaja por `provisionSummary` en el store de detalle, se recarga
+al cambiar de funcionario —si no, el bloque mostraría los datos del anterior— y
+`costCenterRegime` lo lee con `activeStaff` como respaldo.
+
+**Las columnas que faltaban en el PA.** `sg_fupssSecgen18` ganó nueve columnas
+y cuatro `left join`:
+
+| Columna | Origen |
+| :--- | :--- |
+| `cod_tfinan`, `des_tfinan` | `es_ccto` + `es_tfin` |
+| `cod_ftfn`, `des_ftfn` | `es_ccto` + `sf_ftfn` |
+| `des_unifin` | `es_ufin` |
+| `cod_sitm`, `itm_global` | `sg_fups` |
+| `cod_modprs`, `des_modprs` | `sg_prse` + `sg_tmod` |
+| `cod_contra`, `cod_cargo` | `sg_fups` — los necesita la compuerta del punto 6 |
+
+Son los mismos joins que `sg_prsesSecgen01` usa en el flujo de resolución, así
+que el dato es el mismo que ya se muestra allá. Van también al `group by`.
+
+**Hasta desplegar el PA**, los cuatro campos nuevos y los dos del régimen
+muestran *No informado*. La conexión ya está hecha: el día que el PA entre, se
+llenan solos.
+
+### 9.2 Punto 3 — el saldo de la prestación, las cuatro columnas
+
+§4.3 pedía autorizado / pagado / comprometido / disponible. Había dos.
+
+El cálculo local **no servía** para desglosarlas: `resolvePaymentAmountBalance`
+suma en `consumed` los estados 2, 3, 4, 8 y 11, o sea mezcla *comprometido* con
+*pagado*, y en `proposed` solo los borradores. Etiquetar `consumed` como
+«Pagado» habría sido falso —en la prestación 8 habría dicho $222.222 pagados
+cuando no se ha pagado nada—.
+
+El desglose real lo trae el resumen, que los separa en origen
+(`mto_pagado` y `mto_gestion`):
+
+| Campo | Fuente | Prestación 8 |
+| :--- | :--- | ---: |
+| Total decretado | `sg_fups.mto_total` | $444.444 |
+| Pagado | `mto_pagado` | $0 |
+| En trámite | `mto_gestion` | $222.222 |
+| Saldo por gestionar | `mto_saldo` | $222.222 |
+
+Si el resumen no llegara, `inProgressAmount` cae a `consumed − pagado`.
+
+### 9.3 Punto 6 — la compuerta del envío
+
+`submitInstallment` llama ahora a `assertInstallmentNormativeCompliance` antes
+de tocar la cuota. Cubre las **cuatro validaciones bloqueantes** del panel del
+solicitante, en el mismo orden en que la pantalla las presenta:
+
+| Validación | PA | Bloquea cuando |
+| :--- | :--- | :--- |
+| contrato | `selectNormativeStaffProfile` | el contrato con el que se autorizó la prestación ya no está vigente |
+| cargo | `getStaffNormativeDisablement` | `habilitado_du288 <> 'S'` |
+| asignaciones | `selectNormativeStaffAssignments` | alguna asignación con `habilitado_du288 = 'N'` |
+| tope del cargo | `selectNormativeStaffPositionCap` | no hay tope vigente, o la cuota lo supera sin extensión |
+| saldo del centro de costo | `validateNormativeCostCenterBalance` | el ítem no tiene saldo para el monto de la cuota |
+
+El contrato se busca por `cod_contra` de `sg_fups`, no por «algún contrato
+vigente del RUT»: la pregunta es si **ese** contrato sigue en pie.
+
+**Lo que queda fuera, a propósito y documentado en el código:**
+
+- **carga semanal** — necesita los horarios de las prestaciones concurrentes y
+  el cálculo de `evaluatePaymentWeeklyLoad`, que hoy solo existe en el
+  frontend. Portarlo es un trabajo aparte.
+- **calendario institucional** — en el panel nunca bloquea.
+- **parentesco** — solo bloquea en la revisión DGDP
+  (`requireRelationshipCertificate: true`), no en el envío del solicitante.
+  Replicarlo acá habría endurecido la regla, no reproducido la pantalla.
+
+**La rama del saldo necesita `cod_sitm`**, que llega con el despliegue del PA.
+Hasta entonces esa validación se omite y las otras cuatro corren igual.
+
+### 9.4 Verificación
+
+`tsc --noEmit` limpio, `eslint` limpio, **201 tests** en verde. En pantalla,
+sobre la prestación 8: las cuatro columnas del saldo correctas y los campos
+nuevos en *No informado*, como corresponde con el PA sin desplegar.
+
+### 9.5 Por desplegar
+
+`sg_fupssSecgen18` — las nueve columnas nuevas. Sin él, los puntos 2 y 4 se ven
+pero vacíos, y la compuerta del punto 6 corre con cuatro validaciones en vez de
+cinco.
+
+---
+
+## 10. Incidente — `sg_fupssSecgen18` rompió la bandeja (13-10-2026)
+
+**Qué pasó.** Las nueve columnas que §9.1 agregó al PA entraron también al
+`group by`, que pasó de 27 a 38 expresiones. Sybase ASE 12.5 corta en 31:
+
+```
+Maximum number of group-by expressions exceeded. Limit is 31, found 38
+```
+
+El PA falla entero, así que **todo lo que lo consume deja de responder**:
+`payable-provisions` (la bandeja), `provisions/{id}/summary` y
+`provisions/{id}/previous-provisions`. En desarrollo la bandeja devolvía cero
+filas y el detalle no llegaba a montar.
+
+**El límite no está en la documentación del proyecto** y no se detecta
+compilando: el PA se crea sin error y revienta al ejecutarse.
+
+**Corrección.** El grano del `select` ya es `fu.id_funprse`, así que las nueve
+columnas nuevas y `cod_contra` / `cod_cargo` son funcionalmente dependientes:
+salen del `group by` y se proyectan con `max()`.
+
+```sql
+max(ccto.cod_tfinan)                    as cod_tfinan,
+rtrim(isnull(max(tfin.des_tfinan), '')) as des_tfinan,
+...
+```
+
+El `group by` vuelve a 27 expresiones, las mismas de antes del cambio.
+
+**Regla para la próxima vez:** en este PA, una columna nueva de una tabla
+unida va con `max()`, nunca al `group by`. Quedan cuatro de margen.
+
+**Requiere redesplegar `sg_fupssSecgen18`.**

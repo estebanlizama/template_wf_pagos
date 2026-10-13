@@ -22,9 +22,10 @@ go
 
    Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
    costo que la persona tiene a cargo, con el avance de pago de sus cuotas
+   y los datos presupuestarios del centro de costo
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/09/29
+   Actualizacion: ELA 2026/10/13
 */
 
 create procedure Analisis2.sg_fupssSecgen18
@@ -59,6 +60,17 @@ select
     rtrim(isnull(ccto.nom_ab_cct, '')) as nom_ab_cct,
     ccto.afec_du9,
     ccto.con_topdu9,
+    max(ccto.cod_tfinan)                      as cod_tfinan,
+    rtrim(isnull(max(tfin.des_tfinan), ''))   as des_tfinan,
+    max(ccto.cod_ftfn)                        as cod_ftfn,
+    rtrim(isnull(max(ftfn.des_ftfn), ''))     as des_ftfn,
+    rtrim(isnull(max(ufin.des_unifin), ''))   as des_unifin,
+    max(fu.cod_contra)                        as cod_contra,
+    max(fu.cod_cargo)                         as cod_cargo,
+    max(fu.cod_sitm)                          as cod_sitm,
+    rtrim(isnull(max(fu.itm_global), ''))     as itm_global,
+    max(prse.cod_modprs)                      as cod_modprs,
+    rtrim(isnull(max(tmod.des_modprs), ''))   as des_modprs,
     prse.cc_global,
     prse.pry_global,
     prse.rut_jefpro,
@@ -112,6 +124,18 @@ left join
     fin21_db..es_ccto ccto
     on ccto.cod_ccto = prse.cod_ccto
     and ccto.cod_unifin = prse.cod_unifin
+left join
+    fin21_db..es_tfin tfin
+    on tfin.cod_tfinan = ccto.cod_tfinan
+left join
+    fin21_db..sf_ftfn ftfn
+    on ftfn.cod_ftfn = ccto.cod_ftfn
+left join
+    fin21_db..es_ufin ufin
+    on ufin.cod_unifin = prse.cod_unifin
+left join
+    secgen_db.dbo.sg_tmod tmod
+    on tmod.cod_modprs = prse.cod_modprs
 left join
     secgen_db.dbo.sg_rslc rslc
     on rslc.nro_resolu = soli.nro_resolu

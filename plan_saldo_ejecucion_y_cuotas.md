@@ -460,3 +460,201 @@ $256.250 y 2 cuotas.
 | paso 2 | con la cuota 1 abierta, sigue diciendo *quedan para la cuota siguiente* y el total $444.444 |
 | paso 3 | abril ($74.074) con $34.028 de espacio: el campo aparece, se baja, la casilla se libera |
 | regresión | `paymentMonthsValidation.test.cjs` sigue verde (T-08) |
+
+---
+
+## 10. Aplicado — 13-10-2026
+
+Los pasos 1, 2 y 3 de §9 están aplicados con la salida (a). El paso 4 (T-05)
+sigue fuera: necesita definir qué cuenta como deuda o atraso.
+
+### 10.1 Paso 1 — el reparto ya no inventa una cuota
+
+`unpayableMonths` abre el primer grupo con `used = 0` y ahora **cobra ese
+cupo**: si no queda ninguna cuota después de esta, devuelve todos los
+pendientes sin entrar al lazo. El conteo se extrajo a
+`remainingInstallmentSlots`, que es el dato que el mensaje también necesita.
+
+Comprobado ejecutando la función real del componente con un `this` simulado:
+
+| Escenario | Pendientes | Antes | Ahora |
+| :--- | :--- | :--: | :--: |
+| se edita la **última** cuota | 3 × $74.074 | 0 | **3** |
+| queda 1 cuota, 7 meses sueltos | 7 × $74.074 | 1 | **4** |
+| sin cuotas disponibles | 2 × $74.074 | 0 | **2** |
+| caso real de hoy (queda 1 cuota, 3 meses) | 3 × $74.074 | 0 | 0 |
+
+La última fila es la que importa tanto como las otras tres: el arreglo **no
+cambia** el caso que ya estaba bien.
+
+### 10.2 Paso 2 — tres mensajes
+
+La rama informativa afirmaba *«quedan para la cuota siguiente»* sin mirar si
+quedaba alguna. Ahora el primer caso tiene texto propio:
+
+> *N meses ($X) no se pagarán: esta es la última cuota y no quedan cuotas donde
+> incluirlos.*
+
+Es **advertencia, no bloqueo**, según lo ya decidido en §4.b: el saldo se
+pierde y el envío sigue permitido.
+
+### 10.3 Paso 3 — el mes que no cabe se puede ajustar
+
+`capAvailabilityOf` marca `blockedByCap`, que distingue el cierre por tope
+—que el usuario puede levantar— de los que no dependen de él. Con esa marca:
+
+- el campo de monto aparece también en el mes cerrado por tope;
+- la condición incorpora `month.acceptsChanges`, que es lo que
+  `sg_fumeuSecgen02` exige al guardar y la plantilla no comprobaba;
+- debajo del campo se dice **qué hacer, con la cifra exacta**: *«Para incluirlo
+  en esta cuota, baje el monto a $34.028 o menos.»*
+
+Comprobado en pantalla sobre abril de 2016:
+
+| | monto | casilla | motivo |
+| :--- | ---: | :--- | :--- |
+| antes | $74.074 | cerrada | No cabe bajo el tope. Espacio: $34.028 |
+| al bajarlo | $34.028 | **abierta** | Disponible para incluir |
+
+La casilla se libera sola al caer bajo el espacio disponible: no hay botón
+extra ni paso intermedio.
+
+**`isDirty`** ahora también mira los meses sin marcar, comparándolos contra el
+snapshot de la edición. Antes un mes bajado y no marcado no ensuciaba el
+formulario, así que «Cancelar edición» no lo devolvía a su valor y el usuario
+podía creer que el ajuste había quedado guardado. Verificado: ensucia al bajar
+el monto y se limpia al restaurarlo.
+
+**Lo que no cambia:** solo se persisten los montos de los meses marcados. Bajar
+un mes y no marcarlo no escribe nada — el monto solo importa cuando el mes
+entra en una cuota. Cuando sí se marca y se guarda, `sg_fumeuSecgen02` versiona
+el cambio en `sg_fum2` como cualquier otro, y queda visible en *Cambios de
+monto*.
+
+### 10.4 Verificación
+
+`eslint` limpio. En pantalla, sobre la prestación 8: los tres escenarios del
+reparto, el ajuste de abril y su restauración, y a 375 px sin scroll horizontal
+de página ni desbordes en las tarjetas de mes.
+
+---
+
+## 11. Edición, asignación y topes en el apartado 2 — mapa completo (13-10-2026)
+
+Auditoría de las tres capas: plantilla, `isValid` del formulario y los PA.
+Todo verificado leyendo el código, no el diseño.
+
+### 11.1 Quién puede tocar qué, por estado
+
+Hay **dos candados distintos** y conviene no confundirlos: uno es de la cuota,
+el otro del mes.
+
+| Candado | Dónde | Regla |
+| :--- | :--- | :--- |
+| de la **cuota** | `isEditable` del modelo · `cod_estcuo not in (1,3)` en `sg_epaguSecgen01:119` | solo **1 Borrador** y **3 Devuelta** |
+| del **mes** | `acceptsChanges` en el formulario · `@cod_estfum <> 1 and @cod_estcuo <> 3` en `sg_fumeuSecgen02:116` | el mes está **Propuesto**, o pertenece a una cuota **devuelta** |
+
+Y encima de los dos, el modo de edición de la pantalla: `locked = readOnly ||
+!editing`. Al crear, `editing` nace en `true`; al abrir una cuota existente
+nace en `false` y hay que pulsar **Editar cuota**.
+
+| Estado de la cuota | ¿abre? | ¿edita meses? | ¿edita montos? | ¿elimina? |
+| :--- | :--: | :--: | :--: | :--: |
+| 1 Borrador | sí | sí | sí | sí (`sg_epagdSecgen01` solo acepta el 1) |
+| 2 En visación | sí, lectura | no | no | no |
+| 3 Devuelta | sí | sí | sí | no |
+| 4 · 8 · 10 · 11 | sí, lectura | no | no | no |
+
+### 11.2 Crear una cuota — qué valida cada capa
+
+| # | Qué | Plantilla | `isValid` | PA |
+| :-: | :--- | :--: | :--: | :--- |
+| 1 | al menos un mes | — | sí | `sg_epagiSecgen01:49` |
+| 2 | mes ya ejecutado | casilla cerrada | — | `:181` |
+| 3 | mes tomado por otra cuota | casilla cerrada, dice cuál | — | `:191` · `:240` relee dentro de la transacción |
+| 4 | mes repetido | imposible | — | `:152` |
+| 5 | quedan cuotas autorizadas | — | — | `:116` y `:214`, dos veces |
+| 6 | la última cuota no se paga antes del fin de ejecución | aviso | sí | `:201` |
+| 7 | el mes no excede lo decretado (C-10) | `max` del campo | `overProposed` | **no** |
+| 8 | la cuota cabe en el tope (T-01) | casilla cerrada | `capExceeded` | **no** — ver §11.5 |
+| 9 | la cuota cabe en el saldo autorizado (T-04) | — | `balanceExceeded` | `sg_epaguSecgen02:179`, recién **al enviar** |
+
+El monto del mes se guarda **antes** que la cuota: `submit()` recorre los meses
+con `changed: true` y llama a `sg_fumeuSecgen02` uno por uno, y después crea o
+actualiza el encabezado. Es ahí, y solo ahí, donde un PA mira el tope.
+
+### 11.3 Editar una cuota devuelta — qué cambia
+
+Lo mismo de §11.2, más tres cosas propias:
+
+1. **Los meses entran y salen con su estado.** `sg_epaguSecgen01:272` libera a
+   `cod_estfum = 1` todo mes en 2 que quedó sin fila en `sg_dpag`, y
+   comprometea 2 los que entraron. Lo hace **por ausencia de puente**, no por
+   lista, así que de paso repara meses huérfanos de otras ediciones.
+2. **El mes devuelto sí admite cambios** aunque esté en `cod_estfum = 2`: la
+   excepción `@cod_estcuo = 3` de `sg_fumeuSecgen02` existe justo para esto.
+3. **Los descuentos de DGDP ya están escritos** y la pantalla los muestra como
+   información no editable. Pero el **monto sí** se puede bajar, y de ahí salen
+   dos de las aristas.
+
+### 11.4 Dónde vive cada tope
+
+| Límite | Regla | Frontend | PA |
+| :--- | :--- | :--- | :--- |
+| tope por cuota | T-01, T-02 | `capExceeded` bloquea guardar · `capAvailabilityOf` cierra la casilla | **solo** `sg_fumeuSecgen02:126`, y solo cuando cambia un monto |
+| tope no acumulable | T-03 | `unpayableMonths` | — (no hace falta: no hay traspaso que impedir) |
+| saldo autorizado | T-04 | `balanceExceeded` | `sg_epaguSecgen02:179` al enviar |
+| monto del mes solo baja | C-10 | `maxAmount` y `overProposed` | — |
+| exención por extensión | A-02 / `ext_cuotas` | `effectiveCap = Infinity` | `sg_fumeuSecgen02:126` la respeta |
+
+### 11.5 Las aristas
+
+**A · El tope por cuota no se valida en la base.** Ni `sg_epagiSecgen01`, ni
+`sg_epaguSecgen01`, ni `sg_epaguSecgen02` comparan el total de la cuota contra
+`mto_tope`; el envío solo revisa `mto_total`. `sg_fumeuSecgen02` sí lo hace,
+pero **únicamente cuando se escribe un monto**, y el formulario solo manda los
+meses con `changed: true`. Consecuencia concreta: **agregar meses a una cuota
+sin tocar sus montos no pasa por ninguna validación de tope en la base.** Hoy
+lo detiene la pantalla; un `POST` directo, no.
+
+**B · Un mes que sale de la cuota se lleva los descuentos de DGDP.**
+`sg_epaguSecgen01:272` devuelve el mes a `cod_estfum = 1` pero no limpia
+`mto_deslic`, `mto_dessg`, `mto_realpa`, `val_licmed` ni `val_singoce`. Si el
+solicitante lo saca de la cuota devuelta y lo mete en otra, llega con un
+descuento que DGDP aplicó a una visación que ya no existe.
+
+**C · Bajar el monto deja `mto_realpa` obsoleto.** `sg_fumeuSecgen02` escribe
+`mto_apagar` y no recalcula `mto_realpa`, que DGDP había dejado como
+`mto_apagar − deslic − dessg`. Después de bajar el mes, el neto guardado ya no
+corresponde al bruto.
+
+**D · Nada impide bajar el monto por debajo de los descuentos.**
+`sg_fumeuSecgen03` valida `@mto_deslic + @mto_dessg > @mto_apagar` cuando
+escribe DGDP, pero `sg_fumeuSecgen02` no tiene la validación simétrica, y el
+`isValid` del formulario solo exige `requested > 0`. Con enero de 2016
+—$74.074 con $46.643 de descuento— se puede guardar $20.000 y dejar un neto
+negativo; la pantalla lo esconde con `Math.max(0, …)`.
+
+**E · Dos topes distintos conviven.** El reparto usa `monthlyCap`, que es el
+`mto_tope` congelado en la resolución; el panel normativo bloquea con el tope
+del cargo vigente (`resolveCurrentMonthlyCap`). Si el tope del cargo bajó desde
+que se decretó, el formulario deja armar una cuota que el panel rechaza.
+Señalado desde el plan anterior, sin resolver.
+
+**F · `ext_cuotas` exime del tope, y la regla dice que es ANID.** A-02 atribuye
+la exención a ANID; el código la ata a la extensión de cuotas
+(`effectiveCap`, y `messages.js:215` «el tope mensual no aplica»). Viene
+heredado del flujo de resolución, que ya resuelve `isAnid: hasExtension`. No es
+un defecto del apartado 2, pero cambia a quién se le aplica el tope.
+
+### 11.6 Prioridad sugerida
+
+| | Arista | Por qué |
+| :-- | :--- | :--- |
+| 1 | **A** | es la única que deja entrar datos inválidos a la base |
+| 2 | **D** | produce un neto negativo con dos clics |
+| 3 | **C** y **B** | ensucian lo que DGDP escribió; se arreglan juntas, en `sg_epaguSecgen01` y `sg_fumeuSecgen02` |
+| 4 | **E** | necesita decidir cuál tope manda |
+| 5 | **F** | necesita confirmación funcional, no código |
+
+Las tres primeras son PA; ninguna necesita DDL.
