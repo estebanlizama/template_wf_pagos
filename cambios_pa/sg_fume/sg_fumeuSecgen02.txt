@@ -22,7 +22,8 @@ go
 
    Objetivo : Fijar el monto a pagar y la ejecucion real de un mes de
    ejecucion. Valida que la cuota no quede sobre el tope y versiona en
-   sg_fum2 el estado anterior del mes cuando el monto cambia.
+   sg_fum2 el estado anterior del mes cuando el monto cambia. Deja en
+   fec_valida la fecha de esta gestion.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
@@ -217,7 +218,8 @@ end
 update secgen_db.dbo.sg_fume
    set mto_apagar = @mto_apagar,
        ano_ejec   = isnull(@ano_ejec, ano_ejec),
-       mes_ejec   = isnull(@mes_ejec, mes_ejec)
+       mes_ejec   = isnull(@mes_ejec, mes_ejec),
+       fec_valida = getdate()
  where id_funprse = @id_funprse
    and corr_fume  = @corr_fume
 

@@ -81,7 +81,9 @@ TRANSICIONES
   1,4  -> X    la resolucion acorta el periodo -> DELETE fisico  RESOLUCION
 
   Mientras DGDP visa, observa o aprueba la cuota, el mes NO cambia: sigue en 2.
-  Que DGDP lo haya revisado se lee en fec_valida, no en el estado.
+  Que DGDP lo haya revisado se lee en val_licmed is not null, no en el
+  estado: la resolucion deja los val_* en NULL y sg_fumeuSecgen03 siempre
+  los escribe 'S' o 'N'.
 
 -------------------------------------------------------------------------------
 COMO LOS LEE EL COMPARADOR (cupo del numeral 6)
@@ -102,8 +104,10 @@ NOTAS DE IMPLEMENTACION
   - Los valores 2, 3 y el retorno a 1 los escribe UNICAMENTE el PA que mueve
     el encabezado. El valor 4, el PA de validacion de DGDP, mes a mes.
     La aplicacion nunca escribe cod_estfum.
-  - "Validado" no es estado: se lee de fec_valida + los val_*, y de todos
-    modos las validaciones se recalculan en cada transicion.
+  - "Validado" no es estado: se lee de los val_*, y de todos modos las
+    validaciones se recalculan en cada transicion. fec_valida NO sirve para
+    eso: es la fecha de la ultima gestion del mes y la mueve tambien el
+    cambio de monto del solicitante (sg_fumeuSecgen02).
   - "Ejecutado" no es estado: se lee de ano_ejec / mes_ejec.
   - "Disponible" no es estado: depende de la fecha actual.
   - Guarda de sg_fumeuSecgen01:

@@ -321,3 +321,265 @@ de dispararse por abrir una cuota a mirar.
 | `sg_epagiSecgen01` | mes de pago mínimo al crear la cuota |
 | `sg_epaguSecgen01` | mes de pago mínimo al editar la cuota + cambio de meses en estado 3 con `cod_estfum` coherente |
 | `sg_fumeuSecgen02` | tope de la cuota + versión en `sg_fum2` |
+
+---
+
+## 7. Régimen del centro de costo en el detalle de pago (09-10-2026)
+
+Dos columnas de `sg_ccto` definen el régimen de la prestación:
+
+| Columna | Qué decide |
+| :--- | :--- |
+| `afec_du9` | si el centro de costo pertenece al flujo DU288 (`'S'`) |
+| `con_topdu9` | `'S'` afecto al tope general (2 cuotas al año) · `'N'` exento, admite cuotas extendidas |
+
+### 7.1 Lo que ya existía — auditado contra el código
+
+| Capa | Estado |
+| :--- | :--- |
+| PA `sg_fupssSecgen18`, `sg_fupssSecgen17`, `sg_epagsSecgen03` | **proyectan** ambas columnas (archivos en `cambios_pa`) |
+| `EnabledCostCenter` (backend) | tipado con `afecDu9` / `conTopdu9` |
+| `isAnidCostCenter` (frontend) | resuelve por `con_topdu9 === 'N'` |
+| Formulario de solicitud | la extensión dejó de ser editable y la fija el centro de costo |
+| **Modelos de respuesta de pagos** | **no mapeaban** las columnas: llegaban al backend y se perdían |
+| **Detalle de pago** | no mostraba ninguno de los dos datos ni validaba nada |
+
+### 7.2 Lo aplicado
+
+**Backend** — `du288-payable-provision-response` y
+`du288-payment-review-installment-response` mapean `afec_du9 → costCenterInFlow`
+y `con_topdu9 → costCenterCapped`.
+
+**Detalle del solicitante y detalle DGDP** — dos validaciones nuevas:
+
+| Validación | Condición | Severidad |
+| :--- | :--- | :--- |
+| Centro de costo del flujo | `afec_du9 = 'S'` | **bloqueante** si no lo es |
+| Tope de cuotas | `ext_cuotas` persistido contra `con_topdu9` actual | advertencia si divergen |
+
+El contexto del solicitante suma dos chips: *Fuera del flujo DU288* (solo
+cuando corresponde) y *Con tope de cuotas* / *Exento de tope*.
+
+### 7.3 Por qué la segunda es advertencia y no bloqueo
+
+`sg_fups.ext_cuotas` se fijó al enviar y es histórico: no se recalcula. Si el
+centro de costo cambió de régimen después, se respeta lo autorizado y se avisa,
+con el texto según la dirección del cambio:
+
+- autorizada **con** extensión y el centro hoy **tiene** tope → *"Se respeta lo
+  autorizado al enviar; revise antes de pagar"*;
+- autorizada **sin** extensión y el centro hoy está **exento** → *"la extensión
+  no se aplica de forma retroactiva"*.
+
+### 7.4 Pendiente de despliegue
+
+Comprobado en el ambiente: `costCenterInFlow` y `costCenterCapped` **no llegan**
+todavía, porque el `sg_fupssSecgen18` desplegado no proyecta las columnas — el
+`.sql` de `cambios_pa` sí. Mientras tanto las dos validaciones muestran
+*"sin informar"* en advertencia y no bloquean, que es el comportamiento
+correcto para un dato ausente. Al desplegar el PA pasan a evaluar de verdad.
+
+---
+
+## 8. Versionado del monto del mes en pantalla (13-10-2026)
+
+`sg_fumeuSecgen02` ya dejaba en `sg_fum2` la fila anterior en cada cambio de
+`mto_apagar`, pero **nadie leía ese historial**: no había PA de lectura, ni
+endpoint, ni pantalla. Lo único que lo usaba era una guarda en
+`sg_fumeuSecgen01` que impide borrar un mes con historial.
+
+### 8.1 Las cuatro capas
+
+| Capa | Solicitud de pago | Revisión DGDP |
+| :--- | :--- | :--- |
+| PA | **`sg_fum2sSecgen01`** (nuevo) | **`sg_fum2sSecgen02`** (nuevo) |
+| Repositorio | `selectMonthVersions` | `selectDgdpMonthVersions` |
+| Endpoint | `GET /payments/provisions/{id}/month-versions` | `GET /payments/dgdp/provisions/{id}/installments/{n}/month-versions` |
+| Pantalla | enlace *"Ver cambios de monto (N)"* en la tarjeta del mes | columna **Cambios** en la tabla de meses |
+
+Los dos PA comparten salida y modelo (`Du288MonthVersionResponse`); cambia el
+alcance. `sg_fum2sSecgen01` acota por el responsable del centro de costo
+(`es_ecct.rut`); el revisor DGDP no lo es, así que `sg_fum2sSecgen02` valida
+asignación vigente en `sp_orde` 696 y acota a los meses de la cuota, el mismo
+patrón que `sg_fuc2sSecgen02`.
+
+### 8.2 Por qué el modal agrega una fila
+
+`sg_fum2` guarda el estado **anterior** a cada cambio, así que el monto vigente
+no está ahí. El PA lo trae aparte como `mto_vigente` y el modal lo agrega como
+última fila, marcada *Vigente*, para que la lectura sea continua:
+
+| Versión | Monto | Variación | Estado del mes |
+| ---: | ---: | ---: | :--- |
+| 1 | $74.074 | — | Propuesta |
+| 2 | $60.000 | −$14.074 | Propuesta |
+| 3 | $60.000 | | Vigente |
+
+### 8.3 Fecha del cambio — resuelto con `fec_valida` (13-10-2026)
+
+El historial decía **qué** cambió y **cuánto**, pero no **cuándo**. Se resolvió
+**sin DDL**, reutilizando `fec_valida` con su significado real.
+
+**Lo que se revisó antes de decidirlo.** La nota de `02_sg_efum.sql` decía que
+`fec_valida` marcaba la validación DGDP, pero en el código:
+
+| | Hallazgo |
+| :--- | :--- |
+| escritores | uno solo, `sg_fumeuSecgen03:114` (descuentos DGDP) |
+| consumidores en pantalla | **ninguno**; el prop `validatedAt` de `Du288PaymentValidationsSection` no lo pasa nadie y su texto es *Última consulta*, que es un recheck del cliente |
+| cómo ya la llamaba el proyecto | `sg_fupssSecgen18:90` → `max(fume.fec_valida) as fec_ultgest` |
+
+O sea el campo ya se usaba como *última gestión* en un lado y estaba muerto en
+el otro. Se formalizó ese significado.
+
+**Lo aplicado.**
+
+| Artefacto | Cambio |
+| :--- | :--- |
+| `sg_fumeuSecgen02` | `fec_valida = getdate()` en el `update` de `sg_fume` |
+| `sg_fum2sSecgen01`, `sg_fum2sSecgen02` | `+ fm.fec_valida as fec_vigente` para la fila vigente |
+| `du288-month-version-response.model.ts` | `validatedAt` → `managedAt`; nuevo `currentManagedAt` |
+| `Du288MonthVersionsModal.vue` | columna **Última gestión** |
+| `02_sg_efum.sql` | la nota de "revisado por DGDP" pasa a `val_licmed is not null` |
+
+El versionado queda fechado **solo**: el `insert` a `sg_fum2` copia
+`fec_valida` **antes** del `update`, así que cada fila arrastra la fecha que
+tenía su propio monto.
+
+| Fila | monto | `fec_valida` |
+| :--- | :--- | :--- |
+| `correlativ = 1` | 74.074 | NULL — viene de la resolución, nadie lo guardó |
+| `correlativ = 2` | 60.000 | T1 |
+| Vigente (`sg_fume`) | 50.000 | T2 |
+
+**El límite, asumido a propósito.** `fec_valida` tiene dos escritores: el cambio
+de monto del solicitante y los descuentos de DGDP. Si DGDP registra descuentos
+en T3 **sin** cambiar el monto, no se crea versión; cuando el solicitante baje
+el monto en T4, la versión se copia con **(60.000, T3)**. Por eso la columna se
+llama **Última gestión** y no *Guardado*: bajo esa etiqueta T3 es el dato
+correcto. El subtítulo del modal lo dice explícito.
+
+Para tener *"cuándo cambió este monto"* exacto haría falta la columna propia:
+
+```sql
+ALTER TABLE secgen_db.dbo.sg_fum2 ADD fec_cambio datetime NULL
+```
+
+**Descartada** mientras *última gestión* alcance.
+
+**Lo que sigue fuera:** `rut_cambio`. `fec_valida` no dice **quién**, y para el
+solicitante no hace falta porque solo el jefe de proyecto del centro de costo
+puede editar —`sg_fumeuSecgen02` lo valida contra `es_ecct`—. Si alguna vez se
+versionan los descuentos de DGDP (§8.4 y §9), ahí sí habría dos autores
+posibles y la columna pasa a tener sentido.
+
+**Qué se renombró y no:** los otros dos modelos
+(`du288-provision-month-response`, `du288-staff-previous-provision-response`)
+siguen exponiendo `validatedAt`. El nombre quedó impreciso ahí también, pero
+ninguna vista lo consume y renombrarlo arrastra los tests del modal de
+prestaciones previas. Queda anotado, no aplicado.
+
+
+### 8.4 Lo que `sg_fum2` tampoco versiona
+
+`mto_realpa`, `mto_deslic` y `mto_dessg` no existen en la tabla (§8.2 del
+diagrama ya lo anotaba), así que los descuentos que escribe DGDP
+(`sg_fumeuSecgen03`) **no quedan en el historial**; solo los cambios de monto
+del solicitante.
+
+### 8.5 Por desplegar
+
+| Artefacto | Qué |
+| :--- | :--- |
+| `sg_fum2sSecgen01`, `sg_fum2sSecgen02` | lectura del historial |
+| `sg_fumeuSecgen02` | tope de la cuota + versión en `sg_fum2` |
+| `sg_epagiSecgen01`, `sg_epaguSecgen01` | mes de pago mínimo y cambio de meses |
+| `sg_fupssSecgen18` | `afec_du9` y `con_topdu9` |
+
+---
+
+## 9. Homologar `sg_fum2` con `sg_fume` (13-10-2026)
+
+`sg_fum2` es el espejo histórico de `sg_fume`, pero quedó en el esquema
+original: nunca recibió los cambios del WF de pagos. Hoy funciona por
+coincidencia, no por diseño.
+
+### 9.1 Auditoría columna por columna
+
+Contrastado contra
+[`diagrama_secgen_actualizado.md:1252`](D:/trabajo_ufro_2026/nuevo_workflow_fase_2/template-du09/cambios_pa_solicitud_wf/maestros/diagrama_secgen_actualizado.md:1252)
+(`sg_fume`) y `:1304` (`sg_fum2`).
+
+| | `sg_fume` (destino) | `sg_fum2` (hoy) | Falta |
+| :--- | :--- | :--- | :--- |
+| grano | `corr_fume` | `nro_cuota` | renombre |
+| estado | `cod_estfum` + FK a `sg_efum` | `cod_estcuo`, **sin FK** | renombre + FK |
+| monto propuesto | `mto_apagar` | `mto_apagar` | — |
+| monto enviado | `mto_realpa` | no existe | agregar |
+| descuento licencia | `mto_deslic` | no existe | agregar |
+| descuento sin goce | `mto_dessg` | no existe | agregar |
+| tipo de los montos | `decimal(19,2)` | `int` | mismo `ALTER` |
+| versión | — | `correlativ tinyint` | correcto; es su PK |
+| `fec_pago`, `ano_pago`, `mes_pago` | **eliminadas** del destino | no existen | nada que hacer |
+
+Las 11 columnas restantes (`ano_prop`, `mes_prop`, `ano_ejec`, `mes_ejec`,
+`id_evidenc`, los cuatro `val_*`, `fec_valida`, `rut_autori`, `fec_autori`,
+`fec_envrem`) ya calzan.
+
+### 9.2 Los dos problemas reales, no cosméticos
+
+**El nombre de la columna de estado miente.** `sg_fumeuSecgen02` inserta
+`cod_estfum` dentro de `cod_estcuo`, y los dos lectores lo leen con
+`left join sg_efum e on e.cod_estfum = h.cod_estcuo`. Funciona porque
+`sg_fum2.cod_estcuo` **no tiene FK** a `sg_ecuo` —el diagrama solo le declara
+`FK_sg_fum2_sg_fume`—, así que nadie valida el valor. El día que alguien
+escriba la tabla creyendo el nombre, guardará un estado de cuota donde hay un
+estado de mes, y los códigos 3 y 4 significan cosas distintas en cada catálogo
+(`3` es *Observada* en `sg_ecuo` y *Enviada a pago* en `sg_efum`).
+
+**Los descuentos de DGDP no se versionan** (§8.4). `sg_fumeuSecgen03:108`
+reescribe `mto_deslic`, `mto_dessg` y `mto_realpa` sin dejar la versión
+anterior, porque esas columnas no existen en el espejo. Si DGDP corrige dos
+veces el mismo descuento, el primer valor se pierde sin rastro.
+
+### 9.3 Orden de los `ALTER`
+
+Son los pasos a–d de
+[`03_migracion_sg_fume.sql`](datos_base/03_migracion_sg_fume.sql) aplicados al
+espejo —el paso **(e)** que el script deja anotado— más los tres montos:
+
+```sql
+alter table secgen_db.dbo.sg_fum2 add cod_estfum tinyint null
+alter table secgen_db.dbo.sg_fum2 add mto_realpa decimal(19,2) null
+alter table secgen_db.dbo.sg_fum2 add mto_deslic decimal(19,2) null
+alter table secgen_db.dbo.sg_fum2 add mto_dessg  decimal(19,2) null
+-- descomentar el bloque del espejo en 03_migracion_sg_fume.sql
+-- cod_estfum a not null + FK a sg_efum
+-- renombrar nro_cuota -> corr_fume; reconstruir PK y FK a sg_fume
+-- drop de sg_fum2.cod_estcuo
+-- mto_apagar int -> decimal(19,2)
+```
+
+El renombre del grano va **junto** con el de `sg_fume`: la FK es compuesta
+(`id_funprse, nro_cuota`) y hay que reconstruirla de los dos lados en la misma
+ventana. En ASE 12.5 el renombre es `sp_rename` y obliga a recrear la PK y el
+índice único.
+
+### 9.4 Qué hay que recompilar después
+
+| Artefacto | Cambio |
+| :--- | :--- |
+| `sg_fumeuSecgen02` | el `insert` pasa a `cod_estfum`; agrega los tres montos al espejo |
+| `sg_fum2sSecgen01`, `sg_fum2sSecgen02` | `h.cod_estcuo` → `h.cod_estfum`; proyectar los montos |
+| `sg_fumeuSecgen01` | la guarda de §202 ya usa `corr_fume`; sin el renombre no compila |
+| `sg_fumeuSecgen03` | **nuevo**: versionar en `sg_fum2` antes de escribir los descuentos |
+| `du288-month-version-response.model.ts:30` | `procedure: {name: 'cod_estcuo'}` → `'cod_estfum'`; borrar el comentario de §11 |
+| `Du288MonthVersionsModal.vue` | columnas de descuento, si se cierra §8.4 |
+
+### 9.5 Lo que la homologación **no** necesita
+
+`fec_cambio` y `rut_cambio` (§8.3) siguen fuera: la fecha ya la da
+`fec_valida` como *última gestión*, `correlativ` ordena los cambios y el estado
+por versión los atribuye. `correlativ` es `tinyint` y
+`sg_fumeuSecgen02:157` ya corta en 255 versiones por mes; si se quiere subir el
+techo, este es el `ALTER` donde conviene hacerlo, pero no es parte de homologar.
