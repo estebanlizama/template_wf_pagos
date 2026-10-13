@@ -367,3 +367,48 @@ compensación incompleta es completarla o sacar el mes de la cuota.
 La pantalla no es la que valida: adelanta el resultado para que el usuario no envíe a ciegas. Lo
 que decide es el PA, porque es el único punto por el que pasan todas las escrituras y el único que
 puede garantizar que el saldo que leyó sigue vigente al escribir.
+
+---
+
+## 8. Qué falta para cerrar la vista — auditoría del 13-10-2026
+
+Contrastado contra `reglas_pagos/02_vista_solicitud_pago.md` §4 y §5, verificando
+en ejecución sobre la prestación 8. `backend_lo_que_falta.md` quedó desactualizado
+en dos puntos: la evidencia **sí** está implementada (ver, descargar, reemplazar,
+quitar) y la bandeja DGDP con observar/aprobar/rechazar también.
+
+### 8.1 Datos que la pantalla debería mostrar y no muestra
+
+| # | Qué falta | Por qué |
+| :-: | :--- | :--- |
+| 1 | **Motivo de la devolución** | La cuota llega *Devuelta* y no dice **por qué**, quién la revisó ni cuándo. El payload de `sg_epagsSecgen02` no trae observación, RUT revisor ni fecha porque `sg_epag` no tiene esas columnas. Es el dato que más le falta al solicitante: le devuelven la cuota y tiene que adivinar qué corregir. |
+| 2 | **`afec_du9` y `con_topdu9`** | *Flujo DU288* y *Régimen de cuotas* muestran «No informado». **Doble causa**: `sg_fupssSecgen18` no está desplegado, y además el detalle lee `activeStaff` —el objeto de la resolución— mientras los dos campos se mapearon en `Du288PayableProvisionResponse`, que esta vista nunca carga. Desplegar el PA **no alcanza**: falta la conexión. |
+| 3 | **Saldo de la prestación, 2 de 4 columnas** | §4.3 pide autorizado / pagado / comprometido en otras solicitudes / disponible. La pantalla muestra *Total decretado* (`authorized`) y *Saldo por gestionar* (`remaining`); `consumed` y `proposed` viajan en `paymentBalance` y no se pintan. |
+| 4 | **Centro de costo incompleto** | Faltan tipo y fuente de financiamiento, modalidad de prestación y `des_unifin`. Dependen de `sg_fupssSecgen18`. |
+| 5 | **Resumen de confirmación (Q-F11)** | *«Cuota a enviar: Cuota N° 1 · $222.222»* dice cuánto, no **qué abarca**. Q-F11 pide las dos cosas. |
+
+### 8.2 Validaciones que faltan
+
+| # | Qué | Estado |
+| :-: | :--- | :--- |
+| 6 | **Revalidación normativa al enviar (V5)** | **No existe en el backend.** `submitInstallment` solo comprueba la evidencia y llama a `sg_epaguSecgen02`. El panel afirma *«se consultan con datos vigentes y se repiten al enviar»* y eso **hoy es falso**: solo bloquea el frontend. Un `POST` directo al endpoint pasa con el contrato vencido, el cargo cambiado o el centro de costo sin saldo. Es el hallazgo más serio de la vista. |
+| 7 | **Q-B09 — cruce de año calendario** | Sin implementar. Una cuota puede abarcar diciembre y enero de años distintos. |
+| 8 | **T-05 / C-05 — dos cuotas en el mismo mes de pago** | Sin implementar ni en el frontend ni en `sg_epagiSecgen01`, que solo valida el rango de `@ano_pago` / `@mes_pago`. Necesita antes definir qué cuenta como deuda o atraso. |
+| 9 | **Apartado 2** | Los dos defectos de `plan_saldo_ejecucion_y_cuotas.md` §8, con plan en §9. |
+
+### 8.3 Lo que no depende de esta vista
+
+| # | Qué | Efecto |
+| :-: | :--- | :--- |
+| 10 | **Tres transiciones DGDP de ocho** | Existen decisión (observar / aprobar / rechazar) y descuentos. Faltan **enviar a Finanzas** (4→8), **registrar devolución de Finanzas** (8→11) y **excluir un mes no pagable** (→4). Sin la primera, una cuota aprobada **nunca llega a pago** y el flujo del solicitante no se cierra. |
+| 11 | **`ALTER` de `sg_epag`** | Es lo que desbloquea el punto 1. Sin ventana de DDL, el motivo de la devolución no tiene dónde guardarse. |
+
+### 8.4 Orden sugerido
+
+1. **Punto 6** — la revalidación del envío. No depende de nadie y hoy la pantalla promete algo que el backend no cumple.
+2. **Punto 9** — los dos defectos del apartado 2, ya planificados.
+3. **Punto 2** — conectar `afec_du9` / `con_topdu9` al detalle, junto con el despliegue de `sg_fupssSecgen18`; arrastra el punto 4.
+4. **Punto 3 y 5** — son pintar datos que ya llegan.
+5. **Punto 10** — enviar a Finanzas, para que el flujo termine.
+6. **Puntos 1 y 11** — juntos, cuando haya ventana de DDL.
+7. **Puntos 7 y 8** — reglas sin implementar; el 8 necesita una definición antes.

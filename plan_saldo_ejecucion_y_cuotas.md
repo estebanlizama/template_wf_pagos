@@ -251,3 +251,212 @@ defecto.
   al abrirse la edición del monto por mes.
 - El saldo se sigue consultando con un **monto estimado**, no con el de la
   cuota que se enviará.
+
+---
+
+## 8. Auditoría del apartado 2 «Meses de ejecución» — 13-10-2026
+
+Revisión de `Du288InstallmentFormSection.vue` contra
+`reglas_pagos/01_reglas_montos_por_tipo_de_flujo.md`. Verificado en ejecución
+sobre la prestación 8 (6 meses de $74.074, tope $256.250, 2 cuotas, fijo).
+
+### 8.1 Lo que está correcto
+
+| Regla | Cómo se cumple |
+| :--- | :--- |
+| T-01, T-02 | `effectiveCap` es el tope completo de la cuota y se mide sobre la suma de los meses marcados, una sola vez |
+| T-04 | `balanceExceeded` y `periodCapExceeded` bloquean el guardado contra el saldo autorizado |
+| T-08 | el reparto fijo viene de `getFixedMonthAmounts` (resto mayor), no de `Math.round` |
+| C-03 | el reparto es manual: casillas, sin propuesta automática del sistema |
+| C-09 | `availabilityOf` cierra el mes tomado por otra cuota y dice cuál |
+| C-10 (fijo) | `maxAmount = proposed` y `overProposed` impiden subir el mes sobre lo decretado |
+| K-07 | `month.isAvailable` cierra el mes cuya ejecución no terminó |
+| orden | `sg_fumesSecgen02` ordena por `ano_prop, mes_prop`, así que un `corr_fume` no cronológico no desordena las tarjetas |
+
+### 8.2 Defecto 1 — `unpayableMonths` cuenta una cuota de más
+
+```js
+const slots = Math.max(0, this.availableInstallmentSlots - 1)
+let used = 0          // <- abre una cuota implícita que nunca descuenta slot
+let openSlots = slots
+```
+
+`used = 0` abre un primer grupo gratis, así que el lazo reparte los meses
+pendientes en `slots + 1` cuotas cuando solo hay `slots`. Ejecutado con el
+algoritmo tal cual:
+
+| Escenario | `availableInstallmentSlots` | Pendientes | Devuelve | Debería |
+| :--- | :--: | :--- | :--- | :--- |
+| se edita la **última** cuota | 1 | 3 × $74.074 | `[]` | los 3 |
+| queda 1 cuota, 7 meses sueltos | 2 | 7 × $74.074 | 1 mes | 4 meses |
+| sin cuotas disponibles | 0 | 2 × $74.074 | `[]` | los 2 |
+
+El caso grave es el primero: **en la última cuota nunca marca nada como
+perdido**, y como `unpayableMonths` está vacío el panel cae en la rama
+contraria y afirma *«N meses quedan para la cuota siguiente. Con este reparto
+se paga el total decretado»* — cuando no hay cuota siguiente y ese dinero se
+pierde. Es justo el aviso que la regla T-03 existe para dar.
+
+Además, ese mensaje informativo no consulta `isLastAvailableQuota`, así que la
+frase «quedan para la cuota siguiente» se emite aunque no quede ninguna.
+
+### 8.3 Defecto 2 — el mes que no cabe no se puede ajustar
+
+`capAvailabilityOf` deshabilita la casilla del mes que excede el espacio de la
+cuota, y el monto solo es editable con la casilla marcada:
+
+```html
+<b-form-checkbox :disabled="locked || !month.selectable">
+<b-form-input v-if="month.checked && !locked" ...>
+```
+
+Con $34.028 de espacio y un mes de $74.074 el usuario queda sin salida: no
+puede marcarlo porque no cabe, y no puede bajarlo a $34.028 para que quepa
+porque el campo no existe mientras no esté marcado. C-07 (pago parcial del
+período ya ejecutado) y C-10 (el monto baja) permiten exactamente ese ajuste, y
+el subtítulo del apartado lo promete: *«puede ajustar cada mes a la baja»*.
+
+Salidas posibles:
+
+1. **Habilitar el monto en el mes bloqueado por tope** — se edita, y al quedar
+   bajo el espacio disponible la casilla se libera sola. Mantiene la casilla
+   como la decisión y el monto como el ajuste.
+2. **Dejar marcar el mes y mostrar el exceso como error** — más cercano a lo
+   pedido en su momento (*«no se puede bloquear la selección»*), pero permite
+   guardar un borrador inválido hasta corregirlo.
+
+### 8.4 Observaciones menores
+
+- **Dos límites, dos interacciones.** El tope de la cuota cierra la casilla; el
+  saldo autorizado deja marcar y después bloquea el guardado. Son el mismo tipo
+  de límite (T-01 y T-04) resueltos de forma distinta.
+- **C-10 en variable.** `maxAmount` y `overProposed` solo aplican con
+  `amountType === 1`. Es correcto —en variable la resolución no declara monto
+  por mes, solo el techo, y ese techo lo cuida `balanceExceeded`— pero conviene
+  que quede dicho, porque §5 de las reglas afirma C-10 «en ambos».
+- **T-05 sin implementar.** Dos cuotas en el mismo mes de pago solo se permiten
+  por deuda o atraso. No hay validación en el apartado 1 ni aquí.
+- **Tope vigente vs tope congelado.** `monthlyCap` viene del tope de la
+  prestación; el panel normativo bloquea con el tope del cargo vigente. Sigue
+  abierto desde el plan anterior.
+
+---
+
+## 9. Plan de implementación del apartado 2 — 13-10-2026
+
+Cierra los dos defectos de §8. Todo ocurre en
+`Du288InstallmentFormSection.vue` y `lang/es/pds.js`; **no toca PA ni backend**,
+salvo el paso 4, que es opcional y sí los toca.
+
+### Paso 1 · Corregir `unpayableMonths`
+
+`Du288InstallmentFormSection.vue:492`. El lazo abre un grupo con `used = 0` que
+nunca descuenta cupo; hay que cobrarlo.
+
+```js
+unpayableMonths() {
+    const cap = this.effectiveCap
+    if (cap === Infinity) return []
+    const pending = this.monthRows
+        .filter(row => !row.checked && row.selectable)
+        .sort((a, b) => a.period - b.period)
+    /* Cuotas que quedan DESPUES de esta. Si no queda ninguna, todo lo que no
+       se marque aqui ya no se paga (T-03). */
+    const slots = Math.max(0, this.availableInstallmentSlots - 1)
+    if (!slots) return pending
+
+    const left = []
+    let used = 0
+    let openSlots = slots - 1          // la primera de esas cuotas ya esta abierta
+    for (const row of pending) {
+        if (used + row.requested <= cap) { used += row.requested; continue }
+        if (openSlots > 0) { openSlots -= 1; used = row.requested; continue }
+        left.push(row)
+    }
+    return left
+}
+```
+
+Comprobación contra los tres escenarios de §8.2 y el caso real:
+
+| `availableInstallmentSlots` | Pendientes | Antes | Después |
+| :--: | :--- | :--- | :--- |
+| 1 (última cuota) | 3 × $74.074 | `[]` | los 3 |
+| 2 | 7 × $74.074 | 1 mes | 4 meses |
+| 0 | 2 × $74.074 | `[]` | los 2 |
+| 2 (caso real de hoy) | 3 × $74.074 | `[]` | `[]` — no cambia |
+
+### Paso 2 · Separar los tres mensajes
+
+`installmentStatusMessages:643`. Hoy hay dos ramas y la segunda miente cuando
+no queda cuota siguiente. Pasan a ser tres, con el orden del §5.4 intacto:
+
+| Condición | Tipo | Texto |
+| :--- | :--- | :--- |
+| `slots === 0` y hay pendientes | advertencia | *N meses ($X) no se pagarán: esta es la última cuota y no quedan cuotas donde incluirlos.* |
+| `unpayableMonths.length` | advertencia | el actual: *…no se podrán pagar: no quedan cuotas donde incluirlos y superan el tope.* |
+| hay pendientes y `slots > 0` | información | el actual: *…quedan para la cuota siguiente. Con este reparto se paga el total decretado: $X.* |
+
+La primera es **advertencia, no bloqueo**: ya se decidió que el saldo se pierde
+sin impedir el envío (§4.b). Texto nuevo en `pds.js`, junto a `movesToNext` y
+`unpayableSuffix` (≈ línea 2186).
+
+### Paso 3 · Permitir ajustar el mes que no cabe
+
+1. `capAvailabilityOf:747` agrega una marca al objeto que devuelve:
+
+   ```js
+   return { selectable: false, blockedByCap: true, reason: ... }
+   ```
+
+2. La plantilla abre el campo también para ese caso, y de paso respeta lo que
+   el PA exige (`sg_fumeuSecgen02` rechaza el mes que ya no admite cambios):
+
+   ```html
+   <b-form-input
+     v-if="(month.checked || month.blockedByCap) && !locked && month.acceptsChanges"
+   ```
+
+3. Nota corta bajo el campo cuando está bloqueado por tope, con la cifra exacta
+   a la que hay que bajarlo: *«Bájelo a $34.028 o menos para incluirlo en esta
+   cuota.»* Al bajarlo, `requested` cambia, `capAvailabilityOf` deja de
+   bloquear y la casilla se libera sola — sin botón extra.
+
+4. `isDirty:452` pasa a comparar **todos** los meses con monto editado, no solo
+   los marcados, para que «Cancelar edición» los devuelva al valor original.
+   Hoy un mes no marcado y editado no ensucia el formulario, así que el usuario
+   podría creer que el ajuste quedó guardado.
+
+**Lo que no cambia:** solo se persisten los montos de los meses marcados
+(`submit:821`). Bajar un mes y no marcarlo no escribe nada, que es lo correcto:
+el monto solo importa cuando el mes entra en una cuota. Cuando sí se marca y se
+guarda, `sg_fumeuSecgen02` versiona el cambio en `sg_fum2` como cualquier otro.
+
+### Paso 4 · T-05, opcional y con decisión pendiente
+
+Dos cuotas en el mismo mes de pago solo se permiten por deuda o atraso (C-05,
+T-05). Hoy no lo valida **ni el frontend ni el PA** (`sg_epagiSecgen01` solo
+comprueba el rango de `@ano_pago` / `@mes_pago`).
+
+Requiere, en este orden:
+
+1. Decidir qué cuenta como «deuda o atraso» — no está definido en las reglas.
+2. Pasar al formulario los meses de pago de las otras cuotas (el dato existe en
+   `Du288InstallmentsSection`, pero el formulario no recibe la lista).
+3. Validación equivalente en `sg_epagiSecgen01` y `sg_epaguSecgen01`, porque el
+   frontend no es la frontera de integridad.
+
+Queda fuera de este plan mientras el punto 1 no se responda.
+
+### Orden y verificación
+
+Pasos 1 y 2 juntos (el mensaje depende del cálculo), paso 3 aparte. Para probar
+sin tocar datos, la prestación 8 sirve: tiene 6 meses de $74.074 con tope
+$256.250 y 2 cuotas.
+
+| Qué | Cómo se comprueba |
+| :--- | :--- |
+| paso 1 | con la cuota 2 abierta y meses sin marcar, los pendientes salen como *no se pagarán* |
+| paso 2 | con la cuota 1 abierta, sigue diciendo *quedan para la cuota siguiente* y el total $444.444 |
+| paso 3 | abril ($74.074) con $34.028 de espacio: el campo aparece, se baja, la casilla se libera |
+| regresión | `paymentMonthsValidation.test.cjs` sigue verde (T-08) |
