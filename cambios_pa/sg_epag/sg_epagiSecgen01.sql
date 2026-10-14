@@ -98,6 +98,37 @@ begin
     return
 end
 
+declare @vig_ccto  char(1)
+declare @afec_du9  char(1)
+
+select @vig_ccto = ccto.vigente,
+       @afec_du9 = isnull(ccto.afec_du9, 'N')
+  from secgen_db.dbo.sg_prse prse,
+       secgen_db.dbo.sg_fups fu,
+       fin21_db..es_ccto ccto
+ where fu.id_funprse = @id_funprse
+   and prse.nro_solici = fu.nro_solici
+   and ccto.cod_ccto   = prse.cod_ccto
+   and ccto.cod_unifin = prse.cod_unifin
+
+if isnull(@vig_ccto, '0') <> '1'
+begin
+    select 'Error: El centro de costo esta cerrado, no admite cuotas de pago' as msg
+    return
+end
+
+/* INTERRUPTOR-DU09 : deshabilitada el 2026/10/14 mientras los centros de
+   costo de prueba no tienen cargada la marca afec_du9. Para habilitarla,
+   borrar esta linea de apertura y la de cierre. El gemelo del saldo vive en
+   el backend y en el store del front, con la misma marca.
+
+if @afec_du9 <> 'S'
+begin
+    select 'Error: El centro de costo no pertenece al flujo DU09' as msg
+    return
+end
+*/
+
 select @tot_cuotas = tot_cuotas
   from secgen_db.dbo.sg_fups
  where id_funprse = @id_funprse

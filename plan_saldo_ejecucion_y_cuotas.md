@@ -658,3 +658,184 @@ un defecto del apartado 2, pero cambia a quién se le aplica el tope.
 | 5 | **F** | necesita confirmación funcional, no código |
 
 Las tres primeras son PA; ninguna necesita DDL.
+
+---
+
+## 12. El campo desaparecía al escribir — 14-10-2026
+
+**El defecto.** El campo de monto se mostraba con
+`v-if="(month.checked || month.blockedByCap) && ..."`, o sea su visibilidad
+dependía del valor que el propio campo cambia. Con $34.028 de espacio y abril
+en $74.074: al teclear el primer dígito de «34028» el monto pasaba a **7**, que
+sí cabe, `blockedByCap` se apagaba y **el input se desmontaba a media
+escritura**. No se podía terminar de escribir la cifra.
+
+**La corrección.** La decisión se toma por el mes, no por cuánto vale ahora:
+
+```js
+display.amountEditable = !this.locked && row.acceptsChanges &&
+  (display.checked || display.selectable || Boolean(display.blockedByCap))
+```
+
+Está en la cuota, o podría estar: en los dos casos el campo sigue ahí. Bajarlo
+lo hace caber y subirlo lo vuelve a sacar, y la caja no se mueve.
+
+Comprobado ejecutando `displayMonthRows` y `capAvailabilityOf` reales con un
+`this` simulado:
+
+| monto | marcado | editable | bloqueado por tope | seleccionable |
+| ---: | :--: | :--: | :--: | :--: |
+| 74.074 | no | **sí** | sí | no |
+| 7 | no | **sí** | no | sí |
+| 34 | no | **sí** | no | sí |
+| 34.028 | no | **sí** | no | sí |
+| 34.028 | sí | **sí** | no | sí |
+| 74.074 | sí | **sí** | no | sí |
+
+**El paso siguiente, dicho.** Bajar el monto hace que quepa, pero el mes sigue
+fuera de la cuota hasta marcarlo, y antes nada lo decía. Cuando el monto quedó
+ajustado y el mes todavía no está marcado aparece:
+
+> *Ya cabe en la cuota. Marque el mes para incluirlo.*
+
+Se apoya en `amountAdjusted`, que compara contra el monto con el que se abrió
+la edición, así que el aviso solo sale después de que el usuario tocó algo: en
+un formulario recién abierto no aparece en ningún mes.
+
+### 12.1 «Queda fuera del pago», siempre visible
+
+El monto que el reparto deja sin pagar vivía solo dentro de un mensaje, y solo
+cuando era mayor que cero. Pasa a ser una cifra fija del encabezado, en cero
+también: saber que **no** se pierde nada es tan informativo como saber cuánto
+se pierde, y si la línea apareciera solo al fallar habría que adivinar el resto
+del tiempo.
+
+De paso se ordenaron los límites, **de la cuota hacia la prestación**:
+
+| | A · 3 + 3, nada bajado | B · abril bajado a $30.000 |
+| :--- | ---: | ---: |
+| Tope por cuota | $256.250 | $256.250 |
+| Espacio en esta cuota | $34.028 | $4.028 |
+| Saldo autorizado disponible | $444.444 | $444.444 |
+| Saldo después de esta cuota | $222.222 | $192.222 |
+| **Queda fuera del pago** | **$0** | **$44.074** |
+
+Dos cambios de nombre y uno de contenido:
+
+- **«Espacio en esta cuota»** es nuevo en el encabezado. Estaba solo en el
+  contador del apartado 2, lejos del tope con el que se compara.
+- **«Disponible para esta cuota» → «Saldo autorizado disponible».** El nombre
+  viejo competía con el espacio bajo el tope: los dos sonaban a *lo que cabe*,
+  siendo cosas distintas —uno es el saldo de la prestación, el otro el hueco
+  bajo el tope de esta cuota—.
+- La cifra que queda fuera se marca cuando es mayor que cero, pero **la
+  etiqueta ya lo dice**: el color solo subraya (§14).
+
+Verificado ejecutando `installmentLimits` con un `this` simulado en los dos
+escenarios de la tabla.
+
+### 12.2 Por qué se pierde, y el camino que no pierde
+
+**El motivo depende del tipo de monto**, y antes no se decía ninguno.
+
+| Tipo | Qué pasa con lo recortado |
+| :--- | :--- |
+| **Fijo** (`cod_tpps = 1`) | Cada mes tiene su propia cifra decretada y **no puede subir** (C-10), así que lo que se recorta de un mes **no se puede pasar a otro**. Y el tope no se acumula (T-03), así que tampoco se recupera en una cuota posterior. |
+| **Variable** (`cod_tpps = 2`) | La resolución fija solo el techo total, así que **sí se reparte** en otros meses, mientras ninguna cuota supere su tope ni el total pase lo autorizado. |
+
+El texto de «Queda fuera del pago» ahora dice el que corresponde. En variable el
+formulario **ya permitía** subir un mes —`maxAmount` solo acota en fijo, y el
+reparto queda acotado por `capExceeded` y `balanceExceeded`—; lo que faltaba era
+decirlo.
+
+**El camino que no pierde nada.** Bajar el mes para que quepa es la peor salida
+cuando ese mes **cabe entero en una cuota posterior**: se paga menos por el
+mismo trabajo, sin necesidad. La tarjeta ahora lo dice primero:
+
+> **Cabe completo en la cuota siguiente.** Si lo incluye en esta, hay que
+> bajarlo a $34.028 y se pierden $40.046.
+
+Y solo cuando de verdad no queda dónde ponerlo, ofrece el recorte como lo que
+es —el mal menor—:
+
+> Para incluirlo en esta cuota, baje el monto a $34.028 o menos. No quedan
+> cuotas donde incluirlo entero, así que pagar una parte es mejor que no pagar
+> nada.
+
+Se decide con `fitsInNextInstallment`, que es «está cerrado por tope **y** no
+está en `unpayableMonths` **y** queda alguna cuota». Comprobado con las
+funciones reales:
+
+| Escenario | ¿Cabe en la siguiente? | Pérdida si lo baja |
+| :--- | :--: | ---: |
+| queda una cuota y abril cabe entero | **sí** | $40.046 |
+| última cuota, ya no cabe en ninguna | no | $40.046 |
+
+### 12.3 Avisar cuando la pérdida era evitable
+
+Explicar por qué se pierde no alcanza si además **no hacía falta perderlo**. El
+aviso del encabezado ahora distingue los dos casos.
+
+`lossIsAvoidable` simula el reparto con **cada mes en su monto decretado** sobre
+las cuotas disponibles —ésta incluida—, con el mismo criterio de T-07 que ya usa
+`unpayableMonths`. Si todos caben, lo que se está perdiendo es por cómo quedó
+armada la cuota, no por falta de cupo, y el mensaje lo dice con el remedio al
+lado:
+
+> 2 meses quedan para la cuota siguiente. Con este reparto se pagan $400.370 de
+> los $444.444 decretados: se pierden $44.074. **No hace falta perderlos:
+> devolviendo cada mes a su monto decretado, todos caben en las cuotas
+> autorizadas. Deje el mes que no entra para la cuota siguiente, entero.**
+
+Cuando la pérdida **sí** es estructural —no quedan cuotas, los meses no alcanzan
+a repartirse, o un mes por sí solo excede el tope— la frase no aparece y queda
+solo la explicación de §12.2, que es la correcta para ese caso.
+
+Comprobado con la función real:
+
+| Escenario | Resultado |
+| :--- | :--- |
+| 6 meses de $74.074, tope $256.250, **2 cuotas** (el caso real) | **evitable** |
+| sin pérdida (`droppedAmount = 0`) | no aplica |
+| queda solo esta cuota | no evitable |
+| 7 meses: no alcanzan 2 cuotas | no evitable |
+| un mes que por sí solo excede el tope | no evitable |
+| prestación exenta de tope | no aplica |
+
+**Por qué «deje el mes entero» y no «reparta el dinero»:** en fijo el monto de
+un mes no puede subir (C-10), así que lo único que se mueve es el mes completo.
+La redistribución de dinero solo existe en variable, y ahí no hay pérdida que
+avisar porque el formulario ya deja subir los otros meses.
+
+### 12.4 Los textos, reescritos
+
+El aviso había crecido a cuatro frases encadenadas en una sola línea —la
+pérdida, la aritmética, el remedio y los meses pendientes— y así no se lee
+ninguna. Se separó en **una idea por mensaje**, con el orden del §5.4.
+
+| Antes | Ahora |
+| :--- | :--- |
+| *2 meses quedan para la cuota siguiente. Con este reparto se pagan $400.370 de los $444.444 decretados: se pierden $44.074. No hace falta perderlos: devolviendo cada mes a su monto decretado, todos caben en las cuotas autorizadas. Deje el mes que no entra para la cuota siguiente, entero.* | **aviso** · Se pierden $44.074: este reparto paga $400.370 de los $444.444 decretados.<br>**aviso** · Puede evitarlo: devuelva cada mes a su monto decretado y deje el que no entra para la cuota siguiente.<br>**info** · 2 meses quedan para la cuota siguiente. |
+
+La cifra perdida va **primero y sola**, que es el dato que decide. El remedio es
+su propio mensaje, y solo aparece cuando la pérdida era evitable. Lo pendiente
+baja a información, que es lo que es.
+
+Cuando no hay pérdida quedan dos líneas de información y ninguna advertencia:
+
+> 3 meses quedan para la cuota siguiente.
+> Con este reparto se paga el total decretado: $444.444.
+
+**Las tarjetas de mes**, con el consejo en negrita y el detalle detrás:
+
+| Situación | Texto |
+| :--- | :--- |
+| cabe en la siguiente | **Cabe completo en la cuota siguiente.** Incluirlo aquí obliga a bajarlo a $34.028 y perder $40.046. |
+| ya no cabe en ninguna | **No quedan cuotas donde incluirlo entero.** Baje el monto a $34.028 o menos para pagar al menos esa parte. |
+| ya cabe, falta marcar | Ya cabe en la cuota. Marque el mes para incluirlo. |
+
+Y los tooltips de «Queda fuera del pago» pasaron de tres líneas a una:
+
+- **fijo** — En monto fijo cada mes tiene su cifra decretada y no puede subir, así que lo recortado de un mes no pasa a otro. El tope tampoco se acumula entre cuotas.
+- **variable** — En monto variable puede repartir lo recortado en otros meses, mientras ninguna cuota supere su tope ni el total pase lo autorizado.
+- **sin pérdida** — Este reparto paga todo lo decretado.

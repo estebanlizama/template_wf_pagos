@@ -60,6 +60,7 @@ select
     rtrim(isnull(ccto.nom_ab_cct, '')) as nom_ab_cct,
     ccto.afec_du9,
     ccto.con_topdu9,
+    max(ccto.vigente)                         as vig_ccto,
     max(ccto.cod_tfinan)                      as cod_tfinan,
     rtrim(isnull(max(tfin.des_tfinan), ''))   as des_tfinan,
     max(ccto.cod_ftfn)                        as cod_ftfn,

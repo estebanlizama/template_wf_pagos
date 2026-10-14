@@ -555,3 +555,204 @@ El `group by` vuelve a 27 expresiones, las mismas de antes del cambio.
 unida va con `max()`, nunca al `group by`. Quedan cuatro de margen.
 
 **Requiere redesplegar `sg_fupssSecgen18`.**
+
+---
+
+## 11. Validaciones de resolución frente a las de pago — 14-10-2026
+
+Contraste de `validateNormativeRequestStaff` y sus auxiliares contra lo que hoy
+valida el flujo de pago, en sus tres capas: pantalla, compuerta del envío y PA.
+
+### 11.1 El cuadro
+
+| Validación en resolución | Dónde vive allá | Estado en pagos |
+| :--- | :--- | :--- |
+| Un solo funcionario por solicitud | `DU288_STAFF_CARDINALITY` | heredada; no se rehace |
+| El solicitante no es el funcionario | `DU288_APPLICANT_IS_STAFF` | heredada |
+| Actividad con al menos 10 caracteres | `DU288_INVALID_ACTIVITY` | heredada |
+| Fechas de inicio y término coherentes | `validateStaffExecutionPeriod` | heredada |
+| **El período no cruza el año calendario** | `validateStaffExecutionPeriod:2785` | **falta** a nivel de cuota (Q-B09) |
+| Período de ejecución ≤ 12 meses | `validateStaffExecutionPeriod:2792` | heredada |
+| Compensaciones dentro del período | `validateStaffExecutionPeriod:2823` | ✅ `sg_fuc2iSecgen01:163` |
+| Monto total autorizado mayor que cero | `validateStaffAuthorizedAmount` | ✅ PA |
+| Cuotas declaradas dentro del máximo | `validateStaffAuthorizedAmount` | ✅ `sg_epagiSecgen01:116` |
+| **Factibilidad del reparto (T-07)** | `validateStaffAuthorizedAmount` | **parcial**: `unpayableMonths` es solo pantalla e informativo; la base no lo mira |
+| **Monto mensual + prestaciones concurrentes ≤ tope** | `validateStaffAuthorizedAmount:3093` | **falta** |
+| Contrato y cargo habilitados | `validateStaffContractDisablement` | ✅ panel + compuerta del envío |
+| Asignaciones habilitadas | `validateStaffAssignments` | ✅ panel + compuerta |
+| Carga semanal con prestaciones concurrentes | `validateStaffWorkload` | ✅ panel; **no** en la compuerta (§9.3) |
+| Calendario institucional | `getInstitutionalCalendar` | ✅ panel, nunca bloquea |
+| Saldo del centro de costo | `validateNormativeCostCenterBalance` | ✅ panel + compuerta |
+| Parentesco | frontend de resolución | panel; bloquea solo en la revisión DGDP |
+
+### 11.2 La que falta de verdad: el monto concurrente
+
+La resolución no compara solo contra el tope del cargo: suma el **monto mensual
+equivalente de las otras prestaciones vigentes del mismo funcionario** y
+compara el agregado.
+
+En pagos, la concurrencia se mira **solo en horas** —`evaluatePaymentWeeklyLoad`
+cruza los horarios de las prestaciones que se superponen— y el **dinero** se
+compara únicamente contra el tope de esta cuota. Si el funcionario cobra otra
+prestación DU288 en el mismo mes de remuneraciones, nada suma las dos.
+
+Es más amplio que T-05, que solo habla de dos cuotas **de la misma prestación**
+cayendo en el mismo mes: acá son prestaciones distintas. Y es justamente lo que
+Q-C08 pide revalidar al pagar, porque la resolución lo validó con los datos de
+entonces y el pago ocurre meses después.
+
+**Para cerrarla hace falta**, en este orden:
+
+1. Leer las prestaciones concurrentes del funcionario, que ya se consultan para
+   la carga semanal (`previous-provisions`), y quedarse con las que tienen pago
+   en el mismo `ano_pago` / `mes_pago`.
+2. Sumar su aporte mensual al de esta cuota y comparar contra el tope vigente.
+3. Replicarlo en `sg_epaguSecgen02`, porque la pantalla no es la frontera.
+
+### 11.3 Las otras dos, ya anotadas
+
+- **Cruce de año calendario (Q-B09)** — §8.2 punto 7. La resolución lo valida
+  sobre el período; en pagos una cuota puede abarcar diciembre y enero de años
+  distintos sin que nadie lo mire.
+- **T-07 en la base** — la arista A de `plan_saldo_ejecucion_y_cuotas.md` §11.5.
+  La pantalla calcula la factibilidad del reparto; ningún PA la comprueba.
+
+### 11.4 Lo que no hay que revalidar
+
+Cardinalidad, solicitante distinto del funcionario, largo de la actividad y
+coherencia de fechas son propiedades de la **resolución archivada**: no cambian
+entre el decreto y el pago, y rehacerlas en pagos solo agregaría ruido. Se
+dejan explícitamente fuera.
+
+---
+
+## 12. Alcance acotado y los chips de resolución — 14-10-2026
+
+Corrige §11.2 y mapea los dos bloques de chips del formulario de resolución.
+
+### 12.1 El cruce es dentro del centro de costo
+
+§11.2 proponía sumar **todas** las prestaciones concurrentes del funcionario.
+El alcance correcto es más estrecho: **solo las del mismo centro de costo**.
+Eso cambia la implementación —`sg_fupssSecgen18` ya lista exactamente eso— y
+reduce el trabajo a filtrar por `cod_unifin` + `cod_ccto` antes de sumar.
+
+### 12.2 De dónde salen los chips de centro de costo
+
+Todos los indicadores del bloque de centro de costo de resolución se calculan
+en `sg_cctosSecgen05` sobre columnas de `es_ccto`, la misma tabla que
+`sg_fupssSecgen18` ya une:
+
+| Chip en resolución | Cómo se calcula | Estado en pagos |
+| :--- | :--- | :--- |
+| Financiamiento compatible | `afec_du9 = 'S'` | ✅ **ya está**, como *Flujo DU288* |
+| ANID / sin tope | `con_topdu9 = 'N'` | ✅ **ya está**, como *Régimen de cuotas* |
+| Centro de costo vigente | `ccto.vigente` | implícito: todos los PA de pago filtran por él |
+| Responsable vigente | `ecct.vigente` | implícito: el filtro por `es_ecct.rut` lo exige |
+| Decreto afecto | `decr_afect is not null` | falta; informativo |
+| Formación continua | `decr_afect = '1'` | falta; informativo |
+| Saldo disponible | `sg_cctosSecgen06` | ✅ panel + compuerta |
+
+**Corrección a §11.1:** «Financiamiento compatible» no faltaba. Es el mismo
+`afec_du9` que ya proyectamos; en resolución se rotula como financiamiento y en
+pagos como flujo.
+
+**Lo implícito merece hacerse explícito.** Que el centro de costo o el
+responsable dejen de estar vigentes no produce un error: la prestación
+**desaparece de la bandeja**, porque todos los PA filtran por
+`ecct.vigente = 'S'` y por el RUT del responsable. Es seguro pero mudo — el
+jefe de proyecto no sabe por qué dejó de ver una prestación que gestionaba.
+
+### 12.3 ANID no es la extensión de cuotas
+
+`sg_cctosSecgen05:65`:
+
+```sql
+case when isnull(ccto.con_topdu9, 'S') = 'N' then 'S' else 'N' end as ind_anid
+```
+
+O sea el flujo de resolución deriva **ANID de `con_topdu9`**, no de
+`ext_cuotas`. Y A-02 dice que lo que elimina el tope es ANID.
+
+El formulario de pago hace lo contrario:
+
+```js
+effectiveCap() {
+  return this.hasExtension || this.monthlyCap <= 0 ? Infinity : this.monthlyCap
+}
+```
+
+`hasExtension` es `ext_cuotas`. Con el dato que ahora proyecta
+`sg_fupssSecgen18` la corrección es directa —`costCenterCapped === 'N'` es
+ANID—, pero **cambia a quién se le aplica el tope**, así que es una decisión
+funcional, no una corrección de oficio. Es la arista F de
+`plan_saldo_ejecucion_y_cuotas.md` §11.5, ahora con evidencia de cuál es el
+criterio en resolución.
+
+### 12.4 Bloque del funcionario
+
+| Chip en resolución | Estado en pagos |
+| :--- | :--- |
+| Contrato | ✅ |
+| **Contrato cubre período solicitado** | ❌ **falta** |
+| Principal | falta; informativo |
+| Cargo habilitado | ✅ |
+| Sin parentesco | ✅ (no bloquea al solicitante) |
+| Dentro / fuera de jornada | ✅ como dato en *Prestación seleccionada* |
+| Compensación no requerida | ✅ por mes |
+
+**El que falta importa.** La compuerta del envío comprueba que el contrato
+**exista y esté habilitado**, no que **cubra los meses que se están pagando**.
+Un contrato que terminó en marzo deja pasar el pago de un mes de junio. En
+resolución esto es `isContractValidityCompatible`; acá habría que comparar la
+vigencia del contrato contra el período de los meses incluidos en la cuota.
+
+### 12.5 Las cinco que pediste revisar
+
+| Pedido | Estado |
+| :--- | :--- |
+| El mes ya se ocupó o se pagó | ✅ `availabilityOf` + `sg_epagiSecgen01:191`, revalidado dentro de la transacción |
+| Máximo de cuotas permitidas | ⚠️ se valida contra `tot_cuotas` de la resolución, **pero no** el máximo por año calendario que resolución aplica a las extendidas |
+| Diferencias si es extendida | ⚠️ hoy la extensión exime del tope; ver §12.3 |
+| Documento de respaldo | ✅ obligatorio al enviar, en backend y PA |
+| Horas de compensación bien asignadas | ✅ por mes, con período validado en `sg_fuc2iSecgen01:163`, y bloquea la última cuota |
+| Que no pase el tope válido | ✅ en pantalla · ❌ en la base (arista A) |
+| Avisar que se pierde dinero | ✅ aplicado, `plan_saldo_ejecucion_y_cuotas.md` §12 |
+
+---
+
+## 13. Dos secciones y el saldo siempre visible — 14-10-2026
+
+### 13.1 El saldo deja de plegarse
+
+La tabla de validación presupuestaria estaba dentro de un `b-collapse` que se
+abría solo cuando el saldo bloqueaba. Pasa a estar **siempre abierta**: es una
+validación que impide enviar, y esconderla obligaba a descubrir el problema
+recién al intentar el envío. Se fueron con ella el botón de plegado, el estado
+`budgetOpen` y el `watch` que lo abría.
+
+### 13.2 Un bloque para la prestación y otro para el centro de costo
+
+Catorce campos en una sola rejilla no dejaban ver a qué pertenecía cada dato, y
+son cosas que cambian por motivos distintos: lo que la resolución autorizó para
+esta persona no se mueve, mientras el centro de costo y su saldo sí. Se separan
+igual que en el formulario de resolución:
+
+| Prestación autorizada | Centro de costo y presupuesto |
+| :--- | :--- |
+| Funcionario · Actividad | Centro de costo · Unidad ejecutora |
+| Resolución · RUT jefe de proyecto | Tipo y fuente de financiamiento |
+| Extensión de cuotas · Modalidad de jornada | Ítem presupuestario |
+| Tipo de monto · Total decretado · Tope mensual | Modalidad de prestación |
+| Cuotas solicitadas / autorizadas | Flujo DU288 · Régimen de cuotas |
+| Pagado · En trámite · Saldo por gestionar | **+ tabla de saldo, siempre visible** |
+| Período de ejecución | |
+
+Los dos del régimen —*Flujo DU288* y *Régimen de cuotas*— se mudaron al bloque
+del centro de costo, que es de donde salen: los dos son columnas de `es_ccto`
+(§12.2), no atributos de la prestación.
+
+*Unidad ejecutora* también cambió de bloque por lo mismo, y de paso ahora
+muestra el nombre junto al código cuando `des_unifin` llega.
+
+Verificado ejecutando los computed reales con datos de la prestación 8.
