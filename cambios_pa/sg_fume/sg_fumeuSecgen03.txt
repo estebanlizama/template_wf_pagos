@@ -18,19 +18,22 @@ go
    @corr_fume           -> Correlativo del mes. (Obligatorio)
    @mto_deslic          -> Descuento por licencia medica. (Obligatorio)
    @mto_dessg           -> Descuento por permiso sin goce. (Obligatorio)
+   @mto_apagar          -> Aporte a la cuota a pagar. (Opcional, si DGDP lo ajusta)
 
-   Objetivo : Registrar los descuentos de un mes durante la visacion DGDP y
-   dejar el monto resultante en mto_realpa.
+   Objetivo : Registrar los descuentos de un mes y opcionalmente ajustar el aporte
+   a pagar durante la visacion DGDP, versionando en sg_fum2 si el monto cambia,
+   y dejando el valor neto resultante en mto_realpa.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/16 - Soporte mto_apagar y versionamiento sg_fum2
 */
 create procedure Analisis2.sg_fumeuSecgen03
     @rut_person char(9) = null,
     @id_funprse int     = null,
     @corr_fume  tinyint = null,
     @mto_deslic int     = null,
-    @mto_dessg  int     = null
+    @mto_dessg  int     = null,
+    @mto_apagar int     = null
 as
 
 if @rut_person is null or ltrim(rtrim(@rut_person)) = '' or isnull(@id_funprse, 0) <= 0 or isnull(@corr_fume, 0) <= 0
@@ -69,15 +72,15 @@ begin
     return
 end
 
-declare @mto_apagar int
+declare @mto_apagar_actual int
 declare @cod_estcuo tinyint
 
-select @mto_apagar = mto_apagar
+select @mto_apagar_actual = mto_apagar
   from secgen_db.dbo.sg_fume
  where id_funprse = @id_funprse
    and corr_fume  = @corr_fume
 
-if @mto_apagar is null
+if @mto_apagar_actual is null
 begin
     select 'El mes indicado no existe en la prestacion' as msg
     return
@@ -97,7 +100,14 @@ begin
     return
 end
 
-if @mto_deslic + @mto_dessg > @mto_apagar
+/* Si se indica un monto a pagar valido y difiere del actual, se actualiza */
+declare @mto_nuevo int
+if @mto_apagar is not null and @mto_apagar > 0
+    select @mto_nuevo = @mto_apagar
+else
+    select @mto_nuevo = @mto_apagar_actual
+
+if @mto_deslic + @mto_dessg > @mto_nuevo
 begin
     select 'Error: Los descuentos no pueden superar el monto solicitado del mes' as msg
     return
@@ -105,10 +115,36 @@ end
 
 begin tran
 
+/* Si el monto a pagar cambia, versionar el estado anterior en sg_fum2 */
+if @mto_nuevo <> @mto_apagar_actual
+begin
+    declare @correlativ int
+    select @correlativ = isnull(max(correlativ), 0) + 1
+      from secgen_db.dbo.sg_fum2 holdlock
+     where id_funprse = @id_funprse
+       and corr_fume  = @corr_fume
+
+    insert into secgen_db.dbo.sg_fum2 (
+        id_funprse, corr_fume, correlativ, ano_prop, mes_prop,
+        cod_estcuo, ano_ejec, mes_ejec, mto_apagar, id_evidenc,
+        val_licmed, val_inabili, val_singoce, val_ciecc, fec_valida,
+        rut_autori, fec_autori, fec_envrem
+    )
+    select
+        id_funprse, corr_fume, @correlativ, ano_prop, mes_prop,
+        cod_estfum, ano_ejec, mes_ejec, mto_apagar, id_evidenc,
+        val_licmed, val_inabili, val_singoce, val_ciecc, fec_valida,
+        rut_autori, fec_autori, fec_envrem
+    from secgen_db.dbo.sg_fume
+    where id_funprse = @id_funprse
+      and corr_fume  = @corr_fume
+end
+
 update secgen_db.dbo.sg_fume
-   set mto_deslic  = @mto_deslic,
+   set mto_apagar  = @mto_nuevo,
+       mto_deslic  = @mto_deslic,
        mto_dessg   = @mto_dessg,
-       mto_realpa  = @mto_apagar - @mto_deslic - @mto_dessg,
+       mto_realpa  = @mto_nuevo - @mto_deslic - @mto_dessg,
        val_licmed  = case when @mto_deslic > 0 then 'S' else 'N' end,
        val_singoce = case when @mto_dessg  > 0 then 'S' else 'N' end,
        fec_valida  = getdate()
@@ -125,8 +161,8 @@ end
 
 commit tran
 
-select 1 as status, 'OK' as code, 'Descuentos registrados correctamente' as msg,
-       @mto_apagar - @mto_deslic - @mto_dessg as mto_realpa
+select 1 as status, 'OK' as code, 'Monto y descuentos registrados correctamente' as msg,
+       @mto_nuevo - @mto_deslic - @mto_dessg as mto_realpa
 go
 
 grant execute on Analisis2.sg_fumeuSecgen03 to UsuaVrac

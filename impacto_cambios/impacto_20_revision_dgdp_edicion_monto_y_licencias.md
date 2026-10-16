@@ -128,9 +128,30 @@ Tanto en la vista de **Revisión DGDP** como en la vista de **Solicitud de Pago*
 
 ---
 
-## 8. Aprobación y Estándares
+---
+
+## 8. Cumplimiento Estricto de Arquitectura: The Golden Path y Stored Procedures
+
+En conformidad con las reglas maestras del proyecto UFRO 2026:
+
+1. **Eliminación de Consultas SQL Directas (Zero Inline Queries):**
+   - **`selectDgdpProvisionMonths`:** Se eliminó la sentencia `SELECT` cruda que consultaba directamente las tablas `sg_fume`, `sg_fups`, `sg_prse`, etc. En su lugar, se configuró la ejecución del procedimiento almacenado oficial `Analisis2.sg_fumesSecgen03`.
+   - **`updateDgdpMonthDeductions`:** Se eliminó el bloque de `DECLARE / BEGIN TRAN / UPDATE` incrustado en TypeScript. En su lugar, se encapsuló la lógica completa dentro del procedimiento almacenado `Analisis2.sg_fumeuSecgen03`.
+
+2. **Actualización de Procedimiento Almacenado `sg_fumeuSecgen03`:**
+   - Ubicación: `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/sg_fume/sg_fumeuSecgen03.sql` (y `.txt`).
+   - Se añadió el parámetro opcional `@mto_apagar int = null`.
+   - Si el aporte a pagar difiere del actual, el SP realiza el versionamiento automático del estado previo en `sg_fum2` antes de actualizar `sg_fume`, garantizando la auditoría y la integridad transaccional desde el motor de base de datos Sybase.
+
+3. **Higiene de Logs y Seguridad (OWASP):**
+   - En `AuthController.isCostCenterManager`, se eliminó el registro en consola `console.info` que exponía el RUT del funcionario autenticado, cumpliendo la prohibición estricta de fuga de datos sensibles en logs.
+
+---
+
+## 9. Aprobación y Estándares
 - **Regla de Alcance:** No se modificó ningún archivo fuera de `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa`.
 - **Estándar Visual DU288:** Aprobado en 39 archivos (`npm run lint:du288-ui`).
-- **Clean Code & SonarQube:** Código sin logs huérfanos, optional catch binding en bloques de fallback y 0 errores en `eslint` y pruebas unitarias (`npm run test:pds-rules` con 13/13 suites exitosas).
+- **Clean Code & SonarQube:** Código sin logs huérfanos ni exposición de RUTs, optional catch binding en bloques de fallback y 0 errores en compilación TypeScript backend (`lb-tsc`) y pruebas unitarias de frontend (`npm run test:pds-rules` con 13/13 suites exitosas).
+
 
 
