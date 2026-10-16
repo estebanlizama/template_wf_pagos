@@ -22,7 +22,7 @@ go
    cubiertos y compensaciones registradas.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/14
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
@@ -110,6 +110,14 @@ select
         and d2.nro_cuota  = epag.nro_cuota
         and c2.id_funprse = d2.id_funprse
         and c2.corr_fume  = d2.corr_fume) as cant_compens,
+    (select isnull(sum(f4.mto_realpa), 0)
+       from secgen_db.dbo.sg_fume f4
+      where f4.id_funprse = epag.id_funprse
+        and f4.cod_estfum = 3) as mto_pagado,
+    (select isnull(sum(f5.mto_apagar), 0)
+       from secgen_db.dbo.sg_fume f5
+      where f5.id_funprse = epag.id_funprse
+        and f5.cod_estfum = 2) as mto_gestion,
     (select count(*)
        from secgen_db.dbo.sg_dpag d3
       where d3.id_funprse = epag.id_funprse

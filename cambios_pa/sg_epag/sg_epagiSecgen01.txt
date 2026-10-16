@@ -23,7 +23,7 @@ go
    los meses de ejecucion indicados en sg_dpag.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/14
 */
 create procedure Analisis2.sg_epagiSecgen01
     @id_funprse int          = null,

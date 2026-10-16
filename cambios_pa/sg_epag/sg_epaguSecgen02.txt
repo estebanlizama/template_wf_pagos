@@ -20,7 +20,7 @@ go
    de ejecucion en la misma transaccion.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/14
 */
 create procedure Analisis2.sg_epaguSecgen02
     @id_funprse int = null,

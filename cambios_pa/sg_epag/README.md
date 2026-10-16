@@ -88,6 +88,57 @@ desincroniza de la que ya usa resolución.
 
 ---
 
+## La guarda de `afec_du9` está comentada en los archivos, no en la base
+
+Tres de estos PA rechazaban con *«El centro de costo no pertenece al flujo
+DU09»* cuando `fin21_db..es_ccto.afec_du9` no vale `S`. Hoy la columna está
+nula en todos los centros vigentes, así que la guarda bloqueaba cualquier
+cuota. El 14-10-2026 se envolvió en un comentario `INTERRUPTOR-DU09` en
+`sg_epagiSecgen01`, `sg_epaguSecgen01` y `sg_epaguSecgen02`.
+
+> [!WARNING]
+> Comentarlo en el `.sql` no cambia nada hasta **redesplegar los tres PA**.
+> Mientras no se redespliegan, crear o enviar una cuota sigue devolviendo 422
+> con ese mensaje, aunque el chip del panel aparezca como advertencia y el
+> front no lo cuente entre los bloqueantes.
+
+Para saber qué hay realmente instalado:
+
+```sql
+exec sp_helptext 'Analisis2.sg_epagiSecgen01'
+```
+
+Si la guarda aparece fuera del bloque `/* INTERRUPTOR-DU09 ... */`, lo
+instalado es anterior al interruptor.
+
+El estado esperado del archivo, que vale para los tres:
+
+```sql
+/* INTERRUPTOR-DU09 : deshabilitada el 2026/10/14 mientras los centros de
+   costo de prueba no tienen cargada la marca afec_du9. Para habilitarla,
+   borrar esta linea de apertura y la de cierre. ...
+
+if @afec_du9 <> 'S'
+begin
+    select 'Error: El centro de costo no pertenece al flujo DU09' as msg
+    return
+end
+*/
+```
+
+Para volver a encenderla hay que poblar la marca primero —
+`datos_base/06_marcas_du09_centro_costo.sql` lista los centros con
+prestaciones DU288 archivadas y cuenta cuántos quedarían sin poder pagar —
+y seguir los cinco puntos de `INTERRUPTOR-DU09.md`. Encenderla con la
+columna vacía reproduce exactamente el bloqueo que el interruptor vino a
+esquivar.
+
+Es la misma columna que deja sin menú al jefe de proyecto cuando
+`sg_cctosSecgen05` filtra por ella: ver `sg_ccto/sg_cctosSecgen05.sql` y la
+sección del PA en el README de `cambios_pa`.
+
+---
+
 ## Cómo se evita que un mes caiga en dos cuotas
 
 La PK de `sg_dpag` es `(id_funprse, nro_cuota, corr_fume)`, así que admite `(3,1,1)` y `(3,2,1)`:

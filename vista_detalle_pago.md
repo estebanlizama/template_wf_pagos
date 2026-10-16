@@ -756,3 +756,275 @@ del centro de costo, que es de donde salen: los dos son columnas de `es_ccto`
 muestra el nombre junto al código cuando `des_unifin` llega.
 
 Verificado ejecutando los computed reales con datos de la prestación 8.
+
+---
+
+## 11. Vista DGDP — reordenamiento (14-10-2026)
+
+Auditoría de `review/_staffProvisionId/_installmentNumber.vue` con el mismo
+criterio que se aplicó al detalle del solicitante: cada dato en un solo lugar,
+la edición detrás de una acción explícita y el estado visible antes de actuar.
+
+### 11.1 Hecho antes de este plan
+
+| | Qué |
+| :-- | :--- |
+| 1 | `afec_du9` y `con_topdu9` como información, con las etiquetas del detalle |
+| 2 | Encabezado de seis cifras a cuatro: se quitaron *Solicitado*, *Comprometido*, *Informado* y el conteo de bloqueantes, que ya viven en su sección; se agregaron **Cuota N de M** y **Mes de pago**, que no estaban en ninguna parte |
+| 3 | Descuentos detrás de **Editar descuentos**, con *Cancelar edición*, *Guardar* y el chip **Sin guardar** |
+
+### 11.2 Paso 1 — agrupar los antecedentes
+
+Hoy `provisionFacts` es una lista plana de **24 campos** en una grilla de
+`auto-fill`: el orden depende del ancho de la ventana, así que el cargo puede
+quedar al lado del tope mensual. Se agrupan en cuatro bloques con título, que
+es como se leen:
+
+| Bloque | Campos |
+| :--- | :--- |
+| **Funcionario** | nombre y RUT · cargo · estamento · unidad |
+| **Contrato** | vigencia · calidad · jornada · horas · inicio |
+| **Prestación** | solicitud · actividad · resolución · período de ejecución · modalidad de jornada |
+| **Centro de costo y montos** | centro de costo · flujo DU288 · régimen de cuotas · ítem presupuestario · tipo de monto · total autorizado · tope mensual · cuotas autorizadas · enviada el · evidencia |
+
+El revisor entra a comprobar tres cosas —quién es, bajo qué vínculo trabaja y
+con qué plata se paga—, y los bloques son exactamente esas tres más la
+identificación.
+
+### 11.3 Paso 2 — hacer visible el bloqueo antes de decidir
+
+La compuerta **ya existe y está bien**: `askConfirmation('approve')` revalida
+el panel y aborta si queda algún control bloqueante; observar y rechazar no lo
+exigen, porque un control bloqueante suele ser justamente el motivo de la
+devolución.
+
+Lo que falta es que se **vea antes de hacer clic**. Hoy el botón *Aprobar* se
+ve habilitado, el revisor lo pulsa y recién ahí aparece el error. En el detalle
+del solicitante el botón de envío se muestra deshabilitado con el motivo al
+lado; acá debe ser igual:
+
+- *Aprobar* deshabilitado mientras el panel tenga controles bloqueantes, con el
+  motivo junto al botón;
+- la revalidación al pulsar **se mantiene**: es la que vale, porque entre
+  abrir la vista y decidir pudo cambiar el contrato o el saldo;
+- *Observar* y *Rechazar* quedan siempre habilitados.
+
+### 11.4 Fuera de este plan
+
+- **Saldo en cuatro columnas y datos presupuestarios del centro de costo**:
+  `sg_epagsSecgen03` no proyecta `mto_pagado`, `mto_gestion` ni el
+  financiamiento. Requiere tocar ese PA; no se hace junto con lo demás.
+- **Reparto y tope del apartado 2**: no aplica, DGDP no arma cuotas.
+
+### 11.5 Aplicado — paridad con el detalle del solicitante (14-10-2026)
+
+**Antecedentes en cuatro bloques** (§11.2) y **bloqueo visible antes de
+decidir** (§11.3), más el saldo que §11.4 daba por fuera de alcance y que sí se
+pudo cerrar.
+
+**Saldo de la prestación.** `sg_epagsSecgen03` proyecta ahora `mto_pagado` y
+`mto_gestion` como subconsultas escalares —el mismo recurso que ya usaba para
+`cant_compens`, así que el `group by` queda intacto en sus 25 expresiones, seis
+bajo el límite de ASE—. Las definiciones son **copia literal** de
+`sg_fupssSecgen18` líneas 98-99:
+
+```sql
+sum(case when cod_estfum = 3 then mto_realpa end)   -- pagado
+sum(case when cod_estfum = 2 then mto_apagar end)   -- en tramite
+```
+
+No es un detalle: si las dos pantallas calcularan *pagado* de distinta forma,
+el revisor y el solicitante discutirían cifras en vez del caso. El saldo se
+deriva en el frontend (`total − pagado − en trámite`) para no agregar una
+tercera subconsulta por la misma resta.
+
+El bloque **Centro de costo y montos** queda con: centro de costo · flujo DU288
+· régimen de cuotas · ítem · tipo de monto · monto autorizado · **pagado** ·
+**en trámite** · **saldo por gestionar** · tope mensual · cuotas autorizadas.
+
+### 11.6 Comparación de componentes entre las dos vistas
+
+| Componente | Solicitante | DGDP | Nota |
+| :--- | :--: | :--: | :--- |
+| `Du288PaymentAntecedentsTab` | sí | sí | compartido |
+| `Du288PaymentDocumentTab` | sí | sí | compartido |
+| `Du288PaymentValidationsSection` | sí | sí | compartido |
+| `Du288MonthVersionsModal` | sí | sí | compartido |
+| `Du288PaymentContextSection` | sí | no | **no conviene compartirlo**: trae el selector de funcionario y el armado de cuotas, que DGDP no tiene. Lo que importaba era el contenido, y ese ya está igualado |
+| `Du288PaymentBudgetSection` | no | sí | el solicitante tiene su propia copia dentro del contexto. **Duplicación real**, candidata a unificar |
+| `Du288PaymentAbsencesSection` | no | sí | el solicitante no muestra licencias ni permisos, aunque expliquen los descuentos que no puede modificar |
+| `Du288PaymentExecutionSection` | no | sí | el solicitante usa `Du288PaymentScheduleSection` en modal; son necesidades distintas |
+| `Du288InstallmentFormSection` y compañía | sí | no | DGDP no arma cuotas |
+
+### 11.7 Lo que queda
+
+| | Qué | Estado — ver §14 |
+| :-- | :--- | :--- |
+| 1 | Unificar la tabla de saldo presupuestario en `Du288PaymentBudgetSection` | **ya estaba hecho**; esta auditoría se equivocó (§14.1) |
+| 2 | Agrupar los campos del contexto del solicitante | **aplicado**: de dos grupos a tres (§14.2) |
+| 3 | Mostrar licencias y permisos en el detalle del solicitante | **no se implementa**: necesita endpoint nuevo y una decisión de privacidad (§14.3) |
+| 4 | Verificar las dos pantallas en vivo | **causa cerrada**: el panel no se pinta, no es un bug (§14.4) |
+
+**Por desplegar:** `sg_epagsSecgen03`.
+
+---
+
+## 14. Cierre de los cuatro pendientes de §11.7 — 15-10-2026
+
+### 14.1 Punto 1 — ya estaba hecho; la auditoría anterior se equivocó
+
+`Du288PaymentContextSection` **ya importaba y usaba** `Du288PaymentBudgetSection`
+(cuelga del grupo de centro de costo, con `withBudget: true`). No había dos
+implementaciones de la tabla presupuestaria.
+
+De dónde salió el error: la auditoría leyó el computed `fields` —una lista de
+catorce campos— y concluyó que el contexto era plano. `fields` es **uno de los
+grupos**, no el total: el componente ya tenía `fieldGroups` con dos bloques.
+Conviene mirar el computed que arma los grupos, no el primero que aparece.
+
+### 14.2 Punto 2 — aplicado: de dos grupos a tres
+
+Lo que sí era cierto es que el primer grupo mezclaba dos cosas en una sola
+rejilla de catorce campos: la **identificación** de la prestación con el
+**avance de los montos**, de modo que el RUT del jefe de proyecto quedaba junto
+al tope mensual. Se consultan en momentos distintos —uno al abrir, el otro al
+armar la cuota—, así que se separan:
+
+| Grupo | Campos |
+| :--- | :--- |
+| **Prestación autorizada** | funcionario · actividad · resolución · RUT jefe de proyecto · extensión · modalidad de jornada · período |
+| **Montos y cuotas** | tipo de monto · total decretado · tope mensual · cuotas · pagado · en trámite · saldo por gestionar |
+| **Centro de costo y presupuesto** | centro de costo · unidad ejecutora · tipo y fuente de financiamiento · ítem · modalidad de prestación · flujo DU288 · régimen de cuotas · **tabla de saldo** |
+
+Queda alineado con los cuatro bloques de la vista DGDP, que separa además
+*Funcionario* y *Contrato* porque muestra antecedentes contractuales que el
+solicitante no ve.
+
+### 14.3 Punto 3 — no se implementa: necesita endpoint y una decisión
+
+Mostrar licencias y permisos al solicitante **no es trabajo de pantalla**. El
+único origen del dato es
+`/payments/dgdp/provisions/{id}/installments/{n}/attendance`, con guarda de
+revisor DGDP: no existe equivalente para el jefe de proyecto.
+
+Habría que crear un endpoint nuevo y, antes, resolver si corresponde que el
+jefe de proyecto vea **el motivo** del descuento. Hoy ve el monto agregado y la
+leyenda de que lo aplicó DGDP. Pasar de ahí a *licencia médica del 3 al 9* es
+exponer salud de un subordinado a su jefatura directa. No es una decisión de
+diseño: se consulta y recién después se implementa.
+
+### 14.4 Punto 4 — por qué "no hidrata": no es un bug, es el panel sin pintar
+
+Diagnóstico cerrado, y conviene dejarlo escrito porque ya costó dos sesiones.
+
+| Comprobación | Resultado |
+| :--- | :--- |
+| `window.$nuxt` | existe |
+| `$nuxt.$route.path` | correcto |
+| `layout` / `layoutName` | definidos (`default`) |
+| `nuxt.err` | `null` |
+| consola | sin errores |
+| `#__layout` | presente, con clases `layout-leave layout-leave-active` |
+| `$nuxt.$children` | solo `NuxtLoading` y `NuxtBuildIndicator` |
+| **`requestAnimationFrame`** | **no dispara nunca** |
+
+La cadena es esa última fila. El `<transition name="layout" mode="out-in">` que
+Nuxt pone alrededor del layout usa `nextFrame()`, o sea dos `rAF` encadenados.
+Si el documento no se pinta, `rAF` queda congelado, el *leave* no termina y con
+`mode: out-in` el *enter* no empieza nunca: el layout no se monta y queda el
+HTML del SSR con las clases de salida puestas.
+
+Y el documento no se pinta porque **la ventana de Claude está detrás de otra**.
+Lo dice el propio error del screenshot: *"the page did not finish rendering…
+Claude's window may be behind another window, which can stop the page from
+drawing"*. `document.visibilityState` informa `visible`, que es lo que despista.
+
+**La aplicación está bien.** Para verificar en vivo basta traer la ventana al
+frente; con Claude in Chrome tampoco se pudo, porque no hay ninguna instancia
+de la extensión conectada a esta cuenta.
+
+Cómo confirmarlo en diez segundos desde la consola del navegador:
+
+```js
+await new Promise(r => { requestAnimationFrame(() => r('pinta')); setTimeout(() => r('congelado'), 2000) })
+```
+
+---
+
+## 15. Vista DGDP por cuota — rediseño del 15-10-2026
+
+La vista revisa **una cuota**, y la cuota agrupa meses de ejecución. Todo lo de
+abajo sale de llevar esa idea a la pantalla.
+
+### 15.1 Fuera la tira de cifras del encabezado
+
+Mostraba *Cuota 1 de 2 · Mes de pago · A pagar · Tiempo en espera*. Tres de las
+cuatro ya tenían lugar propio y la cuarta no era del encabezado:
+
+| Dato | Dónde queda |
+| :--- | :--- |
+| Cuota 1 de 2 | en el **título**: «Cuota 1 de 2», con su chip de estado |
+| Mes de pago | antecedentes → **Prestación** |
+| A pagar | ya estaba en los totales de la tabla de meses |
+| Tiempo en espera | antecedentes → **Prestación** |
+
+Se eliminaron con ella el computed `headline`, su bloque de textos y el CSS de
+las tarjetas KPI, que quedaban sin consumidor.
+
+### 15.2 La ejecución pasa a leerse mes a mes
+
+Eran dos bloques sueltos debajo del calendario: el **horario semanal** de la
+resolución y una **tabla resumen por mes**. Para saber de qué día salía una
+diferencia había que cruzarlos a mano contra el calendario.
+
+Ahora hay un bloque por mes de la cuota:
+
+```
+Enero 2016    Comprometido 10:00 · Informado 8:00   [Falta informar 2:00]
+  Lun 11   C I R   Compensación comprometida: 09:00–13:00 · Informada: 09:00–11:00
+  Mié 13   C · ·   Compensación comprometida: 09:00–13:00
+```
+
+- Cada día trae **las mismas tres marcas del calendario** —comprometido,
+  informado, reloj— con inicial y color, para que no dependa del matiz (§14).
+- La fila es un botón: selecciona el día y alimenta el panel de detalle que ya
+  existía, con sus horas, turno, exceso, ausencia y justificación.
+- El horario semanal queda como **una línea de contexto**, que es lo que es:
+  la referencia de qué significa «comprometido».
+- Entran también los meses **sin compensación**: que un mes comprometido no
+  informe nada es justamente lo que hay que ver.
+
+**La regla de las marcas salió a un método `dayMarks(iso)`.** Estaba dentro de
+`calendarCells`; duplicarla para el desglose habría garantizado que el
+calendario y la lista terminaran contradiciéndose. Ahora el calendario también
+la usa.
+
+Se eliminaron `crossFields`, `crossRows`, `weekMinutes` y `notCountedMinutes`.
+
+### 15.3 La tabla de meses dice qué cuota desglosa
+
+El subtítulo agrega la cobertura: **«4 meses · Enero 2016 – Abril 2016»**. Sin
+eso había que contar las filas para saber qué abarca la cuota.
+
+### 15.4 Validaciones — un defecto real
+
+El panel normativo es el mismo componente en las dos vistas, pero **la revisión
+DGDP no le pasaba `balance-blocks`**, así que tomaba el valor por omisión
+`true`. Con el INTERRUPTOR-DU09 apagado eso significaba que, en la revisión:
+
+- el aviso amarillo de modo prueba **nunca aparecía**, y
+- el panel daba por bloqueante un saldo que hoy no bloquea.
+
+Es exactamente lo que advierte el comentario del interruptor: *«apagar solo uno
+deja la pantalla y la compuerta diciendo cosas distintas»*. Corregido: la vista
+DGDP lee el mismo getter que el detalle del solicitante.
+
+### 15.5 Pendiente
+
+- **Ausencias del período**: queda como está, general sobre las fechas de
+  ejecución. Confirmado con el usuario.
+- **Claves de texto muertas** en el bloque `execution` tras quitar la tabla
+  resumen (`weekTotal`, `notCountedTotal`, `crossDayOne`…). No se eliminaron:
+  varias se consumen como `labels.X` y no como `text.X`, y distinguirlas con
+  seguridad exige revisar `selectedDayFacts` una por una. Sin riesgo funcional.
+- **Verificación en vivo**: sigue bloqueada por el panel sin pintar (§14.4).

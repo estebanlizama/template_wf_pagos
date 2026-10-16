@@ -39,6 +39,7 @@ se mueve.
 | `sg_epag` · `sg_dpag` · `sg_fuc2` · `sg_ecuo` | pagos | no, son nuevos |
 | `sg_fumesSecgen02` · `sg_fumeuSecgen02` | pagos | no, son nuevos |
 | `sg_fume/sg_fumeuSecgen01` · `sg_fupssSecgen17` · `sg_fups/*` | resolución | **sí, con el esquema anterior** |
+| `sg_ccto/sg_cctosSecgen05` | solicitud (compartido) | **sí** |
 
 La última fila es la que importa para planificar: esos PA **ya existen en producción**, pero con
 `nro_cuota` y `cod_estcuo`. Su migración a `corr_fume` / `cod_estfum` viaja junto con el cambio
@@ -151,10 +152,119 @@ lado solicitante. Se mantiene separado porque sin el, cero prestaciones no
 distingue "no tienes el rol" de "no tienes nada pendiente", y el estado vacio
 no podria explicar por que la tabla esta vacia.
 
+#### Si el menu no aparece: mirar primero `sg_cctosSecgen05`
+
+El menu tiene tres cerrojos y los tres cuelgan del mismo privilegio derivado:
+
+1. `layouts/default.vue` solo despacha `fetchAccessSummary` a quien ya trae
+   `provision-payment-manage` en el token. Sin el privilegio, **la bandeja no
+   se consulta nunca** -- no es que falle, es que no se pide.
+2. `buildMenuForUser` descarta los items con `paymentsBranch` cuando
+   `hasPaymentWork` es falso, que es su valor inicial.
+3. El item declara `guardian: [provision-payment-manage]`.
+
+El privilegio se deriva en cada `/auth/user` desde `sg_cctosSecgen05`, y ese
+PA devuelve cero filas sin error cuando el centro de costo no cumple el
+criterio DU288. En certificacion esto ocurrio con la version que filtraba por
+`ccto.afec_du9 = 'S'` mientras la columna seguia nula: cero filas en 3 ms,
+ningun mensaje, y el menu desaparecido junto con la bandeja y el listado. El
+interruptor y la consulta de verificacion estan mas abajo, en
+[sg_cctosSecgen05](#sg_cctossecgen05--criterio-du288-del-centro-de-costo).
+
+`[AuthController] isCostCenterManager rut=... centros=N` deja el conteo en el
+log del backend en cada login, que es la forma mas corta de separar "no tiene
+el rol" de "el PA no encontro nada".
+
+#### Este PA y el de permisos no usan el mismo criterio
+
+`sg_fupssSecgen18` proyecta y agrupa `ccto.afec_du9` y `ccto.con_topdu9`, pero
+no filtra por ellos: le basta `es_ecct.vigente = 'S'` mas el centro del
+exists. `sg_cctosSecgen05` si filtra. Por eso una misma persona puede tener
+prestaciones en la bandeja y no tener el privilegio para abrirla. Hoy es una
+incoherencia conocida, no una regla: unificar la definicion en un solo lugar
+queda pendiente de decision.
+
 ### Lo que el PA no resuelve
 
 Devuelve conteos, no las cuotas una por una. Los chips de meses de la vista de
 detalle se cargan con el PA de detalle, no con este.
+
+---
+
+## sg_cctosSecgen05 — criterio DU288 del centro de costo
+
+Es un PA **compartido**, no de pagos: lo consulta el formulario de solicitud
+para ofrecer centros de costo y `/auth/user` para derivar el privilegio
+`provision-payment-manage`. Aparece acá porque el flujo de pagos es donde se
+detectó que estaba dejando a todos afuera, y porque la corrección no es una
+adaptación para pagos sino un arreglo del criterio que ambos lados comparten.
+Por eso se edita en vez de crear uno nuevo, al revés de la regla general de
+la sección anterior.
+
+### El problema
+
+Hay dos definiciones de «centro de costo afecto a DU288» conviviendo:
+
+| Definición | Origen | Estado del dato |
+| :--- | :--- | :--- |
+| `cod_tfinan in (21, 44)` | se deduce del tipo de financiamiento | poblado |
+| `afec_du9 = 'S'` | marca explícita del centro de costo | **nulo en todos los centros vigentes** |
+
+La versión instalada en certificación filtra por `afec_du9` con la columna
+todavía en blanco. Devuelve cero filas para cualquier RUT, sin error y en 3 ms.
+Como de este PA se deriva el privilegio, eso apaga tres cosas de una: el menú
+de prestaciones por pagar, la bandeja de gestión de pago y la selección de
+centro de costo del formulario de solicitud.
+
+### Cómo queda
+
+`cod_tfinan in (21, 44)` **activo**, `afec_du9` **comentado**, con los dos
+puntos de cambio rotulados dentro del propio PA:
+
+```sql
+/* CRITERIO DU288 (1 de 2) -- indicador */
+case when ccto.cod_tfinan in (21, 44) then 'S' else 'N' end as ind_financiamiento_du288,
+/* case when isnull(ccto.afec_du9, 'N') = 'S' then 'S' else 'N' end as ind_financiamiento_du288, */
+
+/* CRITERIO DU288 (2 de 2) -- filtro */
+and ccto.cod_tfinan in (21, 44)
+/* and ccto.afec_du9 = 'S' */
+```
+
+Mantiene las columnas `afec_du9`, `con_topdu9` e `ind_anid` que la versión
+instalada ya proyecta: se parte de ese cuerpo, no del de la última release.
+
+### Al instalar en producción
+
+Es el **punto 6** de `INTERRUPTOR-DU09`, y el único fuera de `sg_epag`. Se
+enciende junto con los puntos 3 a 5: la misma columna vacía que bloquea crear
+una cuota deja sin privilegio al jefe de proyecto, así que encender un lado sin
+el otro deja el flujo a medias. Está rotulado con ese marcador dentro del PA,
+de modo que `grep -rn "INTERRUPTOR-DU09"` lo encuentra.
+
+Si `afec_du9` ya está poblada, se invierten **los dos** pares. No uno:
+
+- Solo el `where` → `ind_financiamiento_du288` sigue saliendo `'N'` para filas
+  que el PA sí devolvió, y la validación normativa del formulario las rechaza
+  por financiamiento incompatible (`PdsDu288RequestForm.vue`,
+  `compatibleFinancing !== 'S'`).
+- Solo el indicador → entran centros que no son DU288.
+
+Verificación de que la marca está lista, antes de invertir:
+
+```sql
+select isnull(ccto.afec_du9, '(nulo)') as afec_du9, count(*) as centros
+from fin21_db..es_ccto ccto
+where ccto.vigente = '1'
+group by ccto.afec_du9
+```
+
+### Incoherencia conocida, no resuelta acá
+
+`sg_fupssSecgen18` **lee** `afec_du9` y `con_topdu9` —los proyecta y los
+agrupa— pero **no filtra** por ellos. Así, alguien puede tener prestaciones en
+la bandeja y a la vez no tener la llave para abrirla. Unificar la definición en
+un solo lugar queda pendiente de decisión.
 
 ---
 
