@@ -25,7 +25,7 @@ go
    y los datos presupuestarios del centro de costo
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/10/13
+   Actualizacion: ELA 2026/10/19
 */
 
 create procedure Analisis2.sg_fupssSecgen18
@@ -95,6 +95,14 @@ select
               and ((fume.ano_prop * 100 + fume.mes_prop) < @mes_actual
                    or fu.f_termino < getdate())
              then 1 else 0 end)                                 as cant_cuotas_disp,
+    (select count(*)
+       from secgen_db.dbo.sg_epag ep
+      where ep.id_funprse = fu.id_funprse
+        and ep.cod_estcuo <> 10)                                as cuotas_creadas,
+    (select count(*)
+       from secgen_db.dbo.sg_epag ep
+      where ep.id_funprse = fu.id_funprse
+        and ep.cod_estcuo in (2, 3, 4, 8, 11))                  as cuotas_gestion,
     isnull(sum(case when fume.cod_estfum = 3        then fume.mto_realpa end), 0) as mto_pagado,
     isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0) as mto_gestion,
     fu.mto_total

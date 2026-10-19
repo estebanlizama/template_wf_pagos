@@ -112,14 +112,43 @@ meses. Si se decide lo contrario es un `if` más, antes de la verificación de f
 
 ---
 
+## Las versiones `Secgen02`: la misma compensación, corregida por DGDP
+
+La `Secgen01` valida al llamador contra `fin21_db..es_ecct`: tiene que ser responsable vigente
+del centro de costo de la prestación. Esa es la definición de jefe de proyecto, y un revisor
+DGDP no la cumple nunca.
+
+Cuando la revisión pasó a poder corregir la compensación, el endpoint del solicitante devolvió
+`403` por `requireProjectManager`. Relajar esa guarda no alcanzaba: el PA seguía cortando con
+*«La prestacion no esta a su cargo»*. Por eso hay un PA nuevo y no un parámetro más.
+
+| | `sg_fuc2iSecgen01` / `dSecgen01` | `sg_fuc2iSecgen02` / `dSecgen02` |
+| :--- | :--- | :--- |
+| Quién llama | jefe de proyecto | revisor DGDP |
+| Autorización | responsable vigente en `es_ecct` | contrato vigente no honorario + asignación a la unidad 696 |
+| Cuándo admite cambios | mes propuesto (1) o cuota observada (3) | cuota **en visación** (2) |
+| Todo lo demás | idéntico | idéntico |
+
+El criterio de acceso es el mismo de `sg_fumesSecgen03` y `sg_fumeuSecgen03`, y el corte por
+estado de cuota es el mismo que ya aplica `sg_fumeuSecgen03` a los descuentos: DGDP corrige
+mientras visa, no antes ni después.
+
+Las reglas de negocio no se duplicaron a mano: modalidad DU288, jornada que compensa, feriado
+nacional, día hábil, fuera de la jornada institucional, traslape y tope de horas comprometidas
+viajan tal cual desde la `Secgen01`. Si alguna cambia, hay que cambiarla en las dos.
+
+---
+
 ## Despliegue
 
 ```
 1. sg_fuc2sSecgen01
 2. sg_fuc2iSecgen01
 3. sg_fuc2dSecgen01
-4. Backend
+4. sg_fuc2iSecgen02   (compensación corregida por DGDP)
+5. sg_fuc2dSecgen02   (ídem, borrado)
+6. Backend
 ```
 
-Los tres son independientes entre sí y no tocan nada existente: `sg_fuc2` está vacía y ningún
-flujo la consulta hoy.
+Ninguno toca nada existente: `sg_fuc2` está vacía y ningún flujo la consulta hoy. Los dos
+`Secgen02` son objetos nuevos, así que instalarlos no altera lo que ya corre.

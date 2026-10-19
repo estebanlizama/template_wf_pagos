@@ -148,10 +148,26 @@ En conformidad con las reglas maestras del proyecto UFRO 2026:
 
 ---
 
-## 9. Aprobación y Estándares
-- **Regla de Alcance:** No se modificó ningún archivo fuera de `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa`.
-- **Estándar Visual DU288:** Aprobado en 39 archivos (`npm run lint:du288-ui`).
-- **Clean Code & SonarQube:** Código sin logs huérfanos ni exposición de RUTs, optional catch binding en bloques de fallback y 0 errores en compilación TypeScript backend (`lb-tsc`) y pruebas unitarias de frontend (`npm run test:pds-rules` con 13/13 suites exitosas).
+---
+
+## 10. Unificación de la Sección «Semana de ejecución comprometida» con el Workflow de Resolución
+
+### 10.1 Problema previo
+- En la vista de revisión de cuota DGDP (`pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue`), el componente `Du288ExecutionWeekSection.vue` utilizaba una tabla plana `<b-table>` que mostraba los tramos en texto simple.
+- Además, no recibía `staffProvisionId`, por lo que si una solicitud contenía múltiples funcionarios o los horarios tenían identificadores específicos, no se aislaba la carga individual del funcionario de la cuota en revisión.
+
+### 10.2 Solución implementada
+1. **Componentes Visuales Oficiales DU 288:**
+   - Se integraron `StaffExecutionWeeklyGrid.vue` y `StaffExecutionScheduleSummary.vue` dentro de [Du288ExecutionWeekSection.vue](file:///d:/trabajo_ufro_2026/sg-solicitudes-frontend/components/services-provision/payments/Du288ExecutionWeekSection.vue).
+   - Se configuró la grilla semanal interactiva con `:days="weeklyDays"`, `:text-catalog="weeklyText"` y en modo solo lectura (`is-disabled`).
+   - Se agregaron las tarjetas métricas con el **Total semanal asignado** (ícono `fa-solid fa-clock`) y el **Período de ejecución** (ícono `fa-solid fa-calendar-days`).
+2. **Aislamiento por Funcionario (`staffProvisionId`):**
+   - El componente recibe `staffProvisionId` y filtra estrictamente los bloques horarios pertenecientes al funcionario de la cuota.
+   - Recibe la entidad `staff` para formatear el rango de fechas oficial de la resolución (`formatDateOnly(from) – formatDateOnly(to)`).
+3. **Validación:**
+   - Aprobado por `npm run lint:du288-ui` (39 archivos validados).
+   - Aprobado por `npm run test:pds-rules` (13/13 suites de prueba exitosas, 0 fallos).
+
 
 
 
