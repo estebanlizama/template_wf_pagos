@@ -118,14 +118,26 @@ select
        from secgen_db.dbo.sg_fume f5
       where f5.id_funprse = epag.id_funprse
         and f5.cod_estfum = 2) as mto_gestion,
-    (select count(*)
-       from secgen_db.dbo.sg_dpag d3
-      where d3.id_funprse = epag.id_funprse
-        and d3.nro_cuota  = epag.nro_cuota
-        and not exists (select 1
-                          from secgen_db.dbo.sg_fuc2 c3
-                         where c3.id_funprse = d3.id_funprse
-                           and c3.corr_fume  = d3.corr_fume)) as cant_sincomp
+    fu.dentro_jor,
+    case when isnull(fu.dentro_jor, 'N') not in ('S', 'D')
+         then 0
+         else (select count(*)
+                 from secgen_db.dbo.sg_dpag d3,
+                      secgen_db.dbo.sg_fume f3
+                where d3.id_funprse = epag.id_funprse
+                  and d3.nro_cuota  = epag.nro_cuota
+                  and f3.id_funprse = d3.id_funprse
+                  and f3.corr_fume  = d3.corr_fume
+                  and exists (select 1
+                                from secgen_db.dbo.sg_fuco fc
+                               where fc.id_funprse = d3.id_funprse
+                                 and datepart(yy, fc.fec_compro) = f3.ano_prop
+                                 and datepart(mm, fc.fec_compro) = f3.mes_prop)
+                  and not exists (select 1
+                                    from secgen_db.dbo.sg_fuc2 c3
+                                   where c3.id_funprse = d3.id_funprse
+                                     and c3.corr_fume  = d3.corr_fume))
+    end as cant_sincomp
 from secgen_db.dbo.sg_epag epag
 inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
 inner join secgen_db.dbo.sg_prse prse on prse.nro_solici = fu.nro_solici
@@ -147,8 +159,8 @@ group by fu.nro_solici, epag.id_funprse, epag.nro_cuota, epag.cod_estcuo,
     prse.actividad, prse.cod_unifin, prse.cod_ccto, ccto.nom_ab_cct,
     ccto.afec_du9, ccto.con_topdu9,
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, fu.mto_total,
-    fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, epag.ano_pago,
-    epag.mes_pago
+    fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, fu.dentro_jor,
+    epag.ano_pago, epag.mes_pago
 order by epag.fec_solici, fu.nro_solici, epag.id_funprse, epag.nro_cuota
 go
 
