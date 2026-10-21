@@ -270,3 +270,93 @@ Distinto día, distinto horario, y la compensación queda cerrada. Intentar un t
       desplegarlo, ese tope solo lo aplica la pantalla.
 - [x] ~~Decidir si compensar **de más** se marca.~~ Ya no ocurre: se impide pasar de 0.
 - [ ] Decidir si el bloqueo del envío es por mes o por cuota.
+
+---
+
+## Compensación cumplida en otro horario — 21-10-2026
+
+**El defecto.** El modal *Detalle de Compensación Horaria* de la revisión DGDP
+calificaba cada día **contra sí mismo**:
+
+```js
+const isComplete = execMins >= commMins && commMins > 0
+```
+
+Con 25 h comprometidas y 25 h informadas, el 13/01 aparecía **Pendiente** —
+comprometía 6 h 41 min y ese día se informó 1 h— mientras ocho filas con horas
+reales decían *Informada sin compromiso*. El mes estaba cubierto y el modal
+mostraba una deuda que no existía.
+
+**La regla.** Lo que se compensa son **horas**, y pueden realizarse en una fecha
+distinta de la comprometida. Decide el total del mes, no que cada día calce
+consigo mismo.
+
+```js
+coverageComplete() {
+  return this.committedMinutes > 0 && this.executedMinutes >= this.committedMinutes
+}
+```
+
+Con el mes cubierto, un día corto deja de ser deuda, y las horas sueltas dejan
+de parecer sobrantes:
+
+| Antes | Ahora |
+| :--- | :--- |
+| 13/01 · **Pendiente** | 13/01 · **Cumplida** |
+| 05/01 · Informada sin compromiso | 05/01 · **Compensa otro día** |
+
+Esas filas pasan a verde porque son, literalmente, las que cubren al día corto.
+
+**Lo que no cambia.** Si el mes **no** está cubierto, el comportamiento es el de
+antes: el día corto sigue en *Pendiente* y las horas sin compromiso siguen en
+*Informada sin compromiso*. Comprobado ejecutando el computed real con los dos
+escenarios.
+
+**Alineación.** El lado del solicitante ya funcionaba así —`compensationStateOf`
+compara totales y distingue *Completa* de *Otros días*—. El modal de DGDP era el
+único que seguía exigiendo calce por fecha, así que ahora las dos pantallas
+dicen lo mismo sobre los mismos datos.
+
+---
+
+## Títulos duplicados en la revisión DGDP — 21-10-2026
+
+### El caso señalado
+
+La ejecución del período mostraba **dos tarjetas anidadas, cada una con su
+título**, diciendo casi lo mismo:
+
+> **Ejecución del período** — Días ejecutados y comprometidos de toda la cuota, en un solo calendario.
+> └ **Ejecución comprometida y calendario** — Qué se comprometió, qué se informó y qué registró el reloj, día a día.
+
+La externa era un envoltorio: aportaba el título, el subtítulo y un chip con el
+alcance (*4 meses · Enero 2016 – Abril 2016*). La interna trae el mismo
+encabezado **más los totales** —comprometido, informado y lo que falta—, que es
+información que la externa no tenía.
+
+**Se eliminó la externa.** El chip de alcance baja al encabezado del calendario,
+junto a los totales, y el subtítulo absorbe lo que decía la de arriba:
+
+> **Ejecución comprometida y calendario** — Qué se comprometió, qué se informó y qué registró el reloj, día a día, **en todo el período de la cuota**.
+
+De paso desaparece una tarjeta dentro de otra, que era el otro problema visual.
+Se borraron `executionSummaryTitle` y `executionSummarySubtitle`, que quedaban
+sin consumidor.
+
+### Lo que se revisó buscando casos comparables
+
+| Revisión | Resultado |
+| :--- | :--- |
+| Componentes de pago con cabecera propia embebidos dentro de otra sección | **ninguno más**; era el único |
+| Cabeceras duplicadas dentro de un mismo componente | solo `Du288PaymentMonthsReviewSection`, el caso corregido |
+| Títulos del módulo que repiten concepto | los tres de «ejecución comprometida» conviven, pero en pantallas distintas, no anidados |
+
+### Lo que sí apareció: tres claves muertas
+
+`weekTitle`, `weekHelp` y `weekEmpty` del bloque `execution` no tienen
+consumidor en los componentes de pago. La grilla semanal arma su propio
+catálogo en `Du288ExecutionWeekSection:178` a partir de `text.title`, así que
+esas tres quedaron huérfanas cuando se reorganizó la sección.
+
+No se borraron: conviene confirmar antes que ninguna vista fuera del módulo de
+pagos las lea.
