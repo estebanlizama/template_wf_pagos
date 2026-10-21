@@ -27,7 +27,6 @@ go
    Creacion: ELA 2026/09/22
    Actualizacion: ELA 2026/10/19
 */
-
 create procedure Analisis2.sg_fupssSecgen18
     @rut_person char(9)  = NULL,
     @ano        smallint = NULL,

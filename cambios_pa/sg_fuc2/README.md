@@ -9,6 +9,33 @@ comprometida (`sg_fuco`) con una dimensión más: el `corr_fume`.
 | `sg_fuc2iSecgen01` | Registra un tramo |
 | `sg_fuc2dSecgen01` | Elimina los tramos de un mes, o uno puntual por fecha |
 
+## Choque de horarios entre prestaciones (2026/10/21)
+
+El control de solapamiento de `sg_fuc2iSecgen01` y `sg_fuc2iSecgen02` estaba acotado a la
+prestación (`fc.id_funprse = @id_funprse`), así que un mismo funcionario con dos prestaciones
+vigentes podía registrar **las mismas horas en las dos**. Se agregó un segundo control que sube
+de la prestación al **RUT**.
+
+Tres decisiones del alcance, que conviene no perder:
+
+- **Solo realizada contra realizada.** En la etapa de pago la compensación registra trabajo ya
+  ejecutado. Bloquearla porque otra prestación tiene un *compromiso* en ese horario no evita
+  nada —el funcionario ya trabajó esas horas— y deja el dato sin registrar. El choque contra lo
+  comprometido (`sg_fuho`, `sg_fuco`) se **advierte** en la revisión DGDP, no se bloquea. Y el
+  bloqueo que sí sirve va aguas arriba, al decretar: ahí nace el conflicto.
+- **La cuota rechazada no reserva horas** (`ep.cod_estcuo <> 10`), mismo criterio que
+  `sg_fupssSecgen18`. Es necesario porque `sg_epaguSecgen03` **no borra** `sg_fuc2` al rechazar:
+  sin el filtro, una cuota rechazada bloquearía las horas del funcionario para siempre.
+- **La expresión horaria se copió textual** del control que ya existía, para que las dos usen
+  exactamente la misma regla de solapamiento, incluido el ajuste de los tramos que cruzan
+  medianoche.
+
+> **Antes de desplegar:** contar los solapamientos que ya existen entre prestaciones. La consulta
+> está en `revision_compensacion_y_cuotas_2026-10-20.md` §5. El riesgo de migración es bajo —el
+> control es de inserción y no toca filas existentes— pero conviene saber el número.
+
+---
+
 `sg_fucosSecgen01` se reutiliza **sin modificarlo** para traer lo comprometido. Lista por solicitud
 sin filtrar por mes, porque `sg_fuco` no tiene esa dimensión.
 

@@ -24,7 +24,6 @@ go
    Creacion: ELA 2026/08/24
    Actualizacion: ELA 2026/10/16
 */
-
 create procedure Analisis2.sg_cctosSecgen05
     @rut        char(9)  = NULL,
     @id_modprse tinyint  = 1

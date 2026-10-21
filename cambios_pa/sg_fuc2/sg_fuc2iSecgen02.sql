@@ -24,7 +24,7 @@ go
    funcionario, sin superar el total comprometido para ese mes.
 
    Creacion: ELA 2026/10/19
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/21
 */
 create procedure Analisis2.sg_fuc2iSecgen02
     @id_funprse int = null,
@@ -41,6 +41,7 @@ declare @f_inicio datetime
 declare @f_termino datetime
 declare @cod_estfum tinyint
 declare @cod_estcuo tinyint
+declare @rut_funcion char(9)
 declare @fecha_base datetime
 declare @inicio_dt datetime
 declare @termino_dt datetime
@@ -111,6 +112,7 @@ end
 select
     @cod_modprs = isnull(prse.cod_modprs, 1),
     @dentro_jor = isnull(fu.dentro_jor, 'N'),
+    @rut_funcion = fu.rut,
     @f_inicio = fu.f_inicio,
     @f_termino = fu.f_termino
 from secgen_db.dbo.sg_prse prse,
@@ -260,6 +262,55 @@ if exists (
 )
 begin
     select 'Error: El tramo de compensacion esta duplicado o superpuesto' as msg
+    return
+end
+
+/* Compensacion realizada por el mismo funcionario en otra prestacion. */
+if exists (
+    select 1
+    from secgen_db.dbo.sg_fuc2 fc,
+         secgen_db.dbo.sg_fups fu,
+         secgen_db.dbo.sg_soli soli
+    where fc.id_funprse <> @id_funprse
+      and fu.id_funprse = fc.id_funprse
+      and soli.nro_solici = fu.nro_solici
+      and fu.rut = @rut_funcion
+      and soli.cod_estsol in (8, 9, 10, 11)
+      and not exists (
+          select 1
+          from secgen_db.dbo.sg_dpag dp,
+               secgen_db.dbo.sg_epag ep
+          where dp.id_funprse = fc.id_funprse
+            and dp.corr_fume  = fc.corr_fume
+            and ep.id_funprse = dp.id_funprse
+            and ep.nro_cuota  = dp.nro_cuota
+            and ep.cod_estcuo = 10
+      )
+      and @inicio_dt < dateadd(
+            day,
+            case when fc.hora_ter < fc.hora_ini then 1 else 0 end,
+            dateadd(
+                minute,
+                datepart(hh, fc.hora_ter) * 60 + datepart(mi, fc.hora_ter),
+                dateadd(
+                    day,
+                    datediff(day, convert(datetime, '19000101'), fc.fec_comrea),
+                    convert(datetime, '19000101')
+                )
+            )
+          )
+      and dateadd(
+            minute,
+            datepart(hh, fc.hora_ini) * 60 + datepart(mi, fc.hora_ini),
+            dateadd(
+                day,
+                datediff(day, convert(datetime, '19000101'), fc.fec_comrea),
+                convert(datetime, '19000101')
+            )
+          ) < @termino_dt
+)
+begin
+    select 'Error: El funcionario ya tiene compensacion realizada en ese horario en otra prestacion' as msg
     return
 end
 
