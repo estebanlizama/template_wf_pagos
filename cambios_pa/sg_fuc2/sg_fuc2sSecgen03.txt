@@ -15,11 +15,11 @@ go
    Entrada :
    @id_funprse          -> Prestacion que se esta compensando. (Obligatorio)
    @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @ano                 -> Ano de las compensaciones a listar. (Obligatorio)
-   @mes                 -> Mes de las compensaciones a listar. (Obligatorio)
+   @fec_desde           -> Fecha inicial del rango a listar. (Obligatorio)
+   @fec_hasta           -> Fecha final del rango a listar. (Obligatorio)
 
    Objetivo : Listar las compensaciones ya realizadas por el MISMO funcionario
-   en OTRAS prestaciones, dentro del mes indicado, de modo de poder
+   en OTRAS prestaciones, dentro del rango indicado, de modo de poder
    impedir que las mismas horas justifiquen dos prestaciones distintas.
 
    Aplica los mismos filtros que el control de escritura de sg_fuc2iSecgen01
@@ -32,14 +32,14 @@ go
 create procedure Analisis2.sg_fuc2sSecgen03
     @id_funprse int = null,
     @rut_person char(9) = null,
-    @ano smallint = null,
-    @mes tinyint = null
+    @fec_desde datetime = null,
+    @fec_hasta datetime = null
 as
 
 declare @rut_funcion char(9)
 
-if isnull(@id_funprse, 0) <= 0 or isnull(@ano, 0) <= 0
-   or @mes is null or @mes not between 1 and 12
+if isnull(@id_funprse, 0) <= 0 or @fec_desde is null or @fec_hasta is null
+   or @fec_desde > @fec_hasta
 begin
     select 'Faltan antecedentes para listar las compensaciones del funcionario' as msg
     return
@@ -53,25 +53,40 @@ end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
-/* El responsable consulta desde una prestacion a su cargo. Lo que se devuelve
-   son tramos de otras prestaciones del mismo funcionario, y el permiso para
-   verlos nace de estar gestionando la suya. */
 select @rut_funcion = fu.rut
 from secgen_db.dbo.sg_fups fu,
      secgen_db.dbo.sg_prse prse
 where fu.id_funprse = @id_funprse
   and prse.nro_solici = fu.nro_solici
   and isnull(prse.cod_modprs, 1) = 2
-  and exists (select 1
-                from fin21_db..es_ecct ecct
-               where ecct.cod_ccto   = prse.cod_ccto
-                 and ecct.cod_unifin = prse.cod_unifin
-                 and ecct.vigente    = 'S'
-                 and ecct.rut        = @rut_person)
 
 if @rut_funcion is null
 begin
-    select 'La prestacion no existe o no esta a su cargo' as msg
+    select 'La prestacion no existe' as msg
+    return
+end
+
+if not exists (
+    select 1
+      from secgen_db.dbo.sg_fups fu,
+           secgen_db.dbo.sg_prse prse,
+           fin21_db..es_ecct ecct
+     where fu.id_funprse   = @id_funprse
+       and prse.nro_solici = fu.nro_solici
+       and ecct.cod_ccto   = prse.cod_ccto
+       and ecct.cod_unifin = prse.cod_unifin
+       and ecct.vigente    = 'S'
+       and ecct.rut        = @rut_person
+)
+   and not exists (
+    select 1
+      from sisper_db.dbo.sp_orde orde
+     where orde.cod_organi = 696
+       and orde.rut_person = @rut_person
+       and orde.vigente    = 'S'
+)
+begin
+    select 'No tiene acceso a las compensaciones de esta prestacion' as msg
     return
 end
 
@@ -98,7 +113,6 @@ inner join secgen_db.dbo.sg_soli soli
 where fu.rut = @rut_funcion
   and fc.id_funprse <> @id_funprse
   and soli.cod_estsol in (8, 9, 10, 11)
-  /* La cuota rechazada no reserva horas; el mes que aun no tiene cuota si. */
   and not exists (
       select 1
       from secgen_db.dbo.sg_dpag dp,
@@ -109,8 +123,8 @@ where fu.rut = @rut_funcion
         and ep.nro_cuota  = dp.nro_cuota
         and ep.cod_estcuo = 10
   )
-  and datepart(yy, fc.fec_comrea) = @ano
-  and datepart(mm, fc.fec_comrea) = @mes
+  and fc.fec_comrea >= @fec_desde
+  and fc.fec_comrea <= @fec_hasta
 order by fc.fec_comrea, fc.hora_ini, fc.id_funprse
 go
 
