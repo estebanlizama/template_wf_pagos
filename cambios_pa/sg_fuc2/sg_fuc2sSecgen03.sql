@@ -22,6 +22,10 @@ go
    en OTRAS prestaciones, dentro del mes indicado, de modo de poder
    impedir que las mismas horas justifiquen dos prestaciones distintas.
 
+   Aplica los mismos filtros que el control de escritura de sg_fuc2iSecgen01
+   y sg_fuc2iSecgen02. Si filtraran distinto, se mostrarian menos dias
+   ocupados de los que el registro rechaza, que es peor que no mostrarlos.
+
    Creacion: ELA 2026/10/21
    Actualizacion: Sin registro
 */
@@ -49,7 +53,9 @@ end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
-/* El responsable consulta desde una prestacion a su cargo. */
+/* El responsable consulta desde una prestacion a su cargo. Lo que se devuelve
+   son tramos de otras prestaciones del mismo funcionario, y el permiso para
+   verlos nace de estar gestionando la suya. */
 select @rut_funcion = fu.rut
 from secgen_db.dbo.sg_fups fu,
      secgen_db.dbo.sg_prse prse
@@ -92,6 +98,7 @@ inner join secgen_db.dbo.sg_soli soli
 where fu.rut = @rut_funcion
   and fc.id_funprse <> @id_funprse
   and soli.cod_estsol in (8, 9, 10, 11)
+  /* La cuota rechazada no reserva horas; el mes que aun no tiene cuota si. */
   and not exists (
       select 1
       from secgen_db.dbo.sg_dpag dp,
