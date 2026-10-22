@@ -59,10 +59,11 @@ Abrir cualquiera de las vistas HTML en un navegador. Si el navegador restringe r
 Los procedimientos todavía no están aplicados al servidor. Preparar y ejecutar en Sybase, con revisión de los códigos disponibles del sistema:
 
 1. `datos_base/04_roles_privilegios_pagos.sql` crea el perfil 33 y sus permisos.
-2. `cambios_pa/sg_usacs/sg_usacsSecgen01.sql` incorpora la derivación dinámica por organización 696 y contrato.
-3. `cambios_pa/sg_epag/sg_epagsSecgen01.sql` instala el listado de cuotas compatible con la BDD.
-4. `cambios_pa/sg_epag/sg_epagsSecgen03.sql` y `sg_epagsSecgen04.sql` instalan la bandeja y el detalle.
-5. `cambios_pa/sg_epag/sg_epaguSecgen03.sql` instala aprobar/observar/rechazar por estado.
-6. `cambios_pa/sg_epag/sg_epaguSecgen02.sql` exige `id_evidenc` antes de comprometer meses y enviar la cuota.
+2. `datos_base/05_sg_tacc_acciones_pago.sql` registra las acciones 32 (devolución) y 33 (rechazo) en `sg_tacc` para el historial.
+3. `cambios_pa/sg_usacs/sg_usacsSecgen01.sql` incorpora la derivación dinámica por organización 696 y contrato.
+4. `cambios_pa/sg_epag/sg_epagsSecgen01.sql` instala el listado de cuotas compatible con la BDD.
+5. `cambios_pa/sg_epag/sg_epagsSecgen03.sql` y `sg_epagsSecgen04.sql` instalan la bandeja y el detalle.
+6. `cambios_pa/sg_epag/sg_epaguSecgen03.sql` instala aprobar/observar/rechazar por estado.
+7. `cambios_pa/sg_epag/sg_epaguSecgen02.sql` exige `id_evidenc` antes de comprometer meses y enviar la cuota.
 
 Cada artefacto tiene un `.txt` idéntico para certificación. Validar en el ambiente Sybase las consultas de contrato y los nombres/tipos de columnas locales antes de publicar el backend y frontend que las consumen.

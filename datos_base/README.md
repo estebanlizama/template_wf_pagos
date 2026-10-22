@@ -7,6 +7,9 @@ Un archivo por tabla, en orden de ejecución.
 | 1 | `01_sg_ecuo.sql` | `sg_ecuo` | Depura el catálogo del **encabezado** de pago (`sg_epag.cod_estcuo`) y deja los 7 vigentes |
 | 2 | `02_sg_efum.sql` | `sg_efum` | Carga el catálogo del **mes** de ejecución (`sg_fume.cod_estfum`) |
 | 3 | `03_migracion_sg_fume.sql` | `sg_fume` | Convierte las filas existentes de `cod_estcuo` a `cod_estfum` |
+| 4 | `04_roles_privilegios_pagos.sql` | `bd_per1` / `bd_prvg` | Configura el rol 33 de revisor DGDP y sus privilegios |
+| 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución) y 33 (rechazo) de cuotas DGDP para trazabilidad en `sg_hist` |
+| 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | Carga marcas de afectación DU09 en centros de costo |
 
 El DDL (crear `sg_efum`, agregar `cod_estfum` a `sg_fume` y `sg_fum2`) va aparte, en el modelo.
 
