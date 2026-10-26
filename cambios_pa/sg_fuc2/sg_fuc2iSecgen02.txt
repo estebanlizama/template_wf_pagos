@@ -74,11 +74,6 @@ end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
-/* Acceso DGDP, no del jefe de proyecto: mismo criterio que sg_fumesSecgen03
-   y sg_fumeuSecgen03 -- contrato vigente no honorario mas asignacion vigente
-   a la unidad 696. El revisor no es responsable del centro de costo, asi que
-   el filtro por es_ecct de la version Secgen01 lo dejaba siempre fuera y la
-   llamada moria con "La prestacion no esta a su cargo". */
 if not exists (
     select 1
     from sisper_db..sp_pers pers
@@ -153,8 +148,6 @@ where dp.id_funprse = @id_funprse
   and ep.id_funprse = dp.id_funprse
   and ep.nro_cuota = dp.nro_cuota
 
-/* DGDP corrige mientras visa, no antes ni despues: mismo corte que aplica
-   sg_fumeuSecgen03 a los descuentos del mes. */
 if isnull(@cod_estcuo, 0) <> 2
 begin
     select 'Solo se puede corregir la compensacion mientras la cuota esta en visacion' as msg
@@ -265,14 +258,6 @@ begin
     return
 end
 
-/* Compensacion realizada por el mismo funcionario en OTRA prestacion.
-
-   El control sube de la prestacion al RUT: nadie compensa la misma hora dos
-   veces, aunque las horas pertenezcan a prestaciones distintas.
-
-   Solo se contrasta lo realizado contra lo realizado. Lo comprometido de otra
-   prestacion no bloquea: en la etapa de pago la compensacion registra trabajo
-   ya ejecutado, y negarse a anotarlo solo deja el hecho sin registrar. */
 if exists (
     select 1
     from secgen_db.dbo.sg_fuc2 fc,
@@ -282,13 +267,7 @@ if exists (
       and fu.id_funprse = fc.id_funprse
       and soli.nro_solici = fu.nro_solici
       and fu.rut = @rut_funcion
-      /* El compromiso horario nace con la firma de la resolucion, no con su
-         archivo: una solicitud en borrador, devuelta o rechazada no reserva
-         horas del funcionario. */
       and soli.cod_estsol in (8, 9, 10, 11)
-      /* La cuota rechazada tampoco las reserva. El mes que todavia no tiene
-         cuota si las reserva, y por eso el filtro es por ausencia de cuota
-         rechazada y no por existencia de cuota vigente. */
       and not exists (
           select 1
           from secgen_db.dbo.sg_dpag dp,

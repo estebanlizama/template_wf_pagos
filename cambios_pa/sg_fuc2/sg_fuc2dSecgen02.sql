@@ -50,11 +50,6 @@ end
 
 select @rut_person = right('000000000' + ltrim(rtrim(@rut_person)), 9)
 
-/* Acceso DGDP, no del jefe de proyecto: mismo criterio que sg_fumesSecgen03
-   y sg_fumeuSecgen03 -- contrato vigente no honorario mas asignacion vigente
-   a la unidad 696. El revisor no es responsable del centro de costo, asi que
-   el filtro por es_ecct de la version Secgen01 lo dejaba siempre fuera y la
-   llamada moria con "La prestacion no esta a su cargo". */
 if not exists (
     select 1
     from sisper_db..sp_pers pers
@@ -104,8 +99,6 @@ where dp.id_funprse = @id_funprse
   and ep.id_funprse = dp.id_funprse
   and ep.nro_cuota = dp.nro_cuota
 
-/* DGDP corrige mientras visa, no antes ni despues: mismo corte que aplica
-   sg_fumeuSecgen03 a los descuentos del mes. */
 if isnull(@cod_estcuo, 0) <> 2
 begin
     select 'Solo se puede corregir la compensacion mientras la cuota esta en visacion' as msg

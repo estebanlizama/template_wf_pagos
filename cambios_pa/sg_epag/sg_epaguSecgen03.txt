@@ -16,12 +16,13 @@ go
    @id_funprse          -> Prestacion del funcionario. (Obligatorio)
    @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
    @cod_estcuo          -> Estado de destino: 3, 4 o 10. (Obligatorio)
-   @observacion         -> Motivo de observacion o rechazo. (Condicional)
+   @observacion         -> Motivo de observacion o rechazo. (Obligatorio en 3 y 10)
 
-   Objetivo : Registrar la decision DGDP de una cuota en visacion.
+   Objetivo : Registrar la decision DGDP de una cuota en visacion y dejar el
+   motivo cuando la devuelve o la rechaza.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_epaguSecgen03
     @rut_person char(9) = null,
@@ -39,6 +40,12 @@ end
 if @cod_estcuo is null or @cod_estcuo not in (3, 4, 10)
 begin
     select 'La resolucion indicada no es valida.' as msg
+    return
+end
+
+if @cod_estcuo in (3, 10) and (@observacion is null or ltrim(rtrim(@observacion)) = '')
+begin
+    select 'Indique el motivo de la devolucion o del rechazo.' as msg
     return
 end
 
@@ -107,6 +114,37 @@ begin
     select 'La cuota ya no esta en visacion.' as msg
     return
 end
+
+if @cod_estcuo in (3, 10)
+begin
+    declare @id_tipacc tinyint
+
+    select @id_tipacc = case @cod_estcuo when 3 then 32 else 33 end
+
+    insert into dbo.sg_com1 (
+        id_funprse,
+        nro_cuota,
+        f_observa,
+        id_tipacc,
+        rut_accion,
+        observaci
+    ) values (
+        @id_funprse,
+        @nro_cuota,
+        getdate(),
+        @id_tipacc,
+        @rut_person,
+        @observacion
+    )
+
+    if @@error <> 0
+    begin
+        rollback transaction
+        select 'No fue posible registrar el motivo de la decision.' as msg
+        return
+    end
+end
+
 commit transaction
 select 1 as status, 'OK' as code, 'La resolucion DGDP se registro correctamente.' as msg
 go

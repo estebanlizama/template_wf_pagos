@@ -243,14 +243,6 @@ begin
     return
 end
 
-/* Compensacion realizada por el mismo funcionario en OTRA prestacion.
-
-   El control sube de la prestacion al RUT: nadie compensa la misma hora dos
-   veces, aunque las horas pertenezcan a prestaciones distintas.
-
-   Solo se contrasta lo realizado contra lo realizado. Lo comprometido de otra
-   prestacion no bloquea: en la etapa de pago la compensacion registra trabajo
-   ya ejecutado, y negarse a anotarlo solo deja el hecho sin registrar. */
 if exists (
     select 1
     from secgen_db.dbo.sg_fuc2 fc,
@@ -260,13 +252,7 @@ if exists (
       and fu.id_funprse = fc.id_funprse
       and soli.nro_solici = fu.nro_solici
       and fu.rut = @rut_funcion
-      /* El compromiso horario nace con la firma de la resolucion, no con su
-         archivo: una solicitud en borrador, devuelta o rechazada no reserva
-         horas del funcionario. */
       and soli.cod_estsol in (8, 9, 10, 11)
-      /* La cuota rechazada tampoco las reserva. El mes que todavia no tiene
-         cuota si las reserva, y por eso el filtro es por ausencia de cuota
-         rechazada y no por existencia de cuota vigente. */
       and not exists (
           select 1
           from secgen_db.dbo.sg_dpag dp,

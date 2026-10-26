@@ -100,7 +100,6 @@ begin
     return
 end
 
-/* Si se indica un monto a pagar valido y difiere del actual, se actualiza */
 declare @mto_nuevo int
 if @mto_apagar is not null and @mto_apagar > 0
     select @mto_nuevo = @mto_apagar
@@ -115,7 +114,6 @@ end
 
 begin tran
 
-/* Si el monto a pagar cambia, versionar el estado anterior en sg_fum2 */
 if @mto_nuevo <> @mto_apagar_actual
 begin
     declare @correlativ int

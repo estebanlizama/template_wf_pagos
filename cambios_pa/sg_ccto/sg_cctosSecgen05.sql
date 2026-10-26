@@ -35,39 +35,6 @@ begin
         return
     end
 
-    /* INTERRUPTOR-DU09 : punto 6, el unico fuera de sg_epag.
-
-       CRITERIO DU288 -- interruptor de dos lineas que se cambian juntas.
-
-       Conviven dos definiciones de "centro de costo afecto a DU288":
-
-         cod_tfinan in (21, 44)  deducida del tipo de financiamiento.
-         afec_du9 = 'S'          marca explicita del centro de costo.
-
-       La marca explicita es la definitiva, pero hoy fin21_db..es_ccto la
-       tiene nula en todos los centros vigentes. Con el filtro por afec_du9
-       activo el PA devuelve cero filas para cualquier rut, sin error y en
-       milisegundos, y eso apaga el flujo completo: de este PA se deriva el
-       privilegio provision-payment-manage, asi que sin filas no aparece el
-       menu de prestaciones por pagar, no se consulta la bandeja de gestion
-       de pago y el formulario de solicitud no ofrece ningun centro de costo.
-
-       Por eso queda activo el criterio por tipo de financiamiento y
-       comentado el de la marca. Al instalar en produccion, donde afec_du9
-       ya esta poblada, se invierten los dos pares rotulados CRITERIO DU288.
-
-       Se enciende junto con los puntos 3 a 5 del interruptor, los tres PA
-       de sg_epag: la misma columna vacia que bloquea crear una cuota deja
-       sin privilegio al jefe de proyecto, y encender uno sin el otro deja
-       el flujo a medias. Ver INTERRUPTOR-DU09.md y, antes de encenderlos,
-       datos_base/06_marcas_du09_centro_costo.sql.
-
-       Los dos juntos, no uno. Cambiar solo el where deja el indicador
-       ind_financiamiento_du288 en 'N' para filas que el PA si devolvio, y la
-       validacion normativa del formulario las rechaza por financiamiento
-       incompatible. Cambiar solo el indicador deja entrar centros que no
-       son DU288. */
-
     if @id_modprse = 2
     begin
         select

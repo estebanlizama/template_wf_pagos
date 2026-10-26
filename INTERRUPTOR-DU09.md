@@ -28,7 +28,7 @@ otra cuota.
 
 ---
 
-## Los cinco puntos
+## Los seis puntos
 
 ```bash
 grep -rn "INTERRUPTOR-DU09" .
@@ -41,17 +41,44 @@ grep -rn "INTERRUPTOR-DU09" .
 | 3 | `cambios_pa/sg_epag/sg_epagiSecgen01.sql` | borrar las dos líneas del comentario que envuelve la guarda de `afec_du9` |
 | 4 | `cambios_pa/sg_epag/sg_epaguSecgen01.sql` | lo mismo |
 | 5 | `cambios_pa/sg_epag/sg_epaguSecgen02.sql` | lo mismo |
+| 6 | `cambios_pa/sg_ccto/sg_cctosSecgen05.sql` | invertir los **dos** pares rotulados `CRITERIO DU288` |
 
 Los puntos **1 y 2 se encienden juntos**: el saldo bloquea en dos capas, y
 dejar una encendida y la otra apagada deja la pantalla en verde y el envío
 fallando con un 422.
 
-Los puntos **3 a 5** exigen redesplegar los tres PA, y además sincronizar el
-`.txt` con el `.sql` (son idénticos, en CRLF y ASCII de 7 bits).
+Los puntos **3 a 6** exigen redesplegar esos PA, y además sincronizar el `.txt`
+con el `.sql` (son idénticos, en CRLF y ASCII de 7 bits).
+
+### El punto 6, el único fuera de `sg_epag`
+
+`sg_cctosSecgen05` es de donde se deriva el privilegio
+`provision-payment-manage`, así que conviven dos definiciones de «centro de
+costo afecto a DU288»:
+
+| | Definición |
+| :--- | :--- |
+| activa hoy | `cod_tfinan in (21, 44)` — deducida del tipo de financiamiento |
+| comentada | `afec_du9 = 'S'` — la marca explícita del centro de costo |
+
+La marca explícita es la definitiva, pero hoy `fin21_db..es_ccto` la tiene nula
+en todos los centros vigentes. Con el filtro por `afec_du9` activo el PA devuelve
+cero filas para cualquier rut —sin error y en milisegundos—, y eso apaga el flujo
+completo: no aparece el menú de prestaciones por pagar, no se consulta la bandeja
+de gestión de pago y el formulario no ofrece ningún centro de costo.
+
+**Los dos pares juntos, no uno.** Cambiar solo el `where` deja el indicador
+`ind_financiamiento_du288` en `'N'` para filas que el PA sí devolvió, y la
+validación normativa del formulario las rechaza por financiamiento incompatible.
+Cambiar solo el indicador deja entrar centros que no son DU288.
+
+Y va junto con los puntos 3 a 5: la misma columna vacía que bloquea crear una
+cuota deja sin privilegio al jefe de proyecto, así que encender uno sin el otro
+deja el flujo a medias.
 
 ---
 
-## Antes de encender el 3, 4 y 5
+## Antes de encender el 3, 4, 5 y 6
 
 Correr `datos_base/06_marcas_du09_centro_costo.sql`, que **no modifica nada**:
 lista los centros de costo con prestaciones DU288 archivadas junto a sus marcas

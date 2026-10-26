@@ -117,10 +117,7 @@ begin
     return
 end
 
-/* INTERRUPTOR-DU09 : deshabilitada el 2026/10/14 mientras los centros de
-   costo de prueba no tienen cargada la marca afec_du9. Para habilitarla,
-   borrar esta linea de apertura y la de cierre. El gemelo del saldo vive en
-   las capas superiores, con la misma marca.
+/* INTERRUPTOR-DU09 : punto 3. Ver INTERRUPTOR-DU09.md quitar cuando se limpie
 
 if @afec_du9 <> 'S'
 begin
