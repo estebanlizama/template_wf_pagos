@@ -1290,6 +1290,34 @@ bloques y nada más.
 ### 15.6 Verificación
 
 ESLint limpio en la página modificada; 14 archivos de prueba del frontend y 16
-casos de `paymentValidations` correctos. Los dos PA editados pasan paridad
-`.sql`/`.txt`, CRLF y ASCII, con los `begin`/`end` intactos. **Ninguno se
-compiló contra Sybase.**
+casos de `paymentValidations` correctos.
+
+Los 5 PA editados —`sg_fupssSecgen18`, `sg_epaguSecgen03`, `sg_fuc2iSecgen01`,
+`sg_fuc2iSecgen02` y `sg_fuc2sSecgen03`— pasan paridad `.sql`/`.txt`, CRLF y
+ASCII, con los `begin`/`end` cuadrados (18/18, 19/19 y 4/4 en los de `sg_fuc2`)
+y sin referencias residuales a `cod_estcuo = 10`.
+
+**Ninguno se compiló contra Sybase.** En particular, que los tres PA de
+`sg_fuc2` sigan siendo sintácticamente válidos después de sacarles un
+`not exists` del medio de un `where` largo —y que `sg_fuc2sSecgen03` funcione sin
+`sg_dpag` ni `sg_epag` en su `from`— está verificado por lectura, no por el
+motor.
+
+### 15.7 Qué probar cuando haya base
+
+Un recorrido corto que cubre los cuatro cambios:
+
+1. Resolución de 2 cuotas. Crear la cuota 1, enviarla, rechazarla.
+   → la bandeja debe decir **«1 de 2»**, no «0 de 2», y el saldo debe haber
+   bajado en el monto de esa cuota.
+2. Crear la cuota 2, enviarla, rechazarla.
+   → la bandeja debe decir **«2 de 2»** con el chip de cupo agotado, y
+   `sg_epagiSecgen01` debe negar una tercera.
+3. Con dos revisores DGDP sobre la misma cuota, decidir en los dos al mismo
+   tiempo.
+   → el segundo debe recibir **«La cuota ya no esta en visacion.»**, no un 500.
+4. Registrar un tramo de compensación en una prestación, rechazar su cuota, y
+   registrar el mismo horario en otra prestación del mismo funcionario.
+   → debe salir **«El funcionario ya tiene compensacion realizada en ese
+   horario en otra prestacion»**, y la pantalla debe haber pintado ese horario
+   como ocupado antes de intentarlo.
