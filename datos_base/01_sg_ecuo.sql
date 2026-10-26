@@ -25,11 +25,25 @@ salen de alcance, igual que sg_esol conserva los suyos y agrega al final
     11  Devuelta Finanzas       Finanzas la devolvio. Los meses vuelven a
                                 sg_efum = 2. Desde aqui se puede reenviar,
                                 devolver al solicitante o rechazar.
-    10  Rechazada               TERMINAL. Libera cupo, saldo y meses: los
-                                meses de esa cuota vuelven a sg_efum = 1.
+    10  Rechazada               TERMINAL. BLOQUEA cupo, saldo y meses: los
+                                meses de esa cuota pasan a sg_efum = 4 y no
+                                vuelven a estar disponibles. El monto queda
+                                descontado del total decretado.
 
   La secuencia respeta el orden de los codigos originales:
   1 -> 2 -> 3/4 -> 8 -> 11 -> 8, con 10 como salida terminal.
+
+  SOBRE EL 10 -- QUE EL RECHAZO NO DEVUELVE NADA
+  Decidido el 26-10-2026. Hasta esa fecha este catalogo decia que el 10
+  liberaba cupo, saldo y meses, y los meses volvian a sg_efum = 1 para poder
+  rehacer la cuota. Se cambio al criterio opuesto: el rechazo es una decision
+  de la DGDP sobre un gasto que ya no se va a pagar, asi que la cuota consume
+  su cupo, el monto se descuenta del total y los meses quedan bloqueados en
+  sg_efum = 4. La cuota conserva sus filas en sg_dpag justamente para seguir
+  mostrando que se solicito y cuanto.
+
+  Consecuencia practica: sobre una resolucion que autoriza dos cuotas, dos
+  rechazos agotan la prestacion. Antes se podia reintentar sin limite.
 
   ESTADOS QUE SE QUITAN
      5  Disponible pago      derivado por fecha, no se persiste

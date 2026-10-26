@@ -80,14 +80,21 @@ Siete estados, conservando los códigos originales sin renumerar:
 | **4** | Aprobada | ninguno |
 | **8** | Enviada remuneraciones | 2 → 3 |
 | **11** | Devuelta Finanzas | 3 → 2 |
-| **10** | Rechazada · **terminal** | 2 → 1, libera cupo y saldo |
+| **10** | Rechazada · **terminal** | 2 → 4, bloquea cupo y saldo |
 
 Se quitan cinco: `5 Disponible pago` (se deriva por fecha), `6 Solicitada pago` (se fundió con el 8), `7 Autorizada pago` (era el acto de Finanzas), `9 Pagada` (ocurre fuera del sistema), `12 Bloqueada` (es del mes, no del encabezado).
 
 **Reglas de transición:**
 - **Crear no compromete.** El borrador deja los meses en 1. Si crear ya los comprometiera, un borrador abandonado bloquearía meses y consumiría cupo sin que nadie haya pedido nada.
 - **Observar no libera.** Los meses siguen en 2, y por eso una cuota observada **no puede cambiar los meses que abarca** — solo montos y respaldo. Cambiarlos es rechazarla y rehacerla.
-- **Rechazar sí libera** cupo, saldo y meses.
+- **Rechazar no libera nada.** ✅ *Cambiado el 26-10-2026.* Hasta esa fecha esta
+  regla decía lo contrario: el rechazo liberaba cupo, saldo y meses, y los meses
+  volvían a `sg_efum = 1` para rehacer la cuota. Ahora el rechazo **bloquea**:
+  los meses pasan a `sg_efum = 4`, el cupo de la cuota queda consumido y el
+  monto se descuenta del total decretado. La cuota conserva sus filas en
+  `sg_dpag` para seguir mostrando qué solicitó y cuánto.
+  Consecuencia: sobre una resolución de dos cuotas, dos rechazos agotan la
+  prestación.
 - **Editable por el solicitante:** estados 1 y 3. Desde el 2 en adelante, solo lectura.
 - **Eliminable:** solo en estado 1.
 

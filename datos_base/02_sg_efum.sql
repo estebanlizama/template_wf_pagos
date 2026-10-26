@@ -24,8 +24,10 @@ que DGDP vio y decidio ese dia -- y no como permiso vigente.
 QUE ESCRIBE CADA FLUJO
 -------------------------------------------------------------------------------
   RESOLUCION   escribe solo el 1. Lee los 4 (guarda de edicion y comparador).
-  PAGOS        escribe los 4, incluido el 1 al liberar meses por rechazo y
-               el retorno de 3 a 2 cuando Finanzas devuelve la cuota.
+  PAGOS        escribe el 2, el 3 y el 4, mas el retorno de 3 a 2 cuando
+               Finanzas devuelve la cuota. NO escribe el 1: desde el
+               26-10-2026 el rechazo de la cuota bloquea sus meses en 4 en
+               vez de devolverlos a Propuesta.
 
 -------------------------------------------------------------------------------
 ESTADOS
@@ -33,8 +35,7 @@ ESTADOS
   1  Propuesta        HECHO. Lo escribe sg_fumeuSecgen01 al guardar la
                       resolucion. Es el unico estado que ese flujo asigna: el
                       mes se crea en 1 y, si el periodo se acorta, se borra
-                      fisicamente. Tambien es el estado al que PAGOS devuelve
-                      un mes cuando se rechaza su cuota.
+                      fisicamente. PAGOS no asigna este estado.
                       Columnas con dato: ano_prop, mes_prop.
 
   2  Comprometida     HECHO. El mes esta dentro de una cuota enviada. Consume
@@ -53,21 +54,29 @@ ESTADOS
                       ambas se sobrescriben: valen para el ultimo envio, no
                       para el primero.
 
-  4  Rechazada        DECISION. DGDP descarto ESTE mes: licencia, sin goce
-                      o trabajo no acreditado. No se paga y no se vuelve a
-                      ofrecer. La causal queda en los val_*.
+  4  Rechazada        DECISION. DGDP descarto el mes y no se paga. Llega aca
+                      por dos caminos: porque DGDP lo descarto puntualmente
+                      -licencia, sin goce o trabajo no acreditado, con la
+                      causal en los val_*- o porque se rechazo la cuota
+                      completa que lo contenia. No se vuelve a ofrecer.
 
 -------------------------------------------------------------------------------
 LOS DOS RECHAZOS SON DISTINTOS
 -------------------------------------------------------------------------------
   Rechazo del ENCABEZADO  sg_epag.cod_estcuo = 10
-      Cae la solicitud completa. Los meses NO quedan rechazados: vuelven a
-      sg_efum = 1 y liberan cupo y saldo, para que el jefe de proyecto pueda
-      rehacer la solicitud (S0-004: "libera cupo, saldo y meses").
+      Cae la cuota completa y arrastra a TODOS sus meses: pasan a sg_efum = 4.
+      El cupo de la cuota queda consumido y el monto descontado del total
+      decretado. Las filas de sg_dpag se conservan, para que la cuota siga
+      mostrando que solicito y cuanto.
 
   Rechazo del MES         sg_fume.cod_estfum = 4
       DGDP descarta un mes puntual mientras el resto de la cuota sigue su
-      curso. Ese mes no vuelve a estar disponible.
+      curso.
+
+  El estado del mes es el mismo en los dos casos; lo que cambia es el alcance.
+  Para distinguirlos se mira la cuota: si su cod_estcuo es 10, el rechazo fue
+  del encabezado. Decidido el 26-10-2026; antes el rechazo del encabezado
+  devolvia los meses a 1 y liberaba cupo y saldo.
 
 -------------------------------------------------------------------------------
 TRANSICIONES
@@ -77,7 +86,7 @@ TRANSICIONES
     2  -> 4    DGDP descarta el mes                              PAGOS
     2  -> 3    la cuota se envia a Finanzas                      PAGOS
     3  -> 2    Finanzas devuelve la cuota (sg_ecuo = 11)         PAGOS
-    2  -> 1    la CUOTA es rechazada -> libera el mes            PAGOS
+    2  -> 4    la CUOTA es rechazada -> arrastra todos sus meses PAGOS
   1,4  -> X    la resolucion acorta el periodo -> DELETE fisico  RESOLUCION
 
   Mientras DGDP visa, observa o aprueba la cuota, el mes NO cambia: sigue en 2.

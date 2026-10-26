@@ -51,7 +51,7 @@ select
     h.correlativ,
     h.ano_prop,
     h.mes_prop,
-    h.cod_estcuo,
+    h.cod_estfum,
     rtrim(isnull(e.des_estfum, '')) as des_estfum,
     h.ano_ejec,
     h.mes_ejec,
@@ -73,7 +73,7 @@ inner join secgen_db.dbo.sg_fume fm
    and fm.corr_fume  = h.corr_fume
 inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = h.id_funprse
 inner join secgen_db.dbo.sg_prse prse on prse.nro_solici = fu.nro_solici
-left join secgen_db.dbo.sg_efum e on e.cod_estfum = h.cod_estcuo
+left join secgen_db.dbo.sg_efum e on e.cod_estfum = h.cod_estfum
 where isnull(prse.cod_modprs, 1) = 2
   and exists (select 1
                 from fin21_db..es_ecct ecct

@@ -169,7 +169,7 @@ begin
         correlativ,
         ano_prop,
         mes_prop,
-        cod_estcuo,
+        cod_estfum,
         ano_ejec,
         mes_ejec,
         mto_apagar,
@@ -181,7 +181,12 @@ begin
         fec_valida,
         rut_autori,
         fec_autori,
-        fec_envrem
+        fec_envrem,
+        mto_realpa,
+        mto_deslic,
+        mto_dessg,
+        rut_regist,
+        f_regist
     )
     select
         id_funprse,
@@ -201,7 +206,12 @@ begin
         fec_valida,
         rut_autori,
         fec_autori,
-        fec_envrem
+        fec_envrem,
+        mto_realpa,
+        mto_deslic,
+        mto_dessg,
+        @rut_person,
+        getdate()
       from secgen_db.dbo.sg_fume
      where id_funprse = @id_funprse
        and corr_fume  = @corr_fume

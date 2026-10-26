@@ -79,7 +79,7 @@ select
     h.correlativ,
     h.ano_prop,
     h.mes_prop,
-    h.cod_estcuo,
+    h.cod_estfum,
     rtrim(isnull(e.des_estfum, '')) as des_estfum,
     h.ano_ejec,
     h.mes_ejec,
@@ -102,7 +102,7 @@ inner join secgen_db.dbo.sg_dpag dpag
 inner join secgen_db.dbo.sg_fume fm
     on fm.id_funprse = h.id_funprse
    and fm.corr_fume  = h.corr_fume
-left join secgen_db.dbo.sg_efum e on e.cod_estfum = h.cod_estcuo
+left join secgen_db.dbo.sg_efum e on e.cod_estfum = h.cod_estfum
 where dpag.id_funprse = @id_funprse
   and dpag.nro_cuota  = @nro_cuota
 order by h.corr_fume, h.correlativ

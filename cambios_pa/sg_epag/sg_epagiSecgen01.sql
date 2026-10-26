@@ -139,7 +139,6 @@ end
 select @cuotas_hoy = count(*)
   from secgen_db.dbo.sg_epag
  where id_funprse = @id_funprse
-   and cod_estcuo <> 10
 
 if @cuotas_hoy >= @tot_cuotas
 begin
@@ -237,7 +236,6 @@ begin tran
 select @cuotas_hoy = count(*)
   from secgen_db.dbo.sg_epag holdlock
  where id_funprse = @id_funprse
-   and cod_estcuo <> 10
 
 if @cuotas_hoy >= @tot_cuotas
 begin

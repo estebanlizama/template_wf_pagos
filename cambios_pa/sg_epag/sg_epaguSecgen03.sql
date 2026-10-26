@@ -19,7 +19,9 @@ go
    @observacion         -> Motivo de observacion o rechazo. (Obligatorio en 3 y 10)
 
    Objetivo : Registrar la decision DGDP de una cuota en visacion y dejar el
-   motivo cuando la devuelve o la rechaza.
+   motivo cuando la devuelve o la rechaza. El rechazo bloquea los meses en
+   sg_efum = 4 y conserva sg_dpag, asi que la cuota mantiene lo que solicito y
+   el monto queda descontado del total de la prestacion.
 
    Creacion: ELA 2026/10/06
    Actualizacion: ELA 2026/10/26
@@ -72,6 +74,9 @@ begin
     return
 end
 
+declare @corr_fume tinyint
+declare @correlativ tinyint
+
 begin transaction
 if not exists (
     select 1
@@ -88,8 +93,94 @@ end
 
 if @cod_estcuo = 10
 begin
+    select @corr_fume = min(dpag.corr_fume)
+      from dbo.sg_dpag dpag
+     where dpag.id_funprse = @id_funprse
+       and dpag.nro_cuota = @nro_cuota
+
+    while @corr_fume is not null
+    begin
+        select @correlativ = isnull(max(correlativ), 0) + 1
+          from dbo.sg_fum2 holdlock
+         where id_funprse = @id_funprse
+           and corr_fume = @corr_fume
+
+        if @correlativ > 255
+        begin
+            rollback transaction
+            select 'Se alcanzo el maximo de versiones de un mes de la cuota.' as msg
+            return
+        end
+
+        insert into dbo.sg_fum2 (
+            id_funprse,
+            corr_fume,
+            correlativ,
+            ano_prop,
+            mes_prop,
+            cod_estfum,
+            ano_ejec,
+            mes_ejec,
+            mto_apagar,
+            id_evidenc,
+            val_licmed,
+            val_inabili,
+            val_singoce,
+            val_ciecc,
+            fec_valida,
+            rut_autori,
+            fec_autori,
+            fec_envrem,
+            mto_realpa,
+            mto_deslic,
+            mto_dessg,
+            rut_regist,
+            f_regist
+        )
+        select
+            id_funprse,
+            corr_fume,
+            @correlativ,
+            ano_prop,
+            mes_prop,
+            cod_estfum,
+            ano_ejec,
+            mes_ejec,
+            mto_apagar,
+            id_evidenc,
+            val_licmed,
+            val_inabili,
+            val_singoce,
+            val_ciecc,
+            fec_valida,
+            rut_autori,
+            fec_autori,
+            fec_envrem,
+            mto_realpa,
+            mto_deslic,
+            mto_dessg,
+            @rut_person,
+            getdate()
+          from dbo.sg_fume
+         where id_funprse = @id_funprse
+           and corr_fume = @corr_fume
+
+        if @@error <> 0
+        begin
+            rollback transaction
+            select 'No fue posible versionar los meses de la cuota rechazada.' as msg
+            return
+        end
+
+        select @corr_fume = min(dpag.corr_fume)
+          from dbo.sg_dpag dpag
+         where dpag.id_funprse = @id_funprse
+           and dpag.nro_cuota = @nro_cuota
+           and dpag.corr_fume > @corr_fume
+    end
+
     update dbo.sg_fume
-       set cod_estfum = 1
+       set cod_estfum = 4
       from dbo.sg_fume fume,
            dbo.sg_dpag dpag
      where dpag.id_funprse = fume.id_funprse
@@ -98,8 +189,12 @@ begin
        and dpag.nro_cuota = @nro_cuota
        and fume.cod_estfum = 2
 
-    delete dbo.sg_dpag
-     where id_funprse = @id_funprse and nro_cuota = @nro_cuota
+    if @@error <> 0
+    begin
+        rollback transaction
+        select 'No fue posible bloquear los meses de la cuota rechazada.' as msg
+        return
+    end
 end
 
 update dbo.sg_epag

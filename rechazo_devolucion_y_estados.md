@@ -458,3 +458,271 @@ encabezado, ya agrupado.
 Lo que se pierde en la opción recomendada es el **detalle mes a mes** de una
 cuota rechazada. Si eso hace falta más adelante, se agrega una tabla de foto
 (`sg_dpa2`) sin deshacer nada de esto.
+
+---
+
+## 10. ¿Se pierde el dinero de una cuota rechazada? No
+
+Verificado el 26-10-2026, capa por capa. La pregunta importa porque si se
+construye una regla sobre una premisa equivocada, el error queda en la base.
+
+### 10.1 Lo que vuelve, y dónde está escrito
+
+| Qué | Dónde se libera | Verificado |
+| :-- | :--- | :--- |
+| El **cupo** de cuotas | `sg_epagiSecgen01` cuenta `where cod_estcuo <> 10`, dos veces: el prechequeo (línea 139) y el recuento con `holdlock` dentro de la transacción (línea 237) | sí |
+| El **saldo** en pesos | `paymentInstallmentConsumedAmount` no incluye el 10 → aporta 0 al `consumed`, así que el `remaining` sube | sí |
+| Los **meses** | `sg_epaguSecgen03` los devuelve a `sg_fume.cod_estfum = 1` | sí |
+| El **monto del mes** | `sg_fumeuSecgen02` admite cambios cuando `cod_estfum = 1`, y no tiene cota superior contra el monto decretado: solo el tope mensual | sí |
+
+Es decir: **el solicitante puede rearmar la cuota y volver a pedir lo mismo.**
+Los meses vuelven a Propuesta, admiten cambio de monto, el cupo queda libre y el
+saldo también. `sg_epagiSecgen01` exige que los meses estén propuestos (línea
+211), y después del rechazo lo están.
+
+La base y la vista coinciden en esto, que es lo que más importa: el frontend
+(`resolvePaymentQuota`) y el PA (`cod_estcuo <> 10`) liberan el cupo con el mismo
+criterio. No hay una pantalla prometiendo un cupo que el PA después niegue.
+
+### 10.2 Un detalle de numeración que sí se nota en pantalla
+
+`sg_epagiSecgen01` línea 250 numera con `max(nro_cuota) + 1` **sin** excluir el
+10, y tiene que ser así: `nro_cuota` es parte de la PK y lo referencian `sg_dpag`
+y `sg_com1`, así que no puede reutilizarse. El límite lo pone el conteo, no el
+número.
+
+Consecuencia: con `tot_cuotas = 2`, si se rechaza la cuota 2, la siguiente es la
+**cuota 3 de 2 autorizadas**. Es correcto en la base y se ve mal en pantalla:
+
+- `Du288InstallmentsSection` rotula la fila `Cuota 3`.
+- `Du288InstallmentSummarySection` —si alguna vez se monta— arma
+  `Cuota 3 de 2` y calcula `remaining = max(authorized − installmentNumber, 0)`,
+  que da 0 y hace decir «es la última cuota» cuando el cupo está libre.
+
+El arreglo es usar el **conteo de cuotas vigentes**, no el `nro_cuota`, para todo
+rótulo de «X de Y». El `nro_cuota` sigue siendo el identificador; deja de ser el
+ordinal que se muestra.
+
+### 10.3 Dónde sí se pierde dinero, y no es el rechazo
+
+Hay una pérdida real en el flujo, y conviene no confundirla con esta:
+`resolvePaymentDroppedAmount` y `unreachableAmount`. Se pierde plata cuando un
+mes se baja para que la cuota entre bajo el tope, o cuando quedan meses sin
+pagar y ya no hay cuotas donde ponerlos. Eso es independiente del rechazo —de
+hecho el rechazo **devuelve** una cuota al cupo y por lo tanto reduce esa
+pérdida.
+
+Y hay un caso que vale revisar aparte: tras un rechazo, los meses vuelven a
+Propuesta **con el monto que tenían al enviarse**, no con el decretado. Si para
+entrar bajo el tope se habían bajado, vuelven bajados. No es dinero perdido
+—`sg_fumeuSecgen02` permite subirlos de nuevo— pero el solicitante tiene que
+acordarse de hacerlo, y nada en la pantalla se lo recuerda. Ahí sí hay una
+mejora: al rehacer una cuota con meses que vienen de un rechazo, avisar cuánto
+están por debajo de su monto decretado.
+
+### 10.4 Entonces qué mejoramos
+
+El requisito «no se debe perder lo que se asignó» es correcto y es exactamente lo
+que §9 arregla, con una corrección de alcance: no se pierde el **dinero**, se
+pierde el **registro**. Y como no se pierde el dinero, no hace falta que la foto
+sea pobre. Propongo dos capas:
+
+**Capa 1 — las dos columnas de §9.2.** `mto_rechaz` y `cant_mesre` en el
+encabezado. Alimentan la fila y el resumen: *«Cuota 2 · Rechazada · solicitaba
+$X en N meses · no aplica»*. Tres PA, sin migración. Cierra el requisito.
+
+**Capa 2 — la foto del detalle, `sg_dpa2`.** Una tabla con la misma forma que
+`sg_dpag` más el monto del mes al momento del rechazo:
+
+```sql
+create table secgen_db.dbo.sg_dpa2 (
+    id_funprse int      not null,
+    nro_cuota  tinyint  not null,
+    corr_fume  tinyint  not null,
+    mto_apagar int      not null,
+    constraint SG_DPA2_PK primary key (id_funprse, nro_cuota, corr_fume)
+)
+```
+
+`sg_epaguSecgen03` la llena con un `insert … select` desde `sg_dpag`
+inmediatamente antes del `delete` que ya hace, dentro de la misma transacción.
+Y como **nadie más la lee**, no hereda ninguna de las 39 revisiones de §9.1: no
+responde «¿en qué cuota está este mes?», solo «qué contenía esta cuota cerrada».
+Una lectura nueva (`sg_dpa2sSecgen01`) la expone cuando se abre una cuota
+rechazada.
+
+Con las dos capas no se pierde nada: el resumen muestra el total, la fila muestra
+lo solicitado anulado, y el detalle muestra mes por mes con cuánto pedía cada
+uno. El motivo ya lo guarda `sg_com1`.
+
+Mi recomendación es hacer las dos en la misma entrega: la capa 2 agrega una tabla
+y un PA de lectura, no toca nada de lo existente, y es la diferencia entre «sé
+que me rechazaron $X» y «sé exactamente qué me rechazaron».
+
+**Corrección (ver §11): `sg_dpa2` no hace falta.** `sg_fum2`, en su versión
+actualizada del 26-10, ya es esa tabla. La capa 2 pasa a ser «usar `sg_fum2`
+como corresponde», que es más barato y además arregla cuatro PA que hoy no
+compilarían.
+
+---
+
+## 11. `sg_fum2` actualizado: qué cambió y por qué importa acá
+
+Comparación entre `template-du09/.../maestros/diagrama_secgen_actualizado.md`
+(el anterior) y `diagrama_bdd/diagrama_secgen_act_26_10.md` (el vigente).
+
+### 11.1 El diff
+
+| | Antes (18 columnas) | Ahora (23 columnas) |
+| :-- | :--- | :--- |
+| Identifica el mes con | `nro_cuota` | **`corr_fume`** |
+| PK | `(id_funprse, nro_cuota, correlativ)` | `(id_funprse, corr_fume, correlativ)` |
+| Estado versionado | `cod_estcuo` | **`cod_estfum`** |
+| Montos | solo `mto_apagar` | `mto_apagar` + **`mto_realpa`**, **`mto_deslic`**, **`mto_dessg`** |
+| Autoría de la versión | no tenía | **`rut_regist`**, **`f_regist`** |
+| FK | `sg_fume(id_funprse, nro_cuota)` | `sg_fume(id_funprse, corr_fume)` |
+
+El cambio de fondo: `sg_fum2` dejó de ser el historial *de la cuota* y pasó a ser
+el historial **del mes**, espejo exacto de `sg_fume` más tres columnas de versión.
+Y ganó precisamente lo que faltaba para guardar una decisión: los descuentos, el
+neto y **quién la registró y cuándo**.
+
+### 11.2 Nuestros PA quedaron a medio camino
+
+Están migrados en la llave —ya usan `corr_fume`— pero no en el resto:
+
+| PA | Línea | Problema |
+| :-- | :--- | :--- |
+| `sg_fum2sSecgen01` | 54, 76 | lee `h.cod_estcuo` |
+| `sg_fum2sSecgen02` | 69, 82, 105 | lee `h.cod_estcuo` |
+| `sg_fumeuSecgen02` | 172 | inserta en la columna `cod_estcuo` |
+| `sg_fumeuSecgen03` | 127 | inserta en la columna `cod_estcuo` |
+
+`cod_estcuo` **no existe** en el `sg_fum2` vigente. Los cuatro fallarían a la
+compilación con *invalid column name*. Según `cambios_pa/README.md` línea 40
+estos PA son nuevos y no están desplegados, así que **corregirlos no cuesta nada
+en producción**: es una corrección previa al despliegue, no una migración.
+
+Dos consecuencias más, que no son renombres:
+
+1. **`sg_fumeuSecgen03` calcula `mto_deslic`, `mto_dessg` y `mto_realpa`** en
+   `sg_fume` pero **no los versiona** en `sg_fum2`, aunque las tres columnas
+   ahora existen para eso. El historial de descuentos se está perdiendo hoy.
+3. **`rut_regist` y `f_regist` nunca se escriben.** Ninguna versión dice quién la
+   hizo. Es justo el dato que falta para que el historial sirva como respaldo.
+
+Un falso positivo que descarté: `sg_fum2sSecgen02` línea 69 filtra
+`cod_estcuo in (2, 3, 4, 8, 10, 11)`, pero sobre `sg_epag`, no sobre `sg_fum2`.
+Está correcto, es el estado de la cuota.
+
+### 11.3 Por qué esto reemplaza a `sg_dpa2`
+
+Tenías razón: para guardar estos datos ya está `sg_fum2`. Con las cinco columnas
+nuevas, una fila de versión puede decir *«este mes pedía $Y, con estos
+descuentos, en este estado, registrado por R el día F»*. Eso es exactamente la
+foto que §9.4 quería lograr con una tabla nueva.
+
+Le falta una sola cosa: **en qué cuota estaba el mes.** El diagrama anterior lo
+tenía (`nro_cuota`) y la actualización lo quitó al cambiar la llave al mes. Para
+el rechazo hace falta, porque la pregunta es «qué contenía la cuota 2 cuando la
+rechazaron».
+
+Propongo agregarlo como columna de contenido, no de llave:
+
+```sql
+alter table secgen_db.dbo.sg_fum2 add nro_cuota tinyint null
+```
+
+Nula para las versiones que el mes tenga fuera de toda cuota. Con eso `sg_fum2`
+queda autosuficiente y el detalle del rechazo sale de una sola lectura, sin
+tabla nueva y sin tocar `sg_dpag`.
+
+### 11.4 El plan que queda
+
+1. **Corregir `cod_estcuo` → `cod_estfum`** en los cuatro PA, y resolver el
+   filtro de `sg_fum2sSecgen02`. Sin costo: no están desplegados.
+2. **Agregar `nro_cuota` a `sg_fum2`** y poblarlo en los dos `insert` que ya
+   existen, leyéndolo de `sg_dpag`.
+3. **Versionar los tres montos y la autoría** en los dos `insert`:
+   `mto_realpa`, `mto_deslic`, `mto_dessg`, `rut_regist`, `f_regist`.
+4. **`sg_epaguSecgen03` versiona al rechazar.** Antes del `delete` de `sg_dpag`,
+   un `insert into sg_fum2` por cada mes de la cuota, con su monto, su cuota, el
+   RUT del revisor DGDP y la fecha. Ahí queda la foto completa, en la tabla
+   correcta, dentro de la transacción que ya está abierta.
+5. **Las dos columnas de §9.2 en `sg_epag`** siguen siendo útiles para que la
+   fila y el resumen no tengan que agregar el historial en cada render.
+
+Esto deja sin efecto la propuesta de `sg_dpa2`.
+
+---
+
+## 12. Lo implementado el 26-10-2026
+
+Regla decidida por el usuario: **el rechazo bloquea y descuenta.** Eso dejó sin
+efecto las dos columnas nuevas de §9.2: al conservar `sg_dpag`, `mto_cuota` y
+`cant_meses` siguen saliendo del join de siempre, así que la cuota rechazada
+muestra lo que solicitó sin DDL alguno.
+
+**Base de datos — `cambios_pa`**
+
+- `sg_epaguSecgen03`: al rechazar, versiona cada mes de la cuota en `sg_fum2`
+  (con los tres montos, `rut_regist` y `f_regist` del revisor), pasa los meses a
+  `sg_efum = 4` y **ya no borra `sg_dpag`**. Todo en la transacción que ya existía,
+  con guarda de 255 versiones y `rollback` en cada `@@error`.
+- `sg_epagiSecgen01`: el conteo de cupo —las dos veces, el prechequeo y el
+  recuento con `holdlock`— ya no excluye el estado 10. La cuota rechazada
+  consume su cupo.
+- `sg_fum2sSecgen01`, `sg_fum2sSecgen02`, `sg_fumeuSecgen02`, `sg_fumeuSecgen03`:
+  `cod_estcuo` → `cod_estfum`, el nombre del diagrama vigente. Sin esto los
+  cuatro fallaban a la compilación.
+- `sg_fumeuSecgen02` y `sg_fumeuSecgen03`: los dos `insert` a `sg_fum2` ahora
+  versionan `mto_realpa`, `mto_deslic`, `mto_dessg`, `rut_regist` y `f_regist`.
+
+**Catálogos y decisiones**
+
+- `datos_base/01_sg_ecuo.sql`: el 10 pasa de «libera cupo, saldo y meses» a
+  «bloquea», con la fecha y el motivo del cambio.
+- `datos_base/02_sg_efum.sql`: la transición `2 → 1` pasa a `2 → 4`, PAGOS ya no
+  escribe el 1, y la sección «los dos rechazos son distintos» se reescribió: el
+  estado del mes es el mismo y lo que cambia es el alcance.
+- `decisiones_flujo_pago.md` §3.2: la regla «rechazar sí libera» quedó invertida
+  y fechada.
+
+**Backend**
+
+- `du288-month-version-response.model.ts`: `statusCode` lee `cod_estfum`, y el
+  comentario que justificaba el nombre viejo se reemplazó por el del cambio.
+
+**Frontend**
+
+- `paymentValidations.js`: el 10 entra en `paymentInstallmentConsumedAmount`,
+  `resolvePaymentQuota` cuenta todas las cuotas, y se agregó
+  `resolvePaymentRejectedTotals` —solo para mostrar, porque el monto ya está en
+  `consumed` y sumarlo al saldo lo contaría dos veces—.
+- `store/service-provision-payment-detail.js`: getter `paymentRejected`, y
+  `usedQuota` pasó a leer `quotaSummary.requested` en vez de recontar con otro
+  criterio, que era una segunda definición del mismo cupo.
+- `Du288InstallmentsSection.vue`: la fila rechazada muestra el monto solicitado
+  tachado y atenuado, con el rótulo «Rechazado» en vez de «Solicitado».
+- `Du288PaymentContextSection.vue`: línea «Rechazado» en el resumen de montos,
+  con el total, el conteo y la explicación en el `hint`. Solo aparece si hay
+  rechazos.
+
+**Verificación**
+
+- Frontend: 14 archivos de prueba, 16 casos en `paymentValidations`, todo
+  correcto. ESLint limpio en los seis archivos tocados.
+- Backend: `lb-tsc` sin errores, 230 pruebas unitarias correctas.
+- PA: paridad `.sql`/`.txt`, CRLF y ASCII verificados en los seis; balance de
+  `begin`/`end` de `sg_epaguSecgen03` cuadrado a mano.
+- **Nada se ejecutó contra Sybase.** La compilación de los seis PA y el
+  comportamiento del rechazo en la base siguen sin verificar.
+
+**Lo que queda pendiente**
+
+- El encabezado propio del estado 10 en el detalle (§6.4): sigue diciendo
+  «Observación de la DGDP» y el formulario sigue cayendo en «Continuar».
+- `Du288InstallmentSummarySection.vue` sigue sin montarse (§8.5).
+- El aviso de meses que vuelven por debajo de su monto decretado ya no aplica:
+  con la regla nueva los meses no vuelven.
+- Las brechas 6.2, 6.3 y 6.5 siguen abiertas.
