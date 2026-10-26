@@ -397,3 +397,235 @@ corregida" para que "el motivo vigente" sea inequívoco.
   tener dos reglas.
 - **Lo que se evita:** crear `sg_vpag`, su índice y su orden de despliegue — y la
   ventana en que el PA referencia una tabla que todavía no existe.
+
+---
+
+## 7. Estado real al 23-10-2026: esto **ya está implementado**
+
+Revisión pedida sobre si existe `sg_hist2` y en qué etapas debería escribirse.
+
+### 7.1 `sg_hist2` no existe, y no estaba diseñado
+
+El único `hist2` del repositorio es un **alias** de `sg_hist` en el self-join de
+`sg_histsSecgen03.sql` (líneas 40-41), el PA que lee el historial de todas las
+solicitudes de una resolución. No es una tabla, y nunca se propuso crearla. La
+tabla propia que sí se diseñó se llama `sg_vpag`, está en
+[comentario_devolucion_dgdp_tabla.md](comentario_devolucion_dgdp_tabla.md) y
+quedó **descartada**.
+
+### 7.2 Lo que se implementó, y en qué se desvió del diseño
+
+| Pieza del diseño | Estado | Desvío |
+| :--- | :--- | :--- |
+| Escribir el motivo en `sg_hist` | **implementado** | — |
+| `sg_histiSecgen04` (PA nuevo con `cod_sistem`/`cod_modulo`) | **no se creó** | se usa el PA existente `sg_histiSecgen03` |
+| `cod_sistem = 'SG'` · `cod_modulo = 'WFPAGOS'` | **no se escriben** | `Secgen03` no tiene esos parámetros |
+| `id_tipacc` 31 / 32 | **32 / 33** | 31 ya estaba ocupado por `GROUPED_REQUEST` |
+| `sg_histsSecgen06` (leer el motivo vigente) | **no se creó** | se lee `sg_histsSecgen02` completo y se filtra en el backend |
+| Prefijo `#PRS{id}-C{n}#` como llave | **implementado** | — |
+| Historial **antes** del cambio de estado | **implementado** | `recordInstallmentHistory` corre antes de `resolveDgdpInstallment` |
+| `@observacion` obligatorio en `sg_epaguSecgen03` | **no** | el PA sigue declarándolo y descartándolo |
+
+Dónde vive:
+
+- escritura: `service-provision-payment-procedures.repository.ts` ·
+  `recordInstallmentHistory`, con `insertInstallmentHistory` en
+  `db-assets/.../service-provision-payment.ts`;
+- lectura: `attachReviewObservations` (solicitante) y
+  `attachDgdpReviewObservations` (bandeja DGDP), filtrando `id_tipacc in (32, 33)`
+  y el prefijo;
+- vista: `Du288InstallmentFormSection.vue` y `Du288InstallmentsSection.vue`,
+  sobre `installment.reviewObservation`.
+
+**La consecuencia del desvío:** sin `cod_sistem`/`cod_modulo`, el aislamiento
+frente a resolución descansa entero en el filtro por `id_tipacc` + prefijo que
+hace el backend. Es el acoplamiento que §6 ya anotaba como costo, pero una capa
+más arriba de lo previsto: ahora ni la BDD ni el PA distinguen una fila de pago,
+solo el código que la lee.
+
+### 7.3 ¿En qué etapas del WF de pagos debería escribirse historial?
+
+El historial **no hace falta para registrar qué pasó** —cada transición ya deja
+su rastro en `sg_epag`— sino para registrar **por qué**, que es lo que ninguna
+columna guarda.
+
+| Etapa | PA | Transición | ¿Historial? |
+| :--- | :--- | :--- | :--- |
+| Crear cuota | `sg_epagiSecgen01` | — → 1 | no: borrador del propio solicitante, se puede eliminar |
+| Editar cuota | `sg_epaguSecgen01` | 1→1 · 3→1 | no: mismo motivo |
+| Eliminar cuota | `sg_epagdSecgen01` | 1 → borrada | no |
+| Enviar a visación | `sg_epaguSecgen02` | 1→2 · 3→2 | **a evaluar**: ver 7.4 |
+| **DGDP devuelve** | `sg_epaguSecgen03` | 2→3 | **sí** — implementado, `id_tipacc` 32 |
+| **DGDP rechaza** | `sg_epaguSecgen03` | 2→10 | **sí** — implementado, `id_tipacc` 33 |
+| DGDP aprueba | `sg_epaguSecgen03` | 2→4 | no hace falta: no hay texto que guardar y `fec_valida` lo fecha |
+| Autorizar · enviar a remuneraciones | — | 4→8 | la etapa no existe todavía (`rut_autori`, `fec_envrem` no los escribe nadie) |
+
+### 7.4 Lo único que falta decidir: el reenvío
+
+`sg_epag` guarda **la última** ocurrencia de cada dato, no la secuencia:
+`rut_solici` y `fec_solici` se sobrescriben en cada envío. En el ciclo
+*enviar → devolver → corregir → reenviar*, al terminar queda registrado el
+último envío y el último motivo, y **los intermedios se pierden**.
+
+Hoy eso no estorba, porque el motivo se muestra solo mientras la cuota está en 3
+o 10 y el que importa es el vigente. Estorbaría si se quisiera responder *"¿cuántas
+veces se devolvió esta cuota y por qué cada vez?"* — las filas de devolución sí
+se acumulan en `sg_hist`, pero no hay con qué emparejarlas al reenvío que las
+respondió.
+
+Si se quiere ese hilo completo, el agregado es **una** etapa: historial en el
+envío a visación (`sg_epaguSecgen02`), con un `id_tipacc` nuevo y sin texto
+obligatorio. Es la decisión pendiente; no es necesaria para lo que la pantalla
+muestra hoy.
+
+### 7.5 `sg_his2` — existe, ya se escribe, y no sirve para esto
+
+La tabla de la BDD de prueba se llama **`sg_his2`** (no `sg_hist2`):
+
+```sql
+create table secgen_db.dbo.sg_his2 (
+    id_funprse int      not null,
+    f_visacion datetime not null,
+    rut_visado char(9)  not null,
+    cod_estact tinyint  not null,
+    cod_estnue tinyint  not null,
+    constraint SG_HIS2_PK primary key (id_funprse, f_visacion)
+)
+-- FK: id_funprse -> sg_fups
+```
+
+**No es una tabla pendiente: ya está en uso.** `sg_fupsuSecgen01` —incluida la
+copia de `cambios_pa/sg_fups/`— inserta una fila cada vez que llega un
+`@cod_estfun` distinto del actual, en la **misma transacción** del `update` a
+`sg_fups`. Si el insert falla devuelve `STAFF_HISTORY_ERROR` y hace rollback: el
+historial es obligatorio, no best-effort.
+
+```sql
+if @cod_estfun is not null and (isnull(@current_estfun, 0) <> @cod_estfun)
+begin
+    insert into sg_his2 (id_funprse, f_visacion, rut_visado, cod_estact, cod_estnue)
+    values (@id_funprse, getdate(), isnull(@rut_visado, 'SYSTEM'),
+            isnull(@current_estfun, 1), @cod_estfun)
+    ...
+end
+```
+
+#### De qué historial se trata
+
+De la **visación del funcionario dentro de la solicitud**, no del pago. Los
+estados son los de `sg_efun`:
+
+| `cod_estfun` | |
+| :-- | :--- |
+| 1 | Pendiente de revisión |
+| 2 | Observado |
+| 3 | Aprobado |
+| 4 | Rechazado |
+| 5 | Excluido |
+
+Son los estados que mueven los visadores en el WF de resolución al revisar la
+nómina de funcionarios. El WF de pagos no los toca: ahí lo que cambia de estado
+es la **cuota**, en `sg_epag.cod_estcuo` con el catálogo `sg_ecuo` (1 Propuesta,
+2 En visación, 3 Devuelta, 4 Aprobada, 8 Enviada a remuneraciones, 10 Rechazada).
+
+#### Por qué no sirve para el comentario de devolución
+
+1. **No tiene columna de texto.** Ni `observaci` ni `comentario`. Guarda *quién,
+   cuándo, de qué estado a cuál*: el **qué**, nunca el **por qué**. El motivo de
+   devolución DGDP es exactamente el por qué.
+2. **Su grano es la prestación, no la cuota.** La PK es
+   `(id_funprse, f_visacion)`. Una prestación tiene hasta 12 cuotas y cada una se
+   devuelve por separado; con esa llave no hay dónde decir *"cuota 3"*.
+
+Por eso el motivo quedó en `sg_hist` (§7.2) y no acá. No es una elección que
+convenga revisar: no es que `sg_his2` sea peor, es que no tiene dónde guardar el
+dato.
+
+#### Para qué sí podría servir en pagos
+
+Para una cosa distinta, y solo si se decide que **la prestación** cambia de
+estado al pagarse. Hoy `cod_estfun` queda en 3 Aprobado cuando se archiva la
+resolución, y el WF de pagos nunca lo mueve. Si alguna vez se quiere un estado
+*En pago* / *Pagada* a nivel de prestación, `sg_his2` ya es el lugar correcto y
+**no hay que crear ni modificar nada**: basta que la capa de pagos pase
+`@cod_estfun` y `@rut_visado` a `sg_fupsuSecgen01`, más las dos semillas en
+`sg_efun`. Es una decisión de negocio, no una necesidad técnica de lo que hay hoy.
+
+#### Dos detalles del esquema, para tenerlos anotados
+
+- **`cod_estact` y `cod_estnue` no tienen FK a `sg_efun`**, aunque el catastro de
+  certificación declara la relación. La validación vive en el PA
+  (`if not exists (select 1 from sg_efun where cod_estfun = @cod_estfun)`), no en
+  el esquema: cualquier insert que no pase por `sg_fupsuSecgen01` puede meter un
+  código inexistente.
+- **La PK usa `getdate()`**, así que dos cambios de estado de la **misma**
+  prestación dentro del mismo tick de `datetime` (≈1/300 s en ASE) chocan por
+  llave duplicada. Desde la pantalla es improbable; en una carga masiva o un
+  reproceso automático, no tanto.
+
+### 7.6 Auditoría del CRUD de `sg_his2`: la escritura existe y nunca ocurre
+
+| Operación | Camino | Estado |
+| :--- | :--- | :--- |
+| **C** insertar | `sg_fupsuSecgen01` — tres copias, todas con el bloque (`cambios_pa/sg_fups/` es la normalizada, la que además agrega `@ext_cuotas`) | existe, **no se dispara** |
+| **R** leer | **ninguno**: cero PA lee `sg_his2`, cero referencia en el backend | **falta** |
+| **U** actualizar | ninguno | correcto: es un log de solo-agregar |
+| **D** borrar | `sg_solidSecgen01` en cascada al borrar la solicitud (está en `certificacion_next` y `solicitante`, no en `certificacion_03_09_2026`), más `limpia_datos_pds_desarrollo.sql` | existe |
+
+#### Por qué el insert nunca se dispara
+
+La condición del PA es:
+
+```sql
+if @cod_estfun is not null and (isnull(@current_estfun, 0) <> @cod_estfun)
+```
+
+Y la cadena que la alimenta no la cumple nunca:
+
+1. `PdsDu288RequestForm.vue:5170` manda `codEstfun` **null al crear** y, al editar,
+   el valor que ya tenía (`resolveEditingWorkerCodEstfun` lo preserva).
+2. El repositorio lo copia tal cual al parámetro
+   (`service-provision-request-procedures.repository.ts:2165`).
+3. **Ninguna acción de la aplicación mueve `cod_estfun`.** No existe el gesto de
+   "observar / rechazar / excluir funcionario" en el flujo de visación: lo que se
+   visa es la solicitud completa, y el estado individual del funcionario quedó
+   como catálogo sin flujo que lo use.
+
+Resultado: al crear no hay fila (el insert vive solo en el PA de *update*), y al
+editar el estado entra igual al que ya estaba. **La tabla se queda vacía**, aunque
+el código para llenarla esté escrito y probado.
+
+#### Dos cosas más que aparecieron al revisar
+
+**`@rut_visado` no se pasa.** El template `updateStaff` del backend
+(`db-assets/.../service-provision-request.ts:87`) manda 22 parámetros y ese no
+está. Si el insert se disparara, cada fila quedaría con
+`rut_visado = 'SYSTEM'` por el `isnull` del PA — perdiendo exactamente el dato que
+hace útil un historial de visación.
+
+**`updateStaffStatus` salta el PA entero.** Es un `update` crudo sobre la tabla:
+
+```sql
+UPDATE secgen_db.dbo.sg_fups
+SET cod_estfun = {{ cod_estfun }}
+WHERE id_funprse = {{ id_funprse }}
+```
+
+Hoy **nadie lo llama** —el método existe en el repositorio (línea 4779) y no
+tiene consumidores—, así que no está haciendo daño. Pero salta las dos cosas que
+protegen el dato: la validación contra `sg_efun` y el insert en `sg_his2`. Si
+alguien implementa la visación del funcionario y toma ese atajo, la tabla no se
+llena y nadie lo nota.
+
+#### Qué falta si se decide usarla
+
+En orden, porque el tercero manda sobre los dos primeros:
+
+1. **Decidir qué acción mueve `cod_estfun`.** Sin eso, lo demás no sirve de nada.
+   Para el WF de pagos sería un estado de la prestación (*En pago* / *Pagada*),
+   con sus semillas en `sg_efun`.
+2. **Pasar `@rut_visado`** en el template `updateStaff` — una línea.
+3. **Crear el PA de lectura** (`sg_his2sSecgen01 @id_funprse`), que no existe:
+   hoy la tabla no se puede consultar desde la aplicación.
+4. **Eliminar `updateStaffStatus`** o dejarlo delegando en el PA, para que no
+   quede un camino que esquiva el historial.
