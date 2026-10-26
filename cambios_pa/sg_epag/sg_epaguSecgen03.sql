@@ -86,8 +86,8 @@ if not exists (
        and cod_estcuo = 2
 )
 begin
-    rollback transaction
     select 'La cuota ya no esta en visacion.' as msg
+    if @@transtate = 2 rollback transaction
     return
 end
 
@@ -107,8 +107,8 @@ begin
 
         if @correlativ > 255
         begin
-            rollback transaction
             select 'Se alcanzo el maximo de versiones de un mes de la cuota.' as msg
+            if @@transtate = 2 rollback transaction
             return
         end
 
@@ -167,8 +167,8 @@ begin
 
         if @@error <> 0
         begin
-            rollback transaction
             select 'No fue posible versionar los meses de la cuota rechazada.' as msg
+            if @@transtate = 2 rollback transaction
             return
         end
 
@@ -191,8 +191,8 @@ begin
 
     if @@error <> 0
     begin
-        rollback transaction
         select 'No fue posible bloquear los meses de la cuota rechazada.' as msg
+        if @@transtate = 2 rollback transaction
         return
     end
 end
@@ -205,8 +205,8 @@ update dbo.sg_epag
 
 if @@rowcount <> 1
 begin
-    rollback transaction
     select 'La cuota ya no esta en visacion.' as msg
+    if @@transtate = 2 rollback transaction
     return
 end
 
@@ -234,8 +234,8 @@ begin
 
     if @@error <> 0
     begin
-        rollback transaction
         select 'No fue posible registrar el motivo de la decision.' as msg
+        if @@transtate = 2 rollback transaction
         return
     end
 end

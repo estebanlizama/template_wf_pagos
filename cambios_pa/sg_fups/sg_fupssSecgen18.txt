@@ -22,10 +22,11 @@ go
 
    Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
    costo que la persona tiene a cargo, con el avance de pago de sus cuotas
-   y los datos presupuestarios del centro de costo
+   y los datos presupuestarios del centro de costo. Una cuota rechazada
+   consume su cupo y su monto queda descontado del saldo.
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/10/19
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fupssSecgen18
     @rut_person char(9)  = NULL,
@@ -96,8 +97,7 @@ select
              then 1 else 0 end)                                 as cant_cuotas_disp,
     (select count(*)
        from secgen_db.dbo.sg_epag ep
-      where ep.id_funprse = fu.id_funprse
-        and ep.cod_estcuo <> 10)                                as cuotas_creadas,
+      where ep.id_funprse = fu.id_funprse)                      as cuotas_creadas,
     (select count(*)
        from secgen_db.dbo.sg_epag ep
       where ep.id_funprse = fu.id_funprse
@@ -106,7 +106,8 @@ select
     isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0) as mto_gestion,
     fu.mto_total
       - isnull(sum(case when fume.cod_estfum = 3        then fume.mto_realpa end), 0)
-      - isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0) as mto_saldo,
+      - isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0)
+      - isnull(sum(case when fume.cod_estfum = 4        then fume.mto_apagar end), 0) as mto_saldo,
     max(fume.fec_valida)                                        as fec_ultgest,
     min(case when fume.cod_estfum = 1 then fume.ano_prop * 100 + fume.mes_prop end) as per_pendiente_min,
     case

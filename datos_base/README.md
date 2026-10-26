@@ -4,6 +4,7 @@ Un archivo por tabla, en orden de ejecución.
 
 | # | Archivo | Tabla | Qué hace |
 | :-- | :--- | :--- | :--- |
+| 0 | `00_ddl_pagos.sql` | tablas nuevas + `sg_fume` / `sg_fum2` / `sg_fuc2` | Crea `sg_efum`, `sg_epag`, `sg_dpag` y `sg_com1`, agrega las columnas que faltan y renombra las que cambiaron |
 | 1 | `01_sg_ecuo.sql` | `sg_ecuo` | Depura el catálogo del **encabezado** de pago (`sg_epag.cod_estcuo`) y deja los 7 vigentes |
 | 2 | `02_sg_efum.sql` | `sg_efum` | Carga el catálogo del **mes** de ejecución (`sg_fume.cod_estfum`) |
 | 3 | `03_migracion_sg_fume.sql` | `sg_fume` | Convierte las filas existentes de `cod_estcuo` a `cod_estfum` |
@@ -11,7 +12,10 @@ Un archivo por tabla, en orden de ejecución.
 | 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución) y 33 (rechazo) de cuotas DGDP para trazabilidad en `sg_hist` |
 | 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | Carga marcas de afectación DU09 en centros de costo |
 
-El DDL (crear `sg_efum`, agregar `cod_estfum` a `sg_fume` y `sg_fum2`) va aparte, en el modelo.
+El DDL está en `00_ddl_pagos.sql`. Hasta el 26-10-2026 no existía como script: el modelo
+describía el destino y `orden_de_despliegue.md` lo narraba en pasos, pero nada lo aplicaba, así
+que ningún PA del flujo de pagos se podía instalar. El script es idempotente y **no borra nada**:
+los `DROP` siguen siendo el paso 9 del orden de despliegue.
 
 ---
 
@@ -27,7 +31,7 @@ El DDL (crear `sg_efum`, agregar `cod_estfum` a `sg_fume` y `sg_fum2`) va aparte
 | 3 | Observada | devuelta a corrección; **no libera nada** |
 | 4 | Aprobada | validaciones conformes |
 | 8 | Enviada remuneraciones | terminal, sin acuse |
-| 10 | Rechazada | terminal; libera cupo, saldo y meses |
+| 10 | Rechazada | terminal; **bloquea** cupo, saldo y meses (26-10-2026) |
 
 Se quitan **5, 7, 9, 11, 12**. No se renumera: `sg_esol` conserva sus códigos y agrega al
 final, y `sg_ecuo` sigue el mismo criterio para que el mapa de S0-004 siga siendo válido.
@@ -36,7 +40,7 @@ final, y `sg_ecuo` sigue el mismo criterio para que el mapa de S0-004 siga siend
 
 | cod | Estado | Tipo | Flujo que lo escribe |
 | :---: | :--- | :--- | :--- |
-| 1 | Propuesta | hecho | **resolución** · y pagos al liberar por rechazo |
+| 1 | Propuesta | hecho | **solo resolución** · pagos ya no devuelve meses al 1 |
 | 2 | Comprometida | hecho | pagos |
 | 3 | Enviada a pago | hecho | pagos |
 | 4 | Rechazada | decisión | pagos |
@@ -64,11 +68,12 @@ trámite vive en `sg_epag`.
 
 | Rechazo | Efecto sobre los meses |
 | :--- | :--- |
-| **Del encabezado** (`sg_epag` → 10) | Los meses vuelven a **1 Propuesta** y liberan cupo y saldo, para poder rehacer la solicitud (S0-004) |
+| **Del encabezado** (`sg_epag` → 10) | Los meses quedan en **4 Rechazada** y conservan su fila en `sg_dpag`: la cuota mantiene lo que solicitó, el monto se descuenta del total y el cupo se consume |
 | **Del mes** (`sg_fume` → 4) | DGDP descarta un mes puntual mientras el resto de la cuota sigue. No vuelve a ofrecerse |
 
-Colapsarlos en uno solo costaría, o la capacidad de rehacer una solicitud rechazada, o que un
-mes con licencia reaparezca como disponible.
+Los dos llegan al mismo estado del mes, pero por caminos distintos: uno arrastra la cuota
+completa y el otro descarta un mes dentro de una cuota que sigue viva. Ninguno devuelve el mes
+al 1.
 
 ---
 
@@ -101,9 +106,10 @@ Reemplaza el matching por texto que usa hoy el backend
 
 ## Reglas de escritura
 
-- Los valores **2, 3** y el retorno a **1** los escribe únicamente el PA que mueve el
-  encabezado.
-- El valor **4** lo escribe el PA de validación de DGDP, mes a mes.
+- Los valores **2** y **3** los escribe únicamente el PA que mueve el encabezado.
+- El valor **4** lo escribe el PA de validación de DGDP mes a mes, y también el PA que rechaza
+  la cuota completa: arrastra todos sus meses.
+- **Nadie devuelve un mes al 1.** Pagos ya no escribe ese valor; es solo de resolución.
 - La aplicación **nunca** escribe `cod_estfum` directamente.
 
 Es lo que impide que el mes se desincronice de su cuota.
@@ -124,7 +130,11 @@ Es lo que impide que el mes se desincronice de su cuota.
 
 ---
 
-## Pendiente
+## Decidido el 26-10-2026 — el cupo se pierde
 
-Si DGDP descarta un mes (→ 4) de una cuota que ya consumió cupo del numeral 6, falta decidir si
-ese cupo se devuelve o se pierde.
+Quedaba pendiente qué pasa con el cupo cuando DGDP descarta: **se pierde**. El rechazo bloquea
+los meses en `sg_efum = 4`, conserva las filas de `sg_dpag` y descuenta el monto del total
+decretado. La cuota consume su cupo igual que una aprobada.
+
+Con dos cuotas autorizadas, dos rechazos agotan la prestación. Es deliberado: el criterio
+anterior permitía reintentar sin límite sobre una resolución que autoriza dos.

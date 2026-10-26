@@ -958,10 +958,338 @@ rojo del bloque ya estaban resueltos.
 - Falta verificar en navegador: el tachado y el rótulo nuevo a 991, 768 y
   375 px, y el modal de versiones con filas «Solo estado».
 
-### 13.12 Verificación
+### 13.12 Segunda pasada: un defecto más de versionado y tres textos que mentían
+
+**Versionado: `sg_fumeuSecgen02` tenía el mismo defecto que los descuentos.**
+
+El `update` escribe cuatro columnas —`mto_apagar`, `ano_ejec`, `mes_ejec` y
+`fec_valida`— pero versionaba solo `if @mto_actual <> @mto_apagar`. **Cambiar el
+mes de ejecución sin tocar el monto no dejaba rastro.** Corregido igual que el
+caso de los descuentos: lee los valores vigentes y versiona si cambia cualquiera
+de los tres (`fec_valida` es `getdate()`, derivado, no entra en la condición).
+
+Auditoría completa de columnas de `sg_fume` escritas por pagos:
+
+| PA | Columnas que escribe | Versiona si cambia |
+| :-- | :--- | :--- |
+| `sg_epaguSecgen01` | `cod_estfum` (a 1 y a 2) | sí, los meses que entran y salen |
+| `sg_epaguSecgen02` | `cod_estfum` a 2 | sí |
+| `sg_epaguSecgen03` | `cod_estfum` a 4 | sí |
+| `sg_fumeuSecgen02` | `mto_apagar`, `ano_ejec`, `mes_ejec`, `fec_valida` | **los tres** (antes solo el monto) |
+| `sg_fumeuSecgen03` | `mto_apagar`, `mto_deslic`, `mto_dessg`, `mto_realpa`, `val_licmed`, `val_singoce`, `fec_valida` | **los tres de entrada**; los otros se derivan de ellos |
+
+No queda ninguna escritura de pagos sin historial.
+
+**Columnas que pagos no escribe nunca:** `fec_envrem`, `rut_autori`,
+`fec_autori`, `val_inabili` y `val_ciecc`. Pertenecen al cierre hacia Finanzas
+—el estado 8, que según §1 no es alcanzable—. `sg_fum2` ya tiene lugar para
+ellas; cuando ese paso se implemente, su PA tiene que versionar también.
+
+**Las dos vistas: tres textos que describían la regla vieja.**
+
+1. 🔴 **El diálogo de confirmación de DGDP.** `effectReject` decía: *«La cuota
+   queda Rechazada, sus meses vuelven a Propuesta y se liberan para otra cuota.
+   Libera el cupo.»* Exactamente lo contrario de lo que ahora ocurre, en la
+   única decisión sin vuelta atrás y justo en el momento de confirmarla. Ahora
+   dice que los meses quedan bloqueados, que el monto se descuenta del total,
+   que la cuota consume su cupo y que no se puede deshacer.
+2. ⚠️ **La nota bajo los botones.** `note` repetía lo mismo. Reescrita.
+3. ⚠️ **La bandeja DGDP.** `releasedMonths` («Meses liberados por el rechazo»)
+   se muestra cuando la cuota tiene cero meses. Al conservar `sg_dpag` eso ya no
+   pasa por un rechazo: pasa en un **borrador sin meses todavía**, que habría
+   quedado rotulado como rechazo. Ahora dice «Sin meses asignados».
+
+El primero es el hallazgo importante de esta pasada: el resto de la pantalla ya
+reflejaba la regla nueva, pero el texto que el revisor lee antes de apretar
+«Rechazar» le prometía algo reversible.
+
+### 13.13 Verificación
 
 Balance de `begin`/`end` cuadrado a mano en los dos PA editados (descontando
 los `case … end`), paridad `.sql`/`.txt`, CRLF y ASCII correctos. **Ningún PA se
 compiló contra Sybase**: el `while` sobre `#cambio`, los `holdlock` dentro de la
 transacción y el largo de las listas de columnas siguen sin verificar en el
 motor.
+
+---
+
+## 14. Lo que falta: el DDL no existía
+
+### 14.1 El hallazgo
+
+Un `grep` de `alter table|create table secgen` en todo el proyecto devuelve dos
+resultados, y los dos están **dentro de un comentario** de
+`datos_base/03_migracion_sg_fume.sql`, describiendo el plan. No había ni una
+sentencia DDL ejecutable en el proyecto.
+
+Lo que sí había:
+
+- `diagrama_bdd/diagrama_secgen_act_26_10.md` — el destino, como diagrama.
+- `datos_base/orden_de_despliegue.md` — una tabla de 10 pasos que *narra*
+  «CREATE TABLE sg_efum», «ALTER TABLE sg_fume ADD cod_estfum», en prosa.
+- `datos_base/README.md` — decía literalmente «El DDL va aparte, en el modelo».
+
+«En el modelo» significaba: en ninguna parte que se pueda correr.
+
+### 14.2 Por qué bloquea todo lo demás
+
+Los PA escritos en esta sesión referencian columnas y tablas que el esquema
+anterior no tiene:
+
+| Referencia | Dónde |
+| :--- | :--- |
+| `sg_fum2.correlativ`, `rut_regist`, `f_regist` | los 4 PA que versionan |
+| `sg_fum2.cod_estfum`, `mto_realpa`, `mto_deslic`, `mto_dessg` | los 4 PA que versionan + los 2 de lectura |
+| `sg_fume.cod_estfum`, `mto_deslic`, `mto_dessg`, `mto_realpa` | casi todos |
+| `sg_epag`, `sg_dpag`, `sg_com1` | todo el flujo de pagos |
+
+Comparando la lista de tablas de los dos diagramas: el anterior tiene las 67
+tablas del esquema y **no contiene `sg_com1`, `sg_dpag`, `sg_efum` ni
+`sg_epag`**. Las cuatro son nuevas, y de las cuatro el orden de despliegue solo
+menciona la creación de `sg_efum`.
+
+Sin el DDL, ninguno de los PA de pagos compila. No es un pendiente de mejora: es
+el primer paso del despliegue.
+
+### 14.3 Lo que se escribió
+
+`datos_base/00_ddl_pagos.sql`. Tres criterios:
+
+1. **Idempotente.** Cada paso se guarda contra `sysobjects` o `syscolumns` y
+   dice qué hizo o por qué no hizo nada. Correrlo dos veces no falla.
+2. **No borra nada.** Los `DROP` de `cod_estcuo` y de
+   `fec_pago`/`ano_pago`/`mes_pago` siguen siendo el paso 9 del orden de
+   despliegue, después de verificar la migración. Adelantarlos deja caído el WF
+   de resolución — es la ventana 1 de `orden_de_despliegue.md`.
+3. **Sin la FK de `cod_estfum`.** La columna nace `NULL` porque hay que poblarla
+   con `03_migracion_sg_fume.sql` antes de poder exigirla. Pasarla a `NOT NULL`
+   con su FK es el paso 5, y va aparte a propósito.
+
+Termina con tres consultas de verificación. La última es la que importa:
+devuelve las columnas de `sg_fume` que faltan en `sg_fum2`, y **debe salir
+vacía** — si no, el espejo histórico no es espejo y las lecturas de `sg_fum2`
+mienten sin avisar.
+
+### 14.4 Lo que el script no puede saber
+
+Se escribió comparando los dos diagramas, no contra la base. Hay dos cosas que
+solo se resuelven con acceso al motor:
+
+- Si `sg_epag`, `sg_dpag` o `sg_com1` **ya existen** en el ambiente real a pesar
+  de no estar en el diagrama anterior. Si existen con otra estructura, el script
+  las deja como están y lo informa; hay que resolverlo a mano.
+- Los tipos exactos. `mto_*` como `int`, `rut_*` como `char(9)` y `corr_fume`
+  como `tinyint` vienen del diagrama y de lo que ya usan los PA, pero nadie los
+  verificó contra `syscolumns`.
+
+El encabezado del script trae las dos consultas que hay que correr antes.
+
+### 14.5 Documentos que quedaron al día
+
+`datos_base/README.md` seguía describiendo el criterio anterior en cuatro
+lugares, y es el documento que lee quien despliega:
+
+| Dónde | Decía | Dice |
+| :--- | :--- | :--- |
+| catálogo `sg_ecuo`, el 10 | «libera cupo, saldo y meses» | «**bloquea** cupo, saldo y meses (26-10-2026)» |
+| catálogo `sg_efum`, el 1 | «resolución · y pagos al liberar por rechazo» | «**solo resolución** · pagos ya no devuelve meses al 1» |
+| «Los dos rechazos» | «Los meses vuelven a 1 Propuesta y liberan cupo y saldo» | quedan en 4, conservan `sg_dpag`, descuentan el monto, consumen el cupo |
+| «Reglas de escritura» | «los valores 2, 3 y el retorno a 1» | 2 y 3; **nadie devuelve un mes al 1** |
+
+Y la sección «Pendiente» —«si DGDP descarta un mes de una cuota que ya consumió
+cupo, falta decidir si ese cupo se devuelve o se pierde»— **ya está decidida**:
+se pierde. Reemplazada por la decisión con su fecha y su razón.
+
+---
+
+## 15. Repaso de consistencia, gestión y estándares
+
+Tres hallazgos. Dos son contradicciones que dejó la regla del 26-10 y se
+corrigieron; el tercero es una decisión funcional pendiente.
+
+### 15.1 La bandeja invitaba a crear una cuota que la base iba a rechazar
+
+`sg_fupssSecgen18` calcula el cupo así:
+
+```sql
+(select count(*)
+   from secgen_db.dbo.sg_epag ep
+  where ep.id_funprse = fu.id_funprse
+    and ep.cod_estcuo <> 10)                                as cuotas_creadas,
+```
+
+Y `sg_epagiSecgen01` —el PA que crea la cuota— dejó de excluir el 10 en esta
+misma sesión, porque el rechazo ahora consume el cupo. Las dos lecturas del
+mismo cupo quedaron en desacuerdo.
+
+El recorrido completo del defecto: `cuotas_creadas` → `createdInstallments`
+(`du288-payable-provision-response.model.ts:49`) → `remainingInstallments()` y
+`installmentsTooltip()` en `pages/services-provision/payments/index.vue`.
+
+Con una resolución de 2 cuotas y las 2 rechazadas, la bandeja mostraba
+**«0 de 2 cuotas»** y el tooltip **«2 cuotas restantes»**; el chip
+`quotaExhausted` no aparecía nunca. El jefe de proyecto pedía una tercera y la
+base le respondía que la resolución no autoriza más. La pantalla lo invitaba a
+un callejón.
+
+Corregido: la subconsulta ya no filtra por estado.
+
+`cuotas_gestion` **sí** sigue excluyendo el 10, y está bien: una cuota rechazada
+no está en trámite. Es una medida de actividad, no de cupo.
+
+### 15.2 El saldo no descontaba lo rechazado — y una validación lo usaba
+
+```sql
+fu.mto_total
+  - isnull(sum(case when fume.cod_estfum = 3 then fume.mto_realpa end), 0)
+  - isnull(sum(case when fume.cod_estfum = 2 then fume.mto_apagar end), 0) as mto_saldo,
+```
+
+Restaba lo pagado y lo comprometido, pero no lo rechazado. Desde el 26-10 ese
+dinero está descontado del total decretado, así que `mto_saldo` devolvía plata
+que ya no existe.
+
+Lo grave no es que se vea mal, es dónde se usa:
+
+```js
+const balanceAmount = Number(validationAmount || staff.remainingAmount || ...)
+// store/service-provision-payment-detail.js:196
+```
+
+`remainingAmount` alimenta el saldo contra el que corren las validaciones de
+monto. Una cuota nueva podía pasar la validación apoyada en el monto de una
+cuota rechazada.
+
+Corregido: se agregó la resta de los meses en `cod_estfum = 4`, que conservan su
+`mto_apagar` precisamente porque el rechazo no borra lo solicitado.
+
+En el frontend, la celda de monto solo mostraba el desglose cuando había algo
+pagado. Con un rechazo y nada pagado se veía únicamente el total, sin señal de
+que se hubiera descontado nada. Ahora el desglose aparece cuando el saldo dejó
+de ser el total, cualquiera sea la razón — pagado, en gestión o rechazado.
+
+No hace falta una columna `mto_rechaz`: el badge de la fila ya dice
+«Con rechazo» (`cod_estpag = 5`) y el saldo corregido muestra el efecto.
+
+### 15.3 Estándar: `sg_epaguSecgen03` era el único PA con `rollback` sin guarda
+
+| PA | rollback | con `@@transtate` |
+| :--- | :---: | :---: |
+| `sg_epaguSecgen01` | 8 | 8 |
+| `sg_epaguSecgen02` | 4 | 4 |
+| `sg_fumeuSecgen02` | 3 | 3 |
+| `sg_fupsuSecgen01` | 7 | 8 |
+| **`sg_epaguSecgen03`** | **6** | **0** |
+
+En ASE un `rollback transaction` sin transacción activa levanta el error 3903.
+Si el motor ya abortó la transacción —una violación de integridad, por
+ejemplo—, el `rollback` desnudo falla y el `select '…' as msg` que viene después
+**no llega a correr**: el backend recibe un error de Sybase en vez del mensaje
+de dominio, y lo mapea a un 500 genérico.
+
+Justamente en el PA de la decisión DGDP, que es donde el mensaje importa:
+«La cuota ya no esta en visacion» es lo que el revisor tiene que leer cuando
+otro se le adelantó.
+
+Corregido en los 6 sitios, con el orden de la casa: mensaje primero, rollback
+guardado después.
+
+```sql
+select 'La cuota ya no esta en visacion.' as msg
+if @@transtate = 2 rollback transaction
+return
+```
+
+### 15.4 Las horas compensadas de una cuota rechazada — ajustado
+
+Tres PA excluían del cruce de horarios los tramos cuya cuota quedó rechazada:
+
+| PA | Qué hace |
+| :--- | :--- |
+| `sg_fuc2iSecgen01` | registro del tramo por el jefe de proyecto |
+| `sg_fuc2iSecgen02` | registro del tramo por DGDP |
+| `sg_fuc2sSecgen03` | lectura de los tramos ocupados, que pinta la pantalla |
+
+```sql
+and not exists (
+    select 1 from sg_dpag dp, sg_epag ep
+    where dp.id_funprse = fc.id_funprse
+      and dp.corr_fume  = fc.corr_fume
+      and ep.id_funprse = dp.id_funprse
+      and ep.nro_cuota  = dp.nro_cuota
+      and ep.cod_estcuo = 10
+)
+```
+
+#### Por qué se quitó: los dos cruces no decían lo mismo
+
+Cada PA de registro hace **dos** controles de superposición, y no eran
+simétricos:
+
+| Control | Alcance | Filtro de estado |
+| :--- | :--- | :--- |
+| «El tramo está duplicado o superpuesto» | `fc.id_funprse = @id_funprse` | **ninguno** |
+| «Ya tiene compensación en otra prestación» | `fc.id_funprse <> @id_funprse` | excluía el 10 |
+
+Dentro de la misma prestación, el tramo de un mes rechazado **ya bloqueaba** —
+el control no mira el estado de nada. Cruzando prestaciones, no. El mismo hecho
+—horas ya compensadas sobre una cuota rechazada— bloqueaba o no según desde
+dónde se mirara. Eso era incoherente antes del 26-10 y sigue siéndolo después.
+
+El segundo argumento es la regla nueva. La exclusión se entendía mientras el
+rechazo liberaba los meses: esas horas volvían a estar disponibles porque el mes
+volvía a estar disponible. Desde el 26-10 el mes queda en `sg_efum = 4` y no se
+ofrece nunca más, así que la hora ya trabajada no se libera tampoco.
+
+Y el fondo es físico: `fec_comrea`, `hora_ini`, `hora_ter`. Una hora de reloj se
+trabaja una vez. Que no se haya pagado no la devuelve.
+
+#### Qué cambió
+
+Se quitó el bloque en los tres. En `sg_fuc2sSecgen03` el `not exists` era el
+único uso de `sg_dpag` y `sg_epag`, así que las dos tablas salieron del PA
+completas; en los de registro quedan solo donde leen el estado de la cuota del
+mes, que es su guarda de entrada.
+
+Los tres tenían que moverse juntos. Lo dice el encabezado de la propia lectura:
+
+> «Aplica los mismos filtros que el control de escritura de `sg_fuc2iSecgen01` y
+> `sg_fuc2iSecgen02`. Si filtraran distinto, se mostrarían menos días ocupados
+> de los que el registro rechaza, que es peor que no mostrarlos.»
+
+Ese es justamente el valor del ajuste. La lectura alimenta
+`Du288ExecutedCompensationSection.vue` («Compensado por el mismo funcionario en
+otras prestaciones este mes»), que pinta los tramos ocupados para que el jefe de
+proyecto elija alrededor de ellos. Con la exclusión, las horas de una cuota
+rechazada se veían libres y el error aparecía al guardar. Ahora se ven ocupadas
+antes de elegirlas.
+
+#### Lo que esto le cuesta al funcionario
+
+Nada que no estuviera decidido. No pierde horas: pierde **esas** horas, las que
+ya usó. Puede compensar otras para la otra prestación. Es la misma penalización
+que ya se aplica al mes dentro de su prestación, aplicada de forma consistente.
+
+Lo que sí cambia es que casos que hoy pasan van a empezar a fallar, con el
+mensaje «El funcionario ya tiene compensación realizada en ese horario en otra
+prestación». Si eso no es lo que se busca, el ajuste a revertir son esos tres
+bloques y nada más.
+
+### 15.5 Lo que se revisó y estaba bien
+
+- **Guardas de estado.** Los 4 PA de `sg_fuc2` y `sg_fumeuSecgen03` bloquean
+  correctamente una cuota rechazada: los del jefe de proyecto exigen
+  `cod_estfum = 1` o `cod_estcuo = 3`, los de DGDP exigen `cod_estcuo = 2`. Una
+  cuota en 10 con meses en 4 falla en los dos caminos.
+- **Estilo del mensaje.** `select '…' msg` y `select '…' as msg` conviven en
+  `sissolic-procedimientos` (106 y 136 usos). Cada archivo de `cambios_pa` es
+  internamente consistente, así que no hay nada que unificar.
+- **`cant_cuotas_rech`** ya cuenta los meses en 4 y `cod_estpag = 5` ya pinta la
+  fila como «Con rechazo». La señal visual del rechazo en la bandeja existía.
+
+### 15.6 Verificación
+
+ESLint limpio en la página modificada; 14 archivos de prueba del frontend y 16
+casos de `paymentValidations` correctos. Los dos PA editados pasan paridad
+`.sql`/`.txt`, CRLF y ASCII, con los `begin`/`end` intactos. **Ninguno se
+compiló contra Sybase.**

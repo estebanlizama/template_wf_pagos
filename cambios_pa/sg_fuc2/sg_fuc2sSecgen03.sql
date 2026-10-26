@@ -22,12 +22,15 @@ go
    en OTRAS prestaciones, dentro del rango indicado, de modo de poder
    impedir que las mismas horas justifiquen dos prestaciones distintas.
 
+   Incluye los tramos de cuotas rechazadas: la hora quedo trabajada igual,
+   y el mes rechazado no vuelve a estar disponible.
+
    Aplica los mismos filtros que el control de escritura de sg_fuc2iSecgen01
    y sg_fuc2iSecgen02. Si filtraran distinto, se mostrarian menos dias
    ocupados de los que el registro rechaza, que es peor que no mostrarlos.
 
    Creacion: ELA 2026/10/21
-   Actualizacion: ELA 2026/10/26 (Se agrega fc.rut_regist a la proyeccion)
+   Actualizacion: ELA 2026/10/26 (El rechazo ya no libera el horario)
 */
 create procedure Analisis2.sg_fuc2sSecgen03
     @id_funprse int = null,
@@ -114,16 +117,6 @@ inner join secgen_db.dbo.sg_soli soli
 where fu.rut = @rut_funcion
   and fc.id_funprse <> @id_funprse
   and soli.cod_estsol in (8, 9, 10, 11)
-  and not exists (
-      select 1
-      from secgen_db.dbo.sg_dpag dp,
-           secgen_db.dbo.sg_epag ep
-      where dp.id_funprse = fc.id_funprse
-        and dp.corr_fume  = fc.corr_fume
-        and ep.id_funprse = dp.id_funprse
-        and ep.nro_cuota  = dp.nro_cuota
-        and ep.cod_estcuo = 10
-  )
   and fc.fec_comrea >= @fec_desde
   and fc.fec_comrea <= @fec_hasta
 order by fc.fec_comrea, fc.hora_ini, fc.id_funprse

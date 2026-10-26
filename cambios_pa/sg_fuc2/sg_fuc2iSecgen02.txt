@@ -21,10 +21,12 @@ go
    @hora_ter            -> Hora de termino del tramo. (Obligatorio)
 
    Objetivo : Registrar un tramo de compensacion efectivamente realizado por un
-   funcionario, sin superar el total comprometido para ese mes.
+   funcionario, sin superar el total comprometido para ese mes. Una hora ya
+   compensada ocupa su horario aunque su cuota haya sido rechazada: el rechazo
+   no deshace el trabajo realizado.
 
    Creacion: ELA 2026/10/19
-   Actualizacion: ELA 2026/10/26 (Se agrega rut_regist)
+   Actualizacion: ELA 2026/10/26 (El rechazo ya no libera el horario)
 */
 create procedure Analisis2.sg_fuc2iSecgen02
     @id_funprse int = null,
@@ -268,16 +270,6 @@ if exists (
       and soli.nro_solici = fu.nro_solici
       and fu.rut = @rut_funcion
       and soli.cod_estsol in (8, 9, 10, 11)
-      and not exists (
-          select 1
-          from secgen_db.dbo.sg_dpag dp,
-               secgen_db.dbo.sg_epag ep
-          where dp.id_funprse = fc.id_funprse
-            and dp.corr_fume  = fc.corr_fume
-            and ep.id_funprse = dp.id_funprse
-            and ep.nro_cuota  = dp.nro_cuota
-            and ep.cod_estcuo = 10
-      )
       and @inicio_dt < dateadd(
             day,
             case when fc.hora_ter < fc.hora_ini then 1 else 0 end,

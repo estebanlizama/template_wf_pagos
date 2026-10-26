@@ -75,6 +75,8 @@ declare @ext_cuotas char(1)
 declare @mto_tope   int
 declare @mto_otros  int
 declare @mto_actual int
+declare @ano_ejec_actual smallint
+declare @mes_ejec_actual tinyint
 declare @correlativ int
 
 if not exists (select 1
@@ -141,14 +143,21 @@ begin
     end
 end
 
-select @mto_actual = isnull(mto_apagar, 0)
+select @mto_actual = isnull(mto_apagar, 0),
+       @ano_ejec_actual = ano_ejec,
+       @mes_ejec_actual = mes_ejec
   from secgen_db.dbo.sg_fume
  where id_funprse = @id_funprse
    and corr_fume  = @corr_fume
 
 begin tran
 
+/* Se versiona si cambia cualquiera de los tres datos que escribe el update, no
+   solo el monto: cambiar el mes de ejecucion sin tocar el monto tambien es una
+   modificacion del mes y antes no dejaba rastro. */
 if @mto_actual <> @mto_apagar
+   or isnull(isnull(@ano_ejec, @ano_ejec_actual), 0) <> isnull(@ano_ejec_actual, 0)
+   or isnull(isnull(@mes_ejec, @mes_ejec_actual), 0) <> isnull(@mes_ejec_actual, 0)
 begin
     select @correlativ = isnull(max(correlativ), 0) + 1
       from secgen_db.dbo.sg_fum2 holdlock

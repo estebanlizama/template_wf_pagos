@@ -74,14 +74,14 @@ guard que lo detecta y avisa en vez de reventar con un error de FK.
 
 | Paso | Qué | ¿Resolución funciona? |
 | :--: | :--- | :---: |
-| 1 | `CREATE TABLE sg_efum` | ✅ |
+| 1 | `00_ddl_pagos.sql` — crea `sg_efum`, `sg_epag`, `sg_dpag` y `sg_com1`, y agrega las columnas nuevas. Idempotente, no borra nada | ✅ |
 | 2 | `02_sg_efum.sql` — cargar los 4 estados | ✅ |
-| 3 | `ALTER TABLE sg_fume ADD cod_estfum tinyint NULL` | ✅ |
+| 3 | `ALTER TABLE sg_fume ADD cod_estfum tinyint NULL` — paso 5 de `00_ddl_pagos.sql` | ✅ |
 | 4 | `03_migracion_sg_fume.sql` — poblar la columna nueva | ✅ |
 | 5 | `ALTER` a `NOT NULL` + FK a `sg_efum` | ✅ |
-| 6 | Lo mismo (3-5) en `sg_fum2` | ✅ |
+| 6 | Lo mismo que 3-5 en `sg_fum2`, más `rut_regist` y `f_regist` — paso 6 de `00_ddl_pagos.sql` | ✅ |
 | 7 | **Recompilar `sg_fumeuSecgen01` y `sg_fupssSecgen17`** leyendo `cod_estfum` | ✅ |
-| 8 | **Desplegar backend** con `@cod_estfum` — *junto con el paso 7* | ✅ |
+| 9 | `DROP` de `sg_fume.cod_estcuo`, `sg_fum2.cod_estcuo` y de `sg_fume.fec_pago` / `ano_pago` / `mes_pago`, que pasaron a `sg_epag` | ✅ |
 | 9 | `DROP` de `sg_fume.cod_estcuo` y `sg_fum2.cod_estcuo` | ✅ |
 | 10 | `01_sg_ecuo.sql` — depurar el catálogo de cuota | ✅ |
 
