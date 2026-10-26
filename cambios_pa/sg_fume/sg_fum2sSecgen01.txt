@@ -18,12 +18,12 @@ go
    @corr_fume           -> Limita a un mes de ejecucion. (Opcional)
 
    Objetivo : Listar las versiones guardadas de un mes de ejecucion. Cada fila
-   es el estado que tenia el mes antes de un cambio de monto; la version
+   es el estado que tenia el mes antes de un cambio de monto o descuento; la version
    vigente esta en sg_fume, no aqui, y viaja como mto_vigente y fec_vigente.
    fec_valida es la fecha de la ultima gestion de cada version.
 
    Creacion: ELA 2026/10/13
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/26 - Proyeccion de mto_realpa, mto_deslic, mto_dessg, rut_regist, f_regist y vigentes
 */
 create procedure Analisis2.sg_fum2sSecgen01
     @rut_person char(9) = null,
@@ -56,6 +56,9 @@ select
     h.ano_ejec,
     h.mes_ejec,
     h.mto_apagar,
+    h.mto_realpa,
+    h.mto_deslic,
+    h.mto_dessg,
     h.id_evidenc,
     h.val_licmed,
     h.val_inabili,
@@ -65,8 +68,13 @@ select
     h.rut_autori,
     h.fec_autori,
     h.fec_envrem,
+    h.rut_regist,
+    h.f_regist,
     fm.mto_apagar as mto_vigente,
-    fm.fec_valida as fec_vigente
+    fm.fec_valida as fec_vigente,
+    fm.mto_realpa as mto_realpa_vigente,
+    fm.mto_deslic as mto_deslic_vigente,
+    fm.mto_dessg as mto_dessg_vigente
 from secgen_db.dbo.sg_fum2 h
 inner join secgen_db.dbo.sg_fume fm
     on fm.id_funprse = h.id_funprse
