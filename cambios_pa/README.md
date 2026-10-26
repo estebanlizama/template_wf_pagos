@@ -281,3 +281,68 @@ de ejecución de una cuota de prestación DU288.
 ### Salida
 Devuelve el detalle diario ordenado cronológicamente con:
 `diasem`, `feriado`, `fecha`, `hora_e`, `hora_s`, `m_ent`, `m_sal`, `res_ausen`, `excusa`, `cod_estasi`, `des_estasi`.
+
+---
+
+## sg_com1 — comentarios DGDP de una cuota
+
+Tabla nueva, ya creada en la BDD de prueba. Reemplaza el camino anterior, que
+guardaba el motivo en `sg_hist` con un prefijo `#PRS{id}-C{n}#` dentro del texto
+libre para saber a qué cuota correspondía.
+
+| PA | Para quién | Qué entrega |
+| :--- | :--- | :--- |
+| `sg_com1sSecgen01` | revisor DGDP | hilo de una cuota, o de todas las de la prestación si no se indica `@nro_cuota`; más reciente primero |
+| `sg_com1sSecgen02` | jefe de proyecto | comentario vigente de cada cuota de la prestación, en una consulta |
+
+El `insert` **no tiene PA propio**: va inline en `sg_epaguSecgen03`, dentro de la
+misma transacción que mueve `cod_estcuo`. Un motivo siempre acompaña una
+decisión, y separarlos reabre los dos estados inconsistentes que existían antes
+—cuota devuelta sin motivo, o motivo sin devolución—. Tampoco hay `update` ni
+`delete`: la tabla es auditoría, corregir es agregar otra fila, y una cuota con
+comentarios nunca está en estado 1, que es el único que `sg_epagdSecgen01` borra.
+
+Detalle del modelo, acceso y largos en [`sg_com1/README.md`](sg_com1/README.md).
+
+### Orden de instalación
+
+1. `sg_com1` — ya está en la BDD de prueba.
+2. `datos_base/05_sg_tacc_acciones_pago.sql` — las acciones 32 y 33.
+3. `sg_com1sSecgen01` y `sg_com1sSecgen02`.
+4. `sg_epaguSecgen03` recompilado, junto con el backend.
+
+**El paso 2 antes del 4, sin excepción.** `sg_com1.id_tipacc` tiene FK a
+`sg_tacc` y el `insert` vive dentro de la transacción: sin las dos filas la
+decisión se revierte y DGDP no puede resolver ninguna cuota. Antes ese mismo
+error se perdía en un `catch` silencioso, así que la falta de semillas no se
+notaba; ahora bloquea.
+
+### Qué queda acoplado al backend
+
+- El `@observacion` pasó a ser **obligatorio** cuando el destino es 3 o 10. El
+  backend ya lo valida antes de llamar, así que recompilar el PA sin el backend
+  no rompe nada, pero el backend sin el PA sí: la decisión falla al llegar al
+  `insert`.
+- El tope del texto subió de 220 a 255 en los tres puntos que lo declaraban
+  (constante del repositorio, `maxLength` del request, `maxlength` del textarea).
+  Sin prefijo que descontar, el parámetro se usa completo.
+- Las dos lecturas no sirven al mismo consumidor. `sg_com1sSecgen02` entrega el
+  motivo vigente **dentro de la fila de la cuota** para el jefe de proyecto, y
+  `sg_com1sSecgen01` es un **recurso propio de la cuota** para DGDP, que la
+  pantalla de revisión pide con `@nro_cuota`. Adjuntarlo a la bandeja obligaba a
+  una consulta por prestación, y la bandeja por defecto son las cuotas en
+  visación: era una consulta por fila en la vista que se abre siempre.
+
+### Riesgos y decisiones abiertas
+
+- Las filas con `id_tipacc in (32, 33)` que ya estén en `sg_hist` siguen ahí y
+  `sg_histsSecgen02` las sigue devolviendo, con el prefijo a la vista en el
+  historial de la resolución. Borrarlas es
+  `delete from secgen_db.dbo.sg_hist where id_tipacc in (32, 33)`; conviene
+  decidirlo antes de un ambiente con datos reales.
+- `sg_com1` no guarda `id_perfil`, la única columna de auditoría que `sg_hist`
+  tenía y esta no. Si la auditoría la necesita, es una columna más.
+- Guarda la **acción** (`id_tipacc`), no el estado resultante. Reconstruir la
+  decisión obliga a traducir el código contra `sg_tacc`.
+- El comentario al **aprobar** no se registra. La tabla lo admite —`observaci`
+  es nulable— y costaría un tercer código en `sg_tacc` y dos líneas en el PA.

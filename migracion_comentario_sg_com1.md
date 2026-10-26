@@ -194,22 +194,86 @@ No hay PA de `update` ni de `delete`:
 
 ---
 
-## 5. Lo que falta, por capa
+## 5. Estado por capa
+
+### Aplicado
+
+| Capa | Cambio |
+| :--- | :--- |
+| `db-assets/.../service-provision-payment.ts` | `selectDgdpInstallmentComments` y `selectInstallmentComments`; fuera `insertInstallmentHistory` y `selectRequestHistorical` |
+| `…payment-procedures.repository.ts` | `recordInstallmentHistory` borrado; las dos lecturas reescritas sobre `sg_com1`, agrupadas por prestación; `applyInstallmentComments` compartido |
+| idem | `resolveDgdpInstallment` ya no consulta la bandeja completa para ubicar la solicitud |
+| idem | tope de observación 220 → 255 (`INSTALLMENT_COMMENT_MAX_LENGTH`) |
+| `du288-payment-review-decision-request.model.ts` | `maxLength` 220 → 255 |
+| `review/_staffProvisionId/_installmentNumber.vue` | `maxlength` 220 → 255 |
+| `history-action-type.constant.ts` | sin cambios: los dos códigos siguen usándose, ahora para `sg_com1` |
+| Vista | sin cambios: `installment.reviewObservation` sigue siendo el contrato |
+| `du288-installment-comment-response.model.ts` | modelo nuevo para el hilo de la cuota; no expone `rut_accion` |
+| `du288-installment-response.model.ts` | `reviewObservationDate` junto al motivo vigente del solicitante |
+| `du288-payment-review-installment-response.model.ts` | se le quitaron los campos de observación: ya no los puebla nadie |
+| `service-provision-payment.controller.ts` | `GET …/dgdp/provisions/{id}/installments/{n}/comments`, con `assertIsDgdpPaymentReviewer` |
+| `store/service-provision-payments.js` | `fetchDgdpInstallmentComments` |
+| `review/_staffProvisionId/_installmentNumber.vue` | panel «Observación anterior» con fecha y autor, antes de los botones de decisión; contador de caracteres en el textarea |
+| `review/index.vue` | sin cambios: el comentario no viaja con la bandeja |
+| `Du288InstallmentFormSection.vue` | fecha junto a la observación que ya mostraba al solicitante |
+| `lang/es/pds.js` | `previousObservation`, `observationLimit`, `cells.observed`, `cells.observedPrefix` |
+| `service-provision-payment-comments.unit.ts` | 13 pruebas nuevas |
+
+### Los dos roles no consumen el comentario igual
+
+El primer intento adjuntó el motivo a las dos listas con el mismo criterio de
+estados, y eso falló por los dos lados a la vez.
+
+Por el lado de DGDP faltaba el estado 2: una cuota devuelta que el jefe de
+proyecto corrige y reenvía vuelve a la bandeja **en visación**, con su fila de
+`sg_com1` intacta —la llave no incluye el estado—, así que el revisor habría
+resuelto de nuevo sin ver lo que él mismo observó. Pero agregar el 2 al criterio
+dejaba una **consulta por prestación en la bandeja por defecto**, que es
+justamente la de las cuotas en visación: la vista que se abre siempre pagaba una
+consulta por fila.
+
+El reparto quedó por consumidor, no por estado:
+
+| Rol | Cómo llega | Alcance |
+| :--- | :--- | :--- |
+| jefe de proyecto | `sg_com1sSecgen02`, **dentro de la fila** de la cuota | el motivo vigente, en los estados 3 y 10; al reenviar la cuota ya atendió lo observado |
+| DGDP | `sg_com1sSecgen01`, **recurso propio** de la cuota (`GET …/installments/{n}/comments`) | el hilo completo de esa cuota, pedido solo al abrir la revisión |
+
+Así la bandeja DGDP no hace ninguna consulta de comentarios y la pantalla de
+revisión hace una. El motivo solo hace falta donde se resuelve.
+
+Una consecuencia de este reparto: en el recurso propio, una guarda del PA que
+rechaza al revisor responde **403**, porque el revisor pidió ese recurso. En la
+lectura que viaja con la cuota el mismo rechazo solo se registra en el log, ya
+que no debe tumbar la entrega del listado.
+
+Dos cosas más cambiaron de forma además de origen:
+
+- **Se consulta por prestación o por cuota, no por solicitud.** Antes había que
+  traerse el historial completo de la solicitud —decretación, firmas, archivo—
+  para quedarse con una fila. Ahora cada consulta devuelve solo comentarios de
+  cuota.
+- **La lectura filtra `id_tipacc`.** Solo 32 y 33 se muestran como motivo, de
+  modo que un código futuro —un comentario de aprobación— no aparezca como
+  causa de devolución sin que nadie lo decida.
+
+El `try/catch` silencioso de la **escritura** desapareció del todo: el motivo lo
+graba el propio PA dentro de la transacción que mueve `cod_estcuo`, así que un
+fallo llega al usuario como cualquier otro error de la decisión.
+
+### Falta
 
 | Capa | Cambio |
 | :--- | :--- |
 | `datos_base/05_sg_tacc_acciones_pago.sql` | **aplicarlo**, si no lo está. Es ahora un prerrequisito duro |
 | `sg_com1sSecgen01` · `sg_com1sSecgen02` | desplegar |
 | `sg_epaguSecgen03` | recompilar **después** de que exista `sg_com1` y estén las semillas |
-| `db-assets/.../service-provision-payment.ts` | dos consultas nuevas; `insertInstallmentHistory` deja de usarse |
-| `…payment-procedures.repository.ts` | borrar `recordInstallmentHistory`; reescribir `attachReviewObservations` sobre `sg_com1sSecgen02` y `attachDgdpReviewObservations` sobre `sg_com1sSecgen01`; quitar el armado del prefijo |
-| idem | subir el tope de observación de 220 a 255 |
-| `history-action-type.constant.ts` | los dos códigos siguen usándose: ya no para `sg_hist`, ahora para `sg_com1` |
-| Vista | sin cambios: `installment.reviewObservation` sigue siendo el contrato |
 
-El `try/catch` silencioso de la escritura desaparece: con el insert dentro de la
-transacción del PA, el error llega al usuario como cualquier otro fallo de la
-decisión.
+Nada de esto se ha ejecutado contra Sybase. El backend compila y las 230 pruebas
+unitarias pasan, pero las tres consultas apuntan a PA que todavía no existen en
+la base: hasta desplegarlos, las lecturas fallan y el comentario no se muestra
+—sin romper la entrega de las cuotas, que es justo lo que el `catch` protege—, y
+la decisión DGDP falla al llegar al `insert`.
 
 ### Orden de despliegue
 
@@ -241,3 +305,14 @@ pena, y conviene decidirlo antes de pasar a un ambiente con datos reales.
    tenía y `sg_com1` no.
 3. **¿Nota sin decisión?** Si DGDP debe poder comentar mientras revisa, sin mover
    el estado, hay que escribir `sg_com1iSecgen01`.
+4. **¿Se limpian las filas viejas de `sg_hist`?** Desde este cambio no entran
+   más, pero las que haya en la base de prueba siguen ahí y las sigue devolviendo
+   `sg_histsSecgen02`, con el prefijo `#PRS..#` a la vista en el historial de la
+   resolución. Borrarlas es
+   `delete from secgen_db.dbo.sg_hist where id_tipacc in (32, 33)`; conviene
+   decidirlo antes de un ambiente con datos reales.
+5. **¿Se expone el hilo completo?** `sg_com1sSecgen01` acepta `@nro_cuota` y
+   devuelve todas las decisiones de esa cuota, de la más reciente a la más
+   antigua. Hoy el backend lo llama sin cuota y usa solo la vigente, porque la
+   pantalla muestra un único motivo. Si el hilo tiene valor para el revisor, el
+   PA ya está; falta el endpoint y la vista.
