@@ -24,7 +24,7 @@ go
    funcionario, sin superar el total comprometido para ese mes.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/21
+   Actualizacion: ELA 2026/10/26 (Se agrega rut_regist)
 */
 create procedure Analisis2.sg_fuc2iSecgen01
     @id_funprse int = null,
@@ -328,9 +328,9 @@ begin
 end
 
 insert into secgen_db.dbo.sg_fuc2
-    (id_funprse, corr_fume, fec_comrea, hora_ini, hora_ter)
+    (id_funprse, corr_fume, fec_comrea, hora_ini, hora_ter, rut_regist)
 values
-    (@id_funprse, @corr_fume, @inicio_dt, @hora_ini, @hora_ter)
+    (@id_funprse, @corr_fume, @inicio_dt, @hora_ini, @hora_ter, @rut_person)
 
 if @@error <> 0
 begin

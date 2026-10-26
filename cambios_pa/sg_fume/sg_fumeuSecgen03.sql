@@ -73,9 +73,13 @@ begin
 end
 
 declare @mto_apagar_actual int
+declare @mto_deslic_actual int
+declare @mto_dessg_actual  int
 declare @cod_estcuo tinyint
 
-select @mto_apagar_actual = mto_apagar
+select @mto_apagar_actual = mto_apagar,
+       @mto_deslic_actual = isnull(mto_deslic, 0),
+       @mto_dessg_actual  = isnull(mto_dessg, 0)
   from secgen_db.dbo.sg_fume
  where id_funprse = @id_funprse
    and corr_fume  = @corr_fume
@@ -114,7 +118,12 @@ end
 
 begin tran
 
+/* Se versiona si cambia cualquiera de los tres datos que escribe el update, no
+   solo el monto: los descuentos son la decision propia de este PA y antes se
+   sobrescribian sin dejar rastro cuando DGDP no tocaba el mto_apagar. */
 if @mto_nuevo <> @mto_apagar_actual
+   or @mto_deslic <> @mto_deslic_actual
+   or @mto_dessg <> @mto_dessg_actual
 begin
     declare @correlativ int
     select @correlativ = isnull(max(correlativ), 0) + 1

@@ -726,3 +726,242 @@ muestra lo que solicitó sin DDL alguno.
 - El aviso de meses que vuelven por debajo de su monto decretado ya no aplica:
   con la regla nueva los meses no vuelven.
 - Las brechas 6.2, 6.3 y 6.5 siguen abiertas.
+
+---
+
+## 13. `sg_fume` → `sg_fum2`: el historial completo
+
+### 13.1 Qué cambió en `sg_fume` (el diff que faltaba)
+
+| | Antes | Ahora (26-10) |
+| :-- | :--- | :--- |
+| Llave | `(id_funprse, nro_cuota)` | `(id_funprse, corr_fume)` |
+| Estado | `cod_estcuo`, FK a `sg_ecuo` | `cod_estfum`, FK a `sg_efum` |
+| Salieron | `fec_pago`, `ano_pago`, `mes_pago` | — (se fueron a `sg_epag`) |
+| Entraron | — | `mto_realpa`, `mto_deslic`, `mto_dessg` |
+
+El cambio de fondo es el mismo que en `sg_fum2`: **el mes dejó de pertenecer a
+una cuota.** Antes la llave del mes incluía `nro_cuota`, así que un mes era de
+una cuota por definición; ahora el mes existe por sí solo y el vínculo vive en
+`sg_dpag`. Por eso el período de pago se fue al encabezado: es de la cuota, no
+del mes.
+
+### 13.2 `sg_fum2` es un espejo exacto
+
+Las 20 columnas de `sg_fume`, más tres de versión:
+
+| | |
+| :-- | :--- |
+| `correlativ` | qué versión es |
+| `rut_regist` | **quién** la provocó |
+| `f_regist` | **cuándo** |
+
+No falta ninguna columna y no hay ninguna de más. Es la forma correcta para un
+historial: cada fila es el mes completo tal como estaba **antes** del cambio, y
+las tres columnas dicen quién lo cambió y cuándo.
+
+### 13.3 Auditoría: los seis escritores de `sg_fume`
+
+| PA | Qué escribe en `sg_fume` | Versionaba antes | Ahora |
+| :-- | :--- | :--- | :--- |
+| `sg_fumeuSecgen02` | el monto del mes | sí | sí |
+| `sg_fumeuSecgen03` | descuentos DGDP y neto | sí | sí |
+| `sg_epaguSecgen03` | rechazo: estado → 4 | no | **sí** |
+| `sg_epaguSecgen02` | ENVIAR: estado 1 → 2 | **no** | **sí** |
+| `sg_epaguSecgen01` | editar cuota observada: 2 → 1 y 1 → 2 | **no** | **sí** |
+| `sg_fumeuSecgen01` | crea y borra meses (RESOLUCION) | no | no, ver 13.5 |
+
+Tres escrituras cambiaban el estado del mes **sin dejar historial**. Eran justo
+las del ciclo de trabajo: enviar la cuota, reacomodar sus meses y rechazarla.
+El historial registraba los cambios de plata y se perdía los de estado.
+
+### 13.4 Cómo quedó implementado
+
+El patrón es el mismo en los tres PA, deliberadamente repetido en vez de
+abstraído, como el resto del repositorio: recorrer los meses afectados con un
+`while`, y por cada uno calcular `max(correlativ) + 1` con `holdlock`, guardar
+la fila completa de `sg_fume` en `sg_fum2` con `rut_regist` y `f_regist`, y
+recién después hacer el `update`. Todo dentro de la transacción que cada PA ya
+abría, con guarda de 255 versiones y `rollback` ante `@@error`.
+
+- `sg_epaguSecgen02`: recorre los meses de la cuota vía `sg_dpag`, solo en la
+  rama `@cod_estcuo = 1`. En un reenvío desde Observada los meses ya están en 2
+  y no cambian, así que no hay nada que versionar.
+- `sg_epaguSecgen01`: junta en `#cambio` los meses que **salen** (están en 2 y
+  ya no figuran en `sg_dpag`) y los que **entran** (están en `#corr` y en 1), y
+  los versiona en un solo recorrido. Una fila por mes y por edición: el mes
+  cambia una sola vez en la operación.
+- `sg_epaguSecgen03`: recorre los meses de la cuota antes de bloquearlos en 4.
+
+Dos columnas más que nadie llenaba, ya corregidas en los dos `insert` que sí
+existían: `sg_fumeuSecgen02` y `sg_fumeuSecgen03` ahora versionan también
+`mto_realpa`, `mto_deslic`, `mto_dessg`, `rut_regist` y `f_regist`. Antes el
+historial de descuentos se perdía aunque la tabla ya tenía dónde guardarlo.
+
+### 13.5 Lo único que no se puede versionar
+
+`sg_fumeuSecgen01`, del flujo de RESOLUCION, crea y borra meses:
+
+- **Al crear** no hay nada que versionar: el mes no existía antes.
+- **Al borrar** no se puede. `sg_fum2` tiene FK a `sg_fume` con
+  `ON DELETE RESTRICT`, así que una fila de historial **impediría** el borrado
+  del mes. Hoy el `delete` funciona justamente porque no hay historial.
+
+Si se quiere conservar el rastro de un mes borrado hay que decidirlo aparte:
+cambiar la FK, o aceptar que el acortamiento del período borra el mes sin
+registro. No lo toqué: es del flujo de resolución, y la regla del proyecto es
+que pagos no modifica un PA de resolución para sus necesidades.
+
+### 13.6 En qué momento exacto se escribe una versión
+
+Cinco acciones la escriben, y cada una tiene su guarda. En todas la fila se
+inserta **antes** del `update`, dentro de la transacción del PA, así que guarda
+el mes tal como estaba antes del cambio.
+
+| Acción del usuario | PA | Se versiona cuando | Qué queda en la foto |
+| :-- | :--- | :--- | :--- |
+| El jefe de proyecto cambia el monto de un mes | `sg_fumeuSecgen02` | `@mto_actual <> @mto_apagar` | el monto anterior |
+| DGDP registra descuentos del mes | `sg_fumeuSecgen03` | cambia `mto_apagar`, `mto_deslic` **o** `mto_dessg` | descuentos, neto y `val_*` anteriores |
+| El jefe de proyecto envía la cuota a visación | `sg_epaguSecgen02` | solo si la cuota venía del estado 1 | el mes en Propuesta, antes de comprometerse |
+| El jefe de proyecto reacomoda los meses de una cuota observada | `sg_epaguSecgen01` | solo si la cuota está en 3, y solo los meses que entran o salen | el mes antes de entrar o de salir |
+| DGDP rechaza la cuota | `sg_epaguSecgen03` | solo con destino 10 | el mes comprometido, antes de bloquearse |
+
+**Guardar sin cambiar nada no versiona.** Las dos primeras comparan contra el
+valor vigente, así que reenviar el mismo monto o los mismos descuentos no
+ensucia el historial. Las tres últimas versionan solo los meses que realmente
+cambian de estado.
+
+**Qué NO escribe historial de mes, y está bien:** devolver la cuota (3) y
+aprobarla (4). Ninguna de las dos toca el mes —se queda en 2— así que no hay
+nada de él que fotografiar. Esas decisiones viven en `sg_com1`, que es el
+historial de la cuota. Son dos historiales con grano distinto: `sg_fum2` guarda
+lo que le pasó al mes, `sg_com1` lo que DGDP decidió sobre la cuota.
+
+### 13.7 El hueco que apareció al revisar los momentos
+
+`sg_fumeuSecgen03` versionaba **solo si cambiaba el monto**
+(`if @mto_nuevo <> @mto_apagar_actual`), pero su `update` escribe siete campos:
+`mto_apagar`, `mto_deslic`, `mto_dessg`, `mto_realpa`, `val_licmed`,
+`val_singoce` y `fec_valida`.
+
+Consecuencia: en el caso normal —DGDP registra una licencia médica sin tocar el
+monto solicitado— **no se escribía ninguna versión**. Los descuentos anteriores,
+el neto y las marcas `val_*` se sobrescribían sin dejar rastro. Era la decisión
+más importante que DGDP toma sobre un mes y era la única sin historial.
+
+Corregido: el PA ahora lee `mto_deslic` y `mto_dessg` vigentes y versiona si
+cambia cualquiera de los tres.
+
+### 13.8 Cómo llega el historial a las dos vistas
+
+Auditoría del 26-10-2026. La cadena del historial **de meses** ya está completa
+de punta a punta en los dos roles; no hay nada que construir ahí.
+
+| Capa | Solicitante | DGDP |
+| :-- | :--- | :--- |
+| PA | `sg_fum2sSecgen01`, 29 columnas, acota por responsable del centro de costo | `sg_fum2sSecgen02`, las mismas 29, acota por asignación vigente |
+| Grano | **por mes** (`@corr_fume`, opcional) | **por cuota** (`@nro_cuota`, vía `sg_dpag`) |
+| Modelo | `Du288MonthVersionResponse`, incluye `rut_regist` → `registeredByRut` y `f_regist` → `registeredAt` | el mismo |
+| Endpoint | `/payments/provisions/{id}/month-versions?monthSequence=` | `/payments/dgdp/provisions/{id}/installments/{n}/month-versions` |
+| Store | `fetchMonthVersions` | `fetchDgdpMonthVersions` |
+| Vista | `Du288MonthVersionsModal` montado en `_nroSolici/index.vue` | el mismo modal en `review/.../_installmentNumber.vue` |
+
+El modal ya muestra versión, monto, descuentos, monto a pagar, variación,
+estado, **registrado por** y **fecha de registro**, y agrega la fila vigente al
+final para que la lectura sea continua.
+
+**La diferencia que importa:** DGDP ve el historial **de toda la cuota** en una
+sola tabla; el solicitante lo abre **mes por mes** desde la fila del mes. No
+tiene el «qué cambió en esta cuota» completo.
+
+### 13.9 Lo corregido ahora en el modal
+
+La columna «Variación» se calculaba solo con el delta de monto, así que una
+versión cuyo cambio fue el **estado** —y desde §13.3 esas son la mayoría:
+enviar, reacomodar, rechazar— aparecía con un guión, igual que una fila vacía.
+Ahora dice «Solo estado», atenuado, y el subtítulo del modal menciona los
+cambios de estado entre lo que registra.
+
+### 13.10 Lo que falta para el historial por cuota, y lo que cuesta
+
+1. **Vista por cuota para el solicitante — solo frontend.** `monthSequence` ya
+   es opcional en el store, en el controlador y en el PA, así que una llamada
+   sin ese parámetro devuelve el historial de toda la prestación. La página ya
+   sabe qué meses tiene la cuota activa, así que alcanza con filtrar por ellos y
+   abrir el mismo modal desde la cuota en vez de desde el mes. **Sin PA nuevo y
+   sin endpoint nuevo.**
+2. **El hilo de decisiones para el solicitante.** `sg_com1sSecgen02` devuelve
+   solo el comentario más reciente de cada cuota, por diseño. Para que el
+   solicitante vea todas las devoluciones de su cuota hace falta un parámetro
+   que desactive el `max(f_observa)`, o una lectura nueva. Es una decisión
+   funcional: hoy se decidió mostrarle solo el vigente.
+3. **Los dos historiales siguen separados.** `sg_fum2` responde «qué le pasó al
+   mes» y `sg_com1` «qué decidió DGDP sobre la cuota». Hoy viven en dos lugares
+   distintos de la pantalla. Lo natural sería un solo «Historial de la cuota»
+   que mezcle las dos fuentes ordenadas por fecha: las decisiones con su motivo
+   y los cambios de mes con su monto. No es gratis —hay que unificar dos formas
+   de fila en una vista— pero es lo que convierte dos tablas técnicas en una
+   historia legible.
+
+Mi recomendación es el 1 primero, porque no toca la base y le da al solicitante
+exactamente lo que DGDP ya tiene. El 3 después, como vista propia. El 2 depende
+de que se decida mostrarle el hilo completo.
+
+### 13.11 Repaso de UX sobre lo agregado
+
+Revisión del 26-10-2026 de lo que quedó en pantalla, buscando efectos
+secundarios de haber conservado `sg_dpag`.
+
+**Dos defectos reales, corregidos**
+
+1. **La cuota rechazada mostraba «A pagar».** `netLabel` se pinta cuando el neto
+   difiere de lo solicitado. Si DGDP había registrado descuentos antes de
+   rechazar, la fila de una cuota terminal anunciaba un monto a pagar que no va
+   a ocurrir. Ahora el neto no se muestra en estado 10.
+2. **La cuota rechazada reclamaba requisitos.** Los chips «Sin PDF» y
+   «Compensación pendiente» se calculaban igual para el 10, mandando a resolver
+   algo que ya no tiene cómo resolverse. Ahora una cuota rechazada no exige
+   nada.
+
+**Un pendiente de §6.4, cerrado**
+
+El cuadro de la observación usaba el mismo encabezado para el 3 y el 10. Ahora
+el 10 dice «Motivo del rechazo» —y el `aria-label` del textarea también—, porque
+no dicen lo mismo: en una devuelta el texto es lo que hay que corregir, en una
+rechazada es la razón por la que quedó cerrada. El título del modal y el borde
+rojo del bloque ya estaban resueltos.
+
+**Lo que revisé y está correcto**
+
+- El selector de meses ya contempla el mes bloqueado: `availabilityOf` marca no
+  seleccionable cuando `statusCode === 4` o la cuota del mes está en 10, con su
+  razón. Estaba escrito anticipando esta regla.
+- `availableMonths` excluye los meses asignados a una cuota, así que los de una
+  rechazada no vuelven a ofrecerse.
+- `monthsMissingCompensation` se acota a la cuota por enviar, que siempre es
+  editable, así que nunca apunta a una rechazada.
+- El monto anulado no depende solo del color: cambia el rótulo a «Rechazado»,
+  va tachado y la insignia roja con ícono dice «Rechazada». Tres señales, no
+  una.
+- «Cuota N de M» dejó de poder decir «3 de 2»: al consumir el cupo, la
+  numeración ya no puede pasarse del total autorizado.
+
+**Lo que queda, menor**
+
+- Los `hint` del resumen se muestran como `title` del `dd`, así que no se
+  alcanzan por teclado ni los lee todo lector de pantalla. Es el patrón de todo
+  el componente —los seis `hint` existentes son iguales—, así que cambiarlo solo
+  para «Rechazado» sería incoherente. Si se arregla, va de una vez para los
+  siete.
+- La fila rechazada dice «N meses» sin señalar que quedaron bloqueados. La
+  insignia y el motivo lo explican, pero el dato suelto no.
+- Falta verificar en navegador: el tachado y el rótulo nuevo a 991, 768 y
+  375 px, y el modal de versiones con filas «Solo estado».
+
+### 13.12 Verificación
+
+Balance de `begin`/`end` cuadrado a mano en los dos PA editados (descontando
+los `case … end`), paridad `.sql`/`.txt`, CRLF y ASCII correctos. **Ningún PA se
+compiló contra Sybase**: el `while` sobre `#cambio`, los `holdlock` dentro de la
+transacción y el largo de las listas de columnas siguen sin verificar en el
+motor.

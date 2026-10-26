@@ -56,6 +56,18 @@ dos horas en la mañana y dos en la tarde es un caso normal.
 
 ---
 
+## Auditoría de registro (`rut_regist`)
+
+Al insertar un tramo de compensación (`sg_fuc2iSecgen01` o `sg_fuc2iSecgen02`), se almacena en la
+columna `rut_regist` el `@rut_person` de quien realizó el registro (el responsable del centro de
+costo o el revisor DGDP según corresponda).
+
+Los procedimientos de lectura (`sg_fuc2sSecgen01`, `sg_fuc2sSecgen02`, `sg_fuc2sSecgen03`) proyectan
+esta columna (`fc.rut_regist`) para que las pantallas de pagos y revisión puedan identificar quién
+registró o asignó cada tramo ejecutado.
+
+---
+
 ## Qué valida la inserción
 
 Heredado de `sg_fucoiSecgen01`:

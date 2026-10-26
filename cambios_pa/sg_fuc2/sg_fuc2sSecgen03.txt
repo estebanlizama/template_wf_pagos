@@ -27,7 +27,7 @@ go
    ocupados de los que el registro rechaza, que es peor que no mostrarlos.
 
    Creacion: ELA 2026/10/21
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/26 (Se agrega fc.rut_regist a la proyeccion)
 */
 create procedure Analisis2.sg_fuc2sSecgen03
     @id_funprse int = null,
@@ -100,6 +100,7 @@ select
     ) as fec_comrea,
     fc.hora_ini,
     fc.hora_ter,
+    fc.rut_regist,
     prse.cod_ccto,
     prse.cod_unifin,
     soli.cod_estsol

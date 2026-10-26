@@ -83,6 +83,8 @@ declare @pedidos    int
 declare @validos    int
 declare @mes_ultejec int
 declare @tot_cuotas  tinyint
+declare @corr_fume   tinyint
+declare @correlativ  tinyint
 
 select @mes_actual = datepart(yy, getdate()) * 100 + datepart(mm, getdate())
 
@@ -151,6 +153,13 @@ begin
 end
 
 create table #corr (
+    corr_fume tinyint not null
+)
+
+/* Meses cuyo estado cambia con esta edicion: los que salen de la cuota y los
+   que entran. Se versionan juntos porque cada mes cambia una sola vez en la
+   operacion, asi que le corresponde una sola fila de historial. */
+create table #cambio (
     corr_fume tinyint not null
 )
 
@@ -299,6 +308,69 @@ end
 
 if @cod_estcuo = 3
 begin
+    insert into #cambio (corr_fume)
+    select fume.corr_fume
+      from secgen_db.dbo.sg_fume fume
+     where fume.id_funprse = @id_funprse
+       and fume.cod_estfum = 2
+       and not exists (select 1
+                         from secgen_db.dbo.sg_dpag dpag
+                        where dpag.id_funprse = fume.id_funprse
+                          and dpag.corr_fume  = fume.corr_fume)
+
+    insert into #cambio (corr_fume)
+    select fume.corr_fume
+      from secgen_db.dbo.sg_fume fume,
+           #corr c
+     where fume.id_funprse = @id_funprse
+       and fume.corr_fume  = c.corr_fume
+       and fume.cod_estfum = 1
+
+    select @corr_fume = min(corr_fume) from #cambio
+
+    while @corr_fume is not null
+    begin
+        select @correlativ = isnull(max(correlativ), 0) + 1
+          from secgen_db.dbo.sg_fum2 holdlock
+         where id_funprse = @id_funprse
+           and corr_fume  = @corr_fume
+
+        if @correlativ > 255
+        begin
+            select 'Error: Se alcanzo el maximo de versiones de un mes de la cuota' as msg
+            if @@transtate = 2 rollback tran
+            return
+        end
+
+        insert into secgen_db.dbo.sg_fum2 (
+            id_funprse, corr_fume, correlativ, ano_prop, mes_prop,
+            cod_estfum, ano_ejec, mes_ejec, mto_apagar, id_evidenc,
+            val_licmed, val_inabili, val_singoce, val_ciecc, fec_valida,
+            rut_autori, fec_autori, fec_envrem,
+            mto_realpa, mto_deslic, mto_dessg, rut_regist, f_regist
+        )
+        select
+            id_funprse, corr_fume, @correlativ, ano_prop, mes_prop,
+            cod_estfum, ano_ejec, mes_ejec, mto_apagar, id_evidenc,
+            val_licmed, val_inabili, val_singoce, val_ciecc, fec_valida,
+            rut_autori, fec_autori, fec_envrem,
+            mto_realpa, mto_deslic, mto_dessg, @rut_person, getdate()
+          from secgen_db.dbo.sg_fume
+         where id_funprse = @id_funprse
+           and corr_fume  = @corr_fume
+
+        if @@error <> 0
+        begin
+            select 'Error al versionar los meses que cambian de estado' as msg
+            if @@transtate = 2 rollback tran
+            return
+        end
+
+        select @corr_fume = min(corr_fume)
+          from #cambio
+         where corr_fume > @corr_fume
+    end
+
     update secgen_db.dbo.sg_fume
        set cod_estfum = 1
       from secgen_db.dbo.sg_fume fume
