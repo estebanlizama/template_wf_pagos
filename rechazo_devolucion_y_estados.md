@@ -1401,3 +1401,165 @@ los CR**, así que `grep -c $'\r'` informa que todas las líneas tienen CR inclu
 en un archivo que no tiene ninguno, y `awk` los borra al reescribir. La
 comprobación —y la conversión— se hicieron con `perl` en `binmode`, que es lo
 único que no miente aquí.
+
+---
+
+## 16. La auditoría aplicada (27-10-2026)
+
+Los dieciséis hallazgos de `auditoria_vistas_solicitud_dgdp.md` quedaron
+aplicados. Esta sección deja por escrito qué cambió en cada uno, porque la
+auditoría describe el problema y no la solución.
+
+### 16.1 El dinero: A4, A1 y A2
+
+**A4 — la guarda de la base dejaba pasar plata.** `sg_epaguSecgen02` calculaba
+`@mto_usado` sumando los meses en estado 3 (pagados) y en estado 2
+(comprometidos de otras cuotas), y omitía el 4. Con un decreto de $500.000 y una
+cuota de $300.000 rechazada, `@mto_usado` daba 0 y una segunda cuota de $500.000
+pasaba: $800.000 comprometidos sobre un decreto de $500.000. Se agregó el tercer
+término:
+
+```sql
++ isnull(sum(case when fume.cod_estfum = 4
+                  then fume.mto_apagar else 0 end), 0)
+```
+
+El frontend ya lo bloqueaba, pero el frontend no es la autoridad.
+
+**A1 — el saldo que ve DGDP.** `sg_epagsSecgen03` no entregaba lo rechazado, así
+que la vista no podía descontarlo. Se agregó `mto_rechazado` como agregado del
+PA, se mapeó a `rejectedAmount` en el modelo de respuesta del backend, y el
+detalle DGDP muestra un campo **«Bloqueado por rechazo»** que solo aparece
+cuando hay monto rechazado, con su `hint` explicando que ese dinero no se puede
+volver a pedir.
+
+**A2 — el saldo se calculaba a mano.** `_installmentNumber.vue` hacía
+`Math.max(0, total - paid - inProgress)` en una propiedad computada: aritmética
+local, fuera del módulo de dinero, y con un `Math.max` que escondía en cero
+justo el caso que delata un sobregiro. Ahora llama a
+`resolveProvisionRemainingAmount({ total, paid, inProgress, rejected })`, en
+`paymentValidations.js`, con cuatro pruebas propias —incluida la del saldo
+negativo, que se muestra y no se esconde.
+
+La vista DGDP recibe agregados y no la lista de cuotas, así que no puede usar
+`resolvePaymentAmountBalance`; por eso el helper nuevo en lugar de reutilizar
+ese. Queda documentado en su JSDoc.
+
+### 16.2 A3 — el rechazo se ve en la bandeja DGDP
+
+La cuota rechazada mostraba su monto solicitado y su neto en estilo normal: el
+mismo «A pagar fantasma» que se corrigió en la vista del solicitante el 26-10.
+Ahora las dos cifras van con `is-void` —gris y tachadas, el tachado solo en el
+número y nunca en su rótulo, igual que en `Du288InstallmentsSection`— y la celda
+del neto reemplaza la línea de descuentos por **«Rechazada: no se pagará»**, para
+que una cifra tachada no se lea como un error de la tabla.
+
+### 16.3 B1 y B2 — el gate no miraba la vista DGDP
+
+`validateDu288Ui.js` revisaba 39 archivos y ninguno era de la revisión DGDP: la
+vista se creó después y nadie la agregó a la lista. Se sumaron los **12 archivos**
+de la vista y sus secciones; el gate pasó a 50.
+
+Antes de poder sumarlos había que arreglar lo que iban a delatar: `font-weight:
+800` en el neto de la tarjeta del mes —ahora 700, que ya pesa más que su
+entorno, y el neto se distingue por color y tamaño— y tres tamaños bajo el
+mínimo de 11 px. Dos eran texto (las marcas C/I/B del calendario) y pasaron al
+token `--pds-du288-font-read-label`; el tercero era un icono dentro de un
+recuadro de 14 px, que ahora se dimensiona por caja (`width`/`height`) y no
+bajando el `font-size`.
+
+Se agregó además un **check nuevo** al gate —«tamaño tipográfico bajo el
+mínimo»— porque el §5.1 es obligatorio y el gate no lo medía: es lo que dejó
+pasar estos tres. Al activarlo aparecieron dos incumplimientos preexistentes en
+`StaffExecutionWeeklyGrid.vue` (9 px y 10 px), también corregidos al token.
+
+### 16.4 C1 a C4 — las incongruencias visibles
+
+**C1.** Veintiséis guiones sueltos conviviendo con veintitrés `noInformation` en
+la misma pantalla: la sección de montos decía «No informado» y la de al lado un
+guión. Unificados en los cinco archivos que incumplían, con una propiedad
+computada `noInfo` por vista en lugar del literal repetido. Donde el dato no
+puede existir —el motivo de inhabilidad de una asignación **habilitada**— va «No
+aplica» y no «No informado», que haría parecer que falta un dato que nadie debe
+cargar.
+
+**C2.** `formatDateTime` emitía `DD-MM-YYYY` en la misma página que muestra
+`DD/MM/YYYY`. Corregido, y también en `Du288InstallmentFormSection`, que tenía
+el mismo separador en la fecha de la observación.
+
+**C3.** Los dos modales de dinero de la tarjeta del mes —descuentos y
+compensación— no tenían `pds-ui-modal`, ni `pds-ui-modal-body`, ni `centered`, y
+usaban `hide-footer`. Ahora llevan las cuatro cosas y un footer real con
+«Cerrar» (`ok-only` más `$pdsText.actions.close`), igual que
+`Du288MonthVersionsModal`. El `p-3` interno se quitó, porque el padding ahora lo
+pone `pds-ui-modal-body`.
+
+**C4.** El filtro de estados ofrecía «Enviadas a remuneraciones» (8) y
+«Devueltas de Finanzas» (11), que **ningún PA escribe**: dos filtros que siempre
+vuelven vacíos y se leen como una bandeja en blanco. Salieron del filtro.
+`statusLabel` los conserva, para rotular una fila si algún día llegan.
+
+### 16.5 D1 a D6 — textos y duplicación
+
+**D1.** Pasaron al catálogo los textos que estaban en duro: el año del mes de
+pago, los avisos de mes transcurrido y mes en curso con su `hint`, los dos
+botones de la tarjeta del mes con su `title`, el pie del mes único, los cuatro
+estados del día del calendario de compensación, los tres chips de horas, los dos
+avisos del respaldo justificativo con su detalle, los dos `toast` del período de
+pago y el error de revalidación del panel normativo.
+
+**D2.** «Detalle de Compensación Horaria» → «Detalle de compensación horaria».
+
+**D3.** «Máx. 2 cuotas (normativa general DU 288)» → «Máximo 2 cuotas (normativa
+general DU288)»: sin abreviar, que es lo que lee quien aprueba, y con el nombre
+de la normativa escrito como en el resto del sistema.
+
+**D4.** `MONTH_NAMES` estaba escrito a mano, idéntico, en **seis** archivos. Ahora
+se exporta una sola vez desde `utils/services-provision/normative/formatters.js`
+—junto a `getMonthYearLabel`, que ya vivía ahí— y los seis lo importan. Se dejó
+el arreglo literal en lugar de derivarlo de `toLocaleDateString`, porque alimenta
+el `select` de meses y ahí un cambio de locale sería un cambio de datos.
+
+**D5.** El tag del respaldo justificativo repetía la misma cadena en `detail` y
+en `message` —el componente usa `tag.detail || tag.message`, así que uno
+sobraba— y declaraba `blocking: true` también cuando el respaldo estaba
+presente. Ahora `blocking: !this.hasEvidence`: bloquea solo cuando falta.
+`blockingTags` filtra además por estado, así que el `true` incondicional no
+bloqueaba de hecho; era una declaración falsa, no un error de cálculo.
+
+**D6.** `formatPriceCLP` devolvía «Invalid input» —texto técnico en inglés camino
+a la pantalla— ante un valor no numérico; ahora devuelve vacío, para que la
+vista aplique su rótulo de dato ausente. `formatCompensationRange` tenía
+«Incompleto» escrito dentro del módulo, que no lee el catálogo; ahora recibe el
+rótulo como parámetro, igual que `formatDateOnly` recibe su fallback.
+
+### 16.6 Verificación
+
+| | |
+| :--- | :--- |
+| `node utils/validateDu288Ui.js` | 50 archivos, sin incumplimientos |
+| `npm test` | 14 archivos, 25 pruebas de `paymentValidations`, 0 fallidas |
+| `npx eslint` en lo tocado | 0 errores (1 `no-console` preexistente) |
+| `npx nuxt build` | exit 0 |
+| PA de `cambios_pa` | `.sql` y `.txt` idénticos, CRLF, ASCII |
+
+Lo que **no** está verificado: nada se ejecutó contra Sybase —en esta máquina no
+hay cliente ni Docker— así que `sg_epaguSecgen02` y `sg_epagsSecgen03` están
+escritos y revisados, no compilados. Tampoco hay verificación en navegador: el
+build compila las plantillas, pero no prueba que el tachado de la bandeja y el
+footer de los dos modales se vean bien a 1366, 1024, 768 y 375 px.
+
+### 16.7 Lo que quedó fuera
+
+El guión suelto del §6.2 aparece también en diez componentes de pagos que la
+auditoría no revisó, con unas 29 ocurrencias: `Du288InstallmentsSection`,
+`Du288InstallmentFormSection`, `Du288InstallmentSubmitModal`,
+`Du288MonthVersionsModal`, `Du288PaymentAttendanceSection`,
+`Du288PaymentContextSection`, `Du288ExecutedCompensationSection`,
+`Du288ExecutionWeekSection`, `payments/index.vue` y
+`payments/_nroSolici/index.vue`. Es el mismo incumplimiento y se arregla igual,
+pero está fuera de las dos vistas auditadas.
+
+Siguen abiertos de antes: `Du288InstallmentSummarySection.vue` —340 líneas que no
+se montan en ninguna parte— y los siete `hint` de la vista DGDP, que son `title=`
+y el teclado no alcanza.

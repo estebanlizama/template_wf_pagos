@@ -19,10 +19,11 @@ go
 
    Objetivo : Listar las cuotas enviadas por el jefe de proyecto que la
    revision DGDP puede ver, con sus montos, descuentos informados, meses
-   cubiertos y compensaciones registradas.
+   cubiertos y compensaciones registradas. mto_rechazado permite que el
+   saldo que ve DGDP descuente lo que un rechazo dejo bloqueado.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: ELA 2026/10/14
+   Actualizacion: ELA 2026/10/27
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
@@ -118,6 +119,10 @@ select
        from secgen_db.dbo.sg_fume f5
       where f5.id_funprse = epag.id_funprse
         and f5.cod_estfum = 2) as mto_gestion,
+    (select isnull(sum(f6.mto_apagar), 0)
+       from secgen_db.dbo.sg_fume f6
+      where f6.id_funprse = epag.id_funprse
+        and f6.cod_estfum = 4) as mto_rechazado,
     fu.dentro_jor,
     case when isnull(fu.dentro_jor, 'N') not in ('S', 'D')
          then 0

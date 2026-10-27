@@ -14,7 +14,7 @@ skill `ufro-typescript-fullstack` (`references/du288-workflow.md`)
 | DGDP — detalle de cuota | `payments/review/_staffProvisionId/_installmentNumber.vue` | 1.390 |
 | Componentes de pagos | `components/services-provision/payments/*.vue` | 8.631 |
 
-15 hallazgos. El orden es por consecuencia, no por esfuerzo.
+16 hallazgos. El orden es por consecuencia, no por esfuerzo.
 
 ---
 
@@ -102,6 +102,101 @@ El trabajo del 26-10 aterrizó **sólo del lado del solicitante**. El lado que
 toma la decisión quedó sin actualizar.
 
 ---
+### A4 · La guarda del monto total en la base no cuenta lo rechazado
+
+Es el hallazgo más serio de la auditoría, porque **no es una pantalla: es la
+guarda**, y deja pasar plata.
+
+`sg_epaguSecgen02:196-207` es el control que corre cuando el jefe de proyecto
+**envía** una cuota a DGDP:
+
+```sql
+select @mto_usado = isnull(sum(case when fume.cod_estfum = 3 then fume.mto_realpa else 0 end), 0)
+                  + isnull(sum(case when fume.cod_estfum = 2
+                                     and not exists (select 1 from sg_dpag d2
+                                                      where … and d2.nro_cuota = @nro_cuota)
+                                    then fume.mto_apagar else 0 end), 0)
+  from secgen_db.dbo.sg_fume fume
+ where fume.id_funprse = @id_funprse
+
+if @mto_usado + @mto_cuota > @mto_total
+    select 'Error: El monto de la cuota excede el total autorizado de la prestacion' as msg
+```
+
+Suma los meses en **3 (pagado)** y en **2 (comprometido)**. Falta el **4
+(rechazado)**.
+
+El frontend sí lo cuenta. `paymentInstallmentConsumedAmount` incluye el estado
+de cuota 10 en `[2, 3, 4, 10, 11]`, así que `paymentBalance.remaining` ya tiene
+descontado lo rechazado y `canCreateInstallment` bloquea cuando
+`unreservedBalance <= 0`.
+
+Resultado: **las dos capas discrepan, y la que cede es la autoritativa.**
+
+| Total decretado | $500.000 |
+| :--- | :--- |
+| Cuota 1 por $300.000 | rechazada → meses en `cod_estfum = 4` |
+| `@mto_usado` | **0** (nada pagado, nada comprometido) |
+| Cuota 2 por $500.000 | `0 + 500.000 > 500.000`? No → **pasa** |
+| Comprometido + perdido | **$800.000 sobre un decreto de $500.000** |
+
+El frontend no deja llegar ahí, pero el frontend no es la autoridad: la skill
+(`ufro-architecture.md`) pone la validación de datos en el PA, y
+`sg_epaguSecgen02` existe justamente para ser la última puerta antes de que DGDP
+vea la cuota.
+
+**Corrección:** agregar el tercer término, con `mto_apagar` —el mes rechazado lo
+conserva, y `mto_realpa` nunca se escribe:
+
+```sql
++ isnull(sum(case when fume.cod_estfum = 4 then fume.mto_apagar else 0 end), 0)
+```
+
+Sin el `not exists` del estado 2: ese filtro existe para no contar dos veces los
+meses de la cuota que se está enviando, y una cuota rechazada nunca es la que se
+envía.
+
+**Es la cuarta vez que aparece el mismo defecto.** `sg_fupssSecgen18.mto_saldo`
+y el desglose de la bandeja se corrigieron el 26-10; el saldo de DGDP es A1; y
+esta es la única de las cuatro que no muestra un número, sino que autoriza.
+
+---
+
+### Cómo quedan hoy las tres cantidades
+
+| Cantidad | ¿El rechazo la afecta? | Base | Frontend | ¿Coinciden? |
+| :--- | :--- | :--- | :--- | :---: |
+| **Tope** (`mto_tope`) | **No**, y es correcto | `sg_fumeuSecgen02:129` acota a `dpag.nro_cuota = @nro_cuota` | `resolvePaymentPeriodCap` usa `quotaSummary.authorized` | ✅ |
+| **Cupo** (`tot_cuotas`) | **Sí**, lo consume | `sg_epagiSecgen01:143,240` cuenta todo `sg_epag` | `resolvePaymentQuota` → `installments.length` | ✅ |
+| **Monto total** (`mto_total`) | **Debería**, y la base no lo hace | `sg_epaguSecgen02:196` omite el estado 4 | cuenta el 10 como consumido | ❌ |
+
+El tope no se ve afectado porque es un techo **por cuota**, no acumulado: los
+meses de la cuota rechazada viven en otro `nro_cuota` y nunca entran en la suma.
+Y sólo aplica cuando `ext_cuotas <> 'S'` y `mto_tope > 0`, que es lo mismo que
+decide `monthlyCapApplies` en el frontend.
+
+El cupo quedó consistente el 26-10. Y los meses no vuelven nunca:
+`sg_epagiSecgen01:204` exige `fume.cod_estfum = 1` para asignar un mes a una
+cuota nueva, y los de una cuota rechazada están en 4.
+
+### Validaciones normativas sobre una cuota rechazada
+
+No corren, y es correcto por construcción:
+
+- Las tres guardas de escritura la bloquean antes
+  (`sg_epaguSecgen01`, `sg_epaguSecgen02`, `sg_epagdSecgen01`), y los PA de
+  descuento y compensación exigen `cod_estcuo = 2` o `cod_estfum = 1`.
+- `monthsMissingCompensation` está acotado a `selectedToSend`, que siempre es
+  una cuota editable.
+- `hasBlockingNormativeValidations` se recalcula en cada transición y no se
+  cachea, según el principio del catálogo: «el estado guarda hechos y
+  decisiones, nunca resultados de validación».
+
+Lo que DGDP vio el día que decidió —`val_licmed`, `val_singoce`, `val_inabili`,
+`val_ciecc`, `fec_valida`, `rut_autori`, `fec_autori`— se conserva como
+**registro de auditoría**, no como permiso vigente, y el rechazo lo versiona en
+`sg_fum2` antes de mover el estado. Correcto.
+
 
 ## B. El gate obligatorio no cubre la vista DGDP
 
@@ -300,23 +395,42 @@ obtiene lo contrario de lo que el dato dice.
 
 ## Resumen
 
-| | Hallazgo | Norma | Dónde |
-| :--- | :--- | :--- | :--- |
-| A1 | saldo DGDP sin descontar lo rechazado; dato ausente en el PA | cálculo | `_installmentNumber.vue:617`, `sg_epagsSecgen03` |
-| A2 | la vista DGDP recalcula el saldo a mano | §3.2 | `_installmentNumber.vue` |
-| A3 | el rechazo no tiene tratamiento visual en DGDP | §8 | bandeja y detalle DGDP |
-| B1 | 13 archivos DGDP fuera del gate obligatorio | §17 | `validateDu288Ui.js:6-37` |
-| B2 | `font-weight: 800`, `10px` ×2, `8px` | §5.1 §16 | 2 componentes |
-| C1 | 26 `'—'` contra 23 `noInformation` | §6.2 | 6 archivos |
-| C2 | `DD/MM/YYYY` y `DD-MM-YYYY` en la misma página | §9.1 | `_installmentNumber.vue:379` |
-| C3 | los 2 modales de dinero sin `pds-ui-modal`, sin `centered`, sin footer | §3.1 §11 | `…MonthsReviewSection.vue:270/399` |
-| C4 | filtro con 2 estados inalcanzables | §8 | `pds.js:1575`, filtro DGDP |
-| D1 | 9 textos visibles en duro | §15 | 3 archivos |
-| D2 | título en Title Case | §5.1 | `…ExecutionSection.vue:206` |
-| D3 | «Máx.» y «DU 288» | §15 | `_installmentNumber.vue:610` |
-| D4 | `MONTH_NAMES` duplicado en 6 archivos | §3.2 §15 | 6 archivos |
-| D5 | `detail` y `message` iguales; `blocking` incondicional | — | `_installmentNumber.vue:481` |
-| D6 | `"Invalid input"` y `'Incompleto'` sin catalogar | §15 | 2 helpers |
+| | Hallazgo | Norma | Dónde | Aplicado |
+| :--- | :--- | :--- | :--- | :--- |
+| A1 | saldo DGDP sin descontar lo rechazado; dato ausente en el PA | cálculo | `_installmentNumber.vue:617`, `sg_epagsSecgen03` | sí |
+| A2 | la vista DGDP recalcula el saldo a mano | §3.2 | `_installmentNumber.vue` | sí |
+| A3 | el rechazo no tiene tratamiento visual en DGDP | §8 | bandeja y detalle DGDP | sí |
+| A4 | la guarda de `mto_total` en la base omite el estado 4 — deja pasar plata | cálculo | `sg_epaguSecgen02:196` | sí |
+| B1 | 13 archivos DGDP fuera del gate obligatorio | §17 | `validateDu288Ui.js:6-37` | sí |
+| B2 | `font-weight: 800`, `10px` ×2, `8px` | §5.1 §16 | 2 componentes | sí |
+| C1 | 26 `'—'` contra 23 `noInformation` | §6.2 | 6 archivos | sí |
+| C2 | `DD/MM/YYYY` y `DD-MM-YYYY` en la misma página | §9.1 | `_installmentNumber.vue:379` | sí |
+| C3 | los 2 modales de dinero sin `pds-ui-modal`, sin `centered`, sin footer | §3.1 §11 | `…MonthsReviewSection.vue:270/399` | sí |
+| C4 | filtro con 2 estados inalcanzables | §8 | `pds.js:1575`, filtro DGDP | sí |
+| D1 | 9 textos visibles en duro | §15 | 3 archivos | sí |
+| D2 | título en Title Case | §5.1 | `…ExecutionSection.vue:206` | sí |
+| D3 | «Máx.» y «DU 288» | §15 | `_installmentNumber.vue:610` | sí |
+| D4 | `MONTH_NAMES` duplicado en 6 archivos | §3.2 §15 | 6 archivos | sí |
+| D5 | `detail` y `message` iguales; `blocking` incondicional | — | `_installmentNumber.vue:481` | sí |
+| D6 | `"Invalid input"` y `'Incompleto'` sin catalogar | §15 | 2 helpers | sí |
 
-**Nada de esto se modificó.** A1 es el que cambia una decisión: es el número que
-el revisor DGDP lee para aprobar o rechazar.
+A4 era el único que dejaba pasar dinero; A1 es el número que el revisor DGDP lee
+para aprobar o rechazar. El detalle de cada cambio está en el §16 de
+`rechazo_devolucion_y_estados.md`.
+
+---
+
+## Lo que quedó fuera
+
+El guión suelto que C1 corrige en las cinco vistas auditadas aparece también en
+diez componentes de pagos que esta auditoría no revisó —`Du288InstallmentsSection`,
+`Du288InstallmentFormSection`, `Du288InstallmentSubmitModal`,
+`Du288MonthVersionsModal`, `Du288PaymentAttendanceSection`,
+`Du288PaymentContextSection`, `Du288ExecutedCompensationSection`,
+`Du288ExecutionWeekSection`, `payments/index.vue` y `payments/_nroSolici/index.vue`—
+con unas 29 ocurrencias. Son el mismo incumplimiento del §6.2 y se arreglan
+igual, pero están fuera del alcance de estas dos vistas.
+
+`Du288InstallmentSummarySection.vue` sigue sin montarse en ninguna parte: son 340
+líneas que el gate no puede cubrir porque nadie las renderiza. Los siete `hint`
+de la vista DGDP siguen siendo `title=`, que el teclado no alcanza.

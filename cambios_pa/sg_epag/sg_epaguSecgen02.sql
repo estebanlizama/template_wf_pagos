@@ -17,10 +17,11 @@ go
    @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
    Objetivo : Enviar una cuota a visacion de DGDP, comprometiendo sus meses
-   de ejecucion en la misma transaccion.
+   de ejecucion en la misma transaccion. El monto usado incluye los meses
+   rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/14
+   Actualizacion: ELA 2026/10/27
 */
 create procedure Analisis2.sg_epaguSecgen02
     @id_funprse int = null,
@@ -200,6 +201,8 @@ select @mto_usado = isnull(sum(case when fume.cod_estfum = 3 then fume.mto_realp
                                                       where d2.id_funprse = fume.id_funprse
                                                         and d2.corr_fume  = fume.corr_fume
                                                         and d2.nro_cuota  = @nro_cuota)
+                                    then fume.mto_apagar else 0 end), 0)
+                  + isnull(sum(case when fume.cod_estfum = 4
                                     then fume.mto_apagar else 0 end), 0)
   from secgen_db.dbo.sg_fume fume
  where fume.id_funprse = @id_funprse
