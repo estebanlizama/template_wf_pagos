@@ -225,14 +225,6 @@ begin
     return
 end
 
-if @numero_cuenta is not null and not exists (
-    select 1 from sisper_db.dbo.sp_para where num_cuenta = @numero_cuenta
-)
-begin
-    select 'La cuenta indicada no se encuentra registrada en SISPER' as msg
-    return
-end
-
 if exists (select 1
              from sisper_db.dbo.ss_asds
             where cod_ficha = @codigo_ficha

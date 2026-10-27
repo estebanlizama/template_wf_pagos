@@ -1970,3 +1970,262 @@ es una decisión funcional, no una limpieza, así que siguen donde estaban; sus
 referencias al catálogo se dejaron coherentes para que no apunten a claves
 borradas. Los `hint` de la vista DGDP siguen siendo `title=` y el teclado no los
 alcanza.
+
+---
+
+## 20. El número de la resolución: dos números, no uno (27-10-2026)
+
+El número de la Resolución Exenta es el dato con que la gente identifica una
+prestación: es el que va impreso en el documento, el que se cita en un correo y
+el que se busca en la bandeja. La pantalla lo mostraba mal en las dos vistas, y
+en un caso pedía el PDF con el número equivocado.
+
+El origen del problema es que **hay dos números** y el código los trataba como
+uno solo con dos nombres:
+
+| | columna | modelo | qué es |
+| :--- | :--- | :--- | :--- |
+| Exento | `sg_rslc.num_resolu`, expuesto como `num_resolu_ext` | `resolutionExternalNumber` | el número **oficial**, el del documento. **Se reinicia cada año**, así que sin el año no identifica una resolución |
+| interno | `nro_resolu` | `resolutionId` (prestación, prestaciones anteriores) · `resolutionNumber` (cuota en revisión) | el consecutivo interno de SG-Solicitudes. Es la **llave con que se busca el PDF firmado** |
+
+El PA los trae juntos: `sg_fupssSecgen18`, `sg_epagsSecgen03` y
+`sg_fupssSecgen17` hacen `left join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu
+= soli.nro_resolu` y devuelven `rslc.num_resolu as num_resolu_ext`. El dato
+llegaba completo; se perdía al mostrarlo.
+
+### 20.1 El PDF se pedía con el número equivocado
+
+El caso grave. El endpoint es
+`GET /resolution/file/{resolutionYear}/{resolutionNumber}/{correlative}`, y
+`selectResolutionSignaturesFile` consulta `{ano_resolu, nro_resolu, correlativ}`:
+la llave es el **interno**. La vista del solicitante armaba la URL así:
+
+```js
+const resolutionNumber = Number(
+  info.resolutionExternalNumber || this.request.resolutionExternalNumber ||
+  this.request.num_resolu_ext || info.resolutionId
+)
+```
+
+Con el Exento por delante. Las otras tres pantallas de la aplicación que bajan
+una resolución pasan el interno, así que esta era la excepción. El resultado no
+es solo un 404: si existe una resolución cuyo **interno** coincide con el
+**Exento** de ésta —y coinciden seguido, porque las dos series son consecutivos
+pequeños del mismo año—, el usuario descarga el PDF **de otra resolución** y
+nada en la pantalla le dice que no es la suya.
+
+DGDP prefería el interno, que es lo correcto, pero conservaba un
+`|| resolutionExternalNumber` con el mismo riesgo cuando el interno no viniera.
+
+Ahora la llave sale de una función que solo conoce el interno:
+
+```js
+export const resolutionDocumentKey = (identity = {}) => identity.internal || null
+```
+
+Sin interno no hay documento que pedir y el botón no se arma. Es preferible a
+ofrecer una descarga que puede traer el documento de otra persona.
+
+### 20.2 El interno se mostraba bajo el rótulo del oficial
+
+`index.vue` del solicitante rotulaba «Resolución N°» y caía al interno cuando no
+había Exento. Para quien lee, «Resolución N° 4821» es el número del documento;
+el 4821 interno no aparece en ningún papel. Se citaba un número que nadie
+reconoce, sin decir que era otro.
+
+La solución no es ocultarlo: el interno sirve para rastrear. Es **nombrarlo**.
+Hay tres rótulos y el tercero explica:
+
+```
+Resolución Exenta N° 123/2026          ← hay Exento
+Resolución interna N° 4821/2026        ← no hay Exento
+Sin resolución                         ← no hay ninguno
+```
+
+y en el segundo caso el campo queda marcado con la aclaración «Esta prestación
+no tiene número de Resolución Exenta asignado. Se muestra el número interno de
+SG-Solicitudes, que no es el que aparece en el documento.»
+
+### 20.3 Un dato, cuatro formatos
+
+El mismo número se mostraba de cuatro maneras:
+
+- `N° 123` en la bandeja del solicitante, **sin el año** —y con un comentario en
+  el código que justificaba la omisión por espacio.
+- `Resolución N° 123 / 2026` en la ficha.
+- `N° 123 (2026)` en el modal de prestaciones anteriores.
+- `123` a secas en la tabla de choques de DGDP.
+
+El año no es decoración: la numeración Exenta **se reinicia cada año**, así que
+«N° 123» a secas nombra una resolución distinta por cada año que haya en la
+grilla. Ahora los cinco lugares arman el texto con la misma función y el año va
+siempre pegado al número, `123/2026`, que ocupa cinco caracteres más que `123`.
+
+El vocabulario no se inventó: `Du288StaffPreviousProvisionsModal` ya distinguía
+los dos números y ya tenía las claves `externalResolutionPrefix`,
+`internalResolutionPrefix` y `noResolutionAssigned`. Lo que se hizo fue extraer
+ese patrón a `utils/services-provision/normative/resolutionIdentity.js` y
+llevarlo a las otras cinco pantallas, en lugar de escribir un sexto formato.
+
+### 20.4 La bandeja DGDP filtraba por una columna que no existía
+
+La bandeja de DGDP tenía **filtro** de resolución y no tenía **columna**. Se
+podía escribir un número, la grilla devolvía filas, y ninguna mostraba por qué
+había entrado. Peor: el filtro comparaba contra el **interno**, el número que la
+grilla no exhibía en ninguna parte, así que buscar el número del documento no
+encontraba nada y buscar un número interno devolvía una fila que al abrirse
+mostraba otro número.
+
+Se agregó la columna, y el filtro ahora compara contra **lo que la columna
+muestra**: el Exento, y `Exento+año` para quien escribe «123/2026». El interno
+se mantiene como criterio solo en las filas que no tienen Exento, que son las
+únicas donde la grilla lo exhibe.
+
+### 20.5 El orden mezclaba las dos series
+
+`Du288StaffPreviousProvisionsModal` ordenaba por `external || internal`: dos
+series numéricas distintas en la misma columna de orden. Una fila sin Exento se
+intercalaba según su consecutivo interno, entre dos filas ordenadas por el
+oficial. Ahora las filas sin Exento van juntas al final, y entre las que tienen
+Exento el año pesa más que el número, de modo que `1/2026` va después de
+`900/2025`.
+
+### 20.6 El módulo
+
+`resolutionIdentity.js` expone cinco funciones y su encabezado explica los dos
+números y las dos consecuencias de confundirlos. `resolveResolutionIdentity`
+acepta varias fuentes en orden de preferencia y los nombres de los tres modelos
+más los de la columna, porque la misma pantalla recibe `request`,
+`provisionSummary` e `installment` con distinta forma. Las otras cuatro son
+`formatResolutionNumber`, `formatResolutionNumberShort`, `resolutionDocumentKey`
+y `resolutionSortValue`.
+
+Los rótulos viven en `payments.resolution` del catálogo, un solo nodo para las
+dos vistas.
+
+### 20.7 Verificación
+
+| | |
+| :--- | :--- |
+| `resolutionIdentity.test.cjs` | 9 pruebas, 0 fallidas |
+| `npm test` | 15 archivos, todos correctos |
+| `node utils/validateDu288Ui.js` | 51 archivos, sin incumplimientos |
+| claves muertas, `payments.detail` / `payments.review` | 0 / 0 |
+| referencias del código a claves inexistentes | 0 |
+| `npx eslint` en lo tocado | 0 errores (1 `no-console` preexistente) |
+
+Las pruebas cubren lo que se rompió: que la llave del PDF sea **siempre** el
+interno y `null` cuando no hay interno, que el interno se rotule como interno,
+que el Exento lleve su año, y que al ordenar las filas sin Exento no se
+intercalen.
+
+**Sin verificar contra Sybase.** No hay cliente ni contenedor en este entorno.
+Lo que hay que mirar en certificación es una prestación cuyo `num_resolu_ext`
+venga nulo —ahí se ve el rótulo interno y la aclaración— y una cuyo Exento
+coincida con el interno de otra, para confirmar que el PDF que baja es el
+correcto.
+
+Sin verificar en navegador: las dos bandejas cambiaron de columnas (DGDP ganó
+una), así que a 1366, 1024, 768 y 375 px hay que mirar que la grilla no desborde.
+
+### 20.8 De dónde sale el número: `sg_rslc`, no el PA
+
+El §20 arregló cómo se muestra el número. Faltaba lo anterior: **de dónde se
+obtiene**. En las dos vistas seguía apareciendo el interno porque el Exento no
+llegaba.
+
+El Exento vive en **`sg_rslc.num_resolu`**, y lo graba decretación al generar la
+resolución:
+
+- `sg_rslciSecgen01` crea la fila **sin** `num_resolu`: solo toma el
+  consecutivo interno `nro_resolu` del correlativo global
+  (`sg_parm.ultimo_id` de `sg_rslc`) y lo inserta con `ano_resolu`.
+- `sg_rslcuSecgen01` es el que escribe `num_resolu = @num_resolu`. Hasta ese
+  momento la resolución existe y no tiene número Exento: ese es el estado
+  normal de una resolución en trámite, no un error de datos.
+
+Dos cosas quedan confirmadas en el propio código, no supuestas:
+
+- **El Exento se repite entre años.** La verificación de unicidad del número
+  digitado es `WHERE num_resolu = … AND ano_resolu = …`
+  (`selectResolutionsByExternalNumber`): la unicidad es por año. Por eso el año
+  va siempre pegado al número, como quedó en el §20.3.
+- **El interno no se repite.** Sale de un único correlativo global, y todas las
+  lecturas y escrituras de `sg_rslc` lo usan como llave sola
+  (`sg_rslcsSecgen01`, `sg_rslcuSecgen01/03/04`,
+  `SELECT … FROM sg_rslc WHERE nro_resolu = …`). Por eso los PA de pagos pueden
+  unirse por `rslc.nro_resolu = soli.nro_resolu`, aunque los PA de resolución
+  del repositorio estándar unan por `ano_resolu` **y** `nro_resolu`.
+
+#### Dónde se cortaba la cadena
+
+| Pantalla | De dónde leía | Traía el Exento |
+| :--- | :--- | :--- |
+| Bandeja solicitante · antecedentes de pago | `sg_fupssSecgen18` → `Du288PayableProvisionResponse` | sí, si el PA instalado está actualizado |
+| **Ficha de la prestación (detalle solicitante)** | `/info-gral` → `ResolutionInformationResponse` · `/detail-information` → `ServiceProvisionRequest` | **no: ninguno de los dos modelos tenía el campo** |
+| Bandeja y detalle DGDP | `sg_epagsSecgen03` → `Du288PaymentReviewInstallmentResponse` | sí, si el PA instalado está actualizado |
+| Choques y prestaciones anteriores (DGDP) | `sg_fupssSecgen17`, llamado directo al repositorio | **no: el enriquecimiento vive en el controlador de solicitudes, que esta vista no pasa** |
+
+La ficha del detalle del solicitante era el hueco de fondo: `/info-gral` es el
+recurso de la resolución y su modelo tenía siete campos, ninguno el Exento;
+`/detail-information` mapea `nro_resolu` y nada más. La vista no tenía **ninguna**
+fuente del número oficial, así que el rótulo interno del §20.2 era lo único que
+podía mostrar.
+
+#### Cómo queda
+
+Se lee de `sg_rslc`, que es la fuente, en vez de depender de la versión del PA
+instalada en el ambiente. Es el mismo criterio que ya aplicaba el historial de
+prestaciones anteriores, y por la misma razón que su comentario deja escrita:
+mientras el PA no esté actualizado, el campo llega vacío.
+
+1. **`/info-gral`.** `ResolutionInformationResponse` gana
+   `resolutionExternalNumber`, que el controlador completa con
+   `getResolutionLinkDirect` —la lectura de una fila de `sg_rslc` que ya usan
+   otros tres puntos del mismo controlador—. Queda vacío si la resolución no
+   tiene número, y un fallo de esa lectura no tumba el resto de la información
+   general.
+2. **Las dos bandejas.** `selectPayableProvisions` y `selectDgdpInstallments`
+   completan el Exento de las filas que no lo traen. **Una sola consulta por los
+   internos distintos del lote**, no una por fila: una bandeja con cien cuotas
+   de tres resoluciones hace una consulta, no cien. Si el PA ya lo trajo, no se
+   consulta nada.
+3. **`selectStaffPreviousProvisions`.** Lo mismo, que además deja sin trabajo al
+   enriquecimiento por fila del controlador: el historial hacía una lectura por
+   prestación y ahora encuentra el campo resuelto.
+
+La lectura trae `num_resolu` **y `ano_resolu`**, y completa el año cuando la
+fila tampoco lo trae: un Exento sin año no identifica una resolución, y mostrar
+«N° 123» a secas es el defecto del §20.3 otra vez. El año que el PA sí trajo no
+se toca.
+
+Lo común vive en `utils/resolution-external-number.ts`, que normaliza con el
+`getExternalResolutionNumber` que ya existía, para que «el Exento de una fila de
+`sg_rslc`» tenga una sola definición.
+
+En el frontend, la ficha del solicitante ahora lee tres fuentes —información
+general de la resolución, fila de la bandeja y solicitud— porque la fila de la
+bandeja solo está cargada cuando hay una prestación activa.
+
+#### Verificación
+
+| | |
+| :--- | :--- |
+| `npm run build` (lb-tsc) backend | exit 0 |
+| `lb-mocha dist/__tests__/unit/**` | 239 pruebas, 0 fallidas |
+| `resolution-external-number.unit.ts` | 8 pruebas nuevas |
+| `npx eslint` en lo tocado del backend | sin hallazgos nuevos |
+| gate visual · `npm test` · `npx nuxt build` frontend | 51 archivos · 15 archivos de prueba · exit 0 |
+
+Las pruebas nuevas cubren lo que importa del comportamiento: que se consulte
+**una vez** por los internos distintos, que no se consulte si el PA ya trajo el
+número, que una resolución sin número Exento quede sin él —y no con el interno
+en su lugar—, que el año se complete cuando falta y se respete cuando ya está, y
+que un fallo de la lectura devuelva lo que el PA entregó en vez de tumbar la
+bandeja.
+
+**Sin verificar contra Sybase.** Lo que hay que mirar en certificación: una
+prestación con resolución ya decretada debe mostrar «Resolución Exenta N°
+x/año» igual al número impreso en el documento, y una con resolución en trámite
+debe mostrar el rótulo interno con su aclaración. Si las dos salen internas, lo
+que falla es la lectura de `sg_rslc`, no el PA.

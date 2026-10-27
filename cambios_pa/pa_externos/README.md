@@ -9,7 +9,7 @@ de error controladas, aplicadas sobre el esquema SISPER disponible en el reposit
 | PA | Operacion | Tabla(s) que consulta | Tabla donde inserta |
 | :--- | :--- | :--- | :--- |
 | `sg_resliSecgen01` | Inserta la resolucion y confirma el resultado | `sp_resl` | `sp_resl` |
-| `sg_asdiSecgen01` | Inserta la asignacion y devuelve `codigo_asignac` | `sp_resl`, `sp_pers`, `sp_para`, `ss_asds` | `ss_asds` |
+| `sg_asdiSecgen01` | Inserta la asignacion y devuelve `codigo_asignac` | `sp_resl`, `sp_pers`, `ss_asds` | `ss_asds` |
 | `sg_ccaiSecgen01` | Inserta el centro de costo y devuelve `codigo_cecoscon` | `ss_asds`, `ss_ccas` | `ss_ccas` |
 
 Los nuevos objetos usan el esquema `Analisis2` y nombres del patron del workflow. El nombre legacy de cada procedimiento queda en `pa_externos_no_crear`; quien los invoque desde el workflow debe usar los nombres de esta carpeta.
@@ -23,7 +23,8 @@ su propia insercion; no hay una transaccion comun que revierta PA anteriores si 
 - `sg_resliSecgen01`: exige tipo de documento `2`, unidad `05000000`, motivo, fecha real en formato
   `dd/mm/aaaa`, coincidencia entre fecha y año, textos dentro de los largos de `sp_resl` y una clave
   de resolución no registrada previamente.
-- `sg_asdiSecgen01`: confirma que existan la resolución, la persona y, si se entrega, la cuenta;
+- `sg_asdiSecgen01`: confirma que existan la resolución y la persona; acepta `@numero_cuenta`
+  como dato opcional sin consultar `sp_para`;
   exige monto positivo y un período que abarque desde el primer hasta el último día del mismo mes.
   Rechaza duplicar el período para la misma persona y resolución.
 - `sg_ccaiSecgen01`: confirma la asignación, permite asociarle distribuciones de centro de costo,
