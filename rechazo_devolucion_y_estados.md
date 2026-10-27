@@ -1303,21 +1303,101 @@ y sin referencias residuales a `cod_estcuo = 10`.
 `sg_dpag` ni `sg_epag` en su `from`— está verificado por lectura, no por el
 motor.
 
-### 15.7 Qué probar cuando haya base
+### 15.7 Cómo se prueba
 
-Un recorrido corto que cubre los cuatro cambios:
+#### Lo que sí se puede correr aquí
 
-1. Resolución de 2 cuotas. Crear la cuota 1, enviarla, rechazarla.
-   → la bandeja debe decir **«1 de 2»**, no «0 de 2», y el saldo debe haber
-   bajado en el monto de esa cuota.
-2. Crear la cuota 2, enviarla, rechazarla.
-   → la bandeja debe decir **«2 de 2»** con el chip de cupo agotado, y
-   `sg_epagiSecgen01` debe negar una tercera.
-3. Con dos revisores DGDP sobre la misma cuota, decidir en los dos al mismo
-   tiempo.
-   → el segundo debe recibir **«La cuota ya no esta en visacion.»**, no un 500.
-4. Registrar un tramo de compensación en una prestación, rechazar su cuota, y
-   registrar el mismo horario en otra prestación del mismo funcionario.
-   → debe salir **«El funcionario ya tiene compensacion realizada en ese
-   horario en otra prestacion»**, y la pantalla debe haber pintado ese horario
-   como ocupado antes de intentarlo.
+| Gate | Comando | Resultado |
+| :--- | :--- | :--- |
+| Pruebas frontend | `npm test` | 14 archivos, **21** casos de `paymentValidations` |
+| ESLint | `npx eslint <archivos>` | limpio |
+| Estándar visual DU288 | `node utils/validateDu288Ui.js` | 39 archivos validados |
+| Compilación backend | `npm run build` | limpio |
+| Pruebas backend | `npx lb-mocha … unit` | 231 correctas |
+
+**No hay cliente de Sybase ni Docker en este equipo** (`isql`, `sqlcmd`,
+`dbisql` y `tsql` no están; el demonio de Docker no responde). Ningún PA se
+compiló ni se ejecutó, y eso no se puede cerrar desde aquí.
+
+#### La decisión del desglose ahora tiene pruebas
+
+Estaba como método de la página, donde el runner del proyecto no la alcanza. Se
+movió a `resolvePayableProvisionBreakdown` en
+`utils/services-provision/normative/paymentValidations.js` —el módulo de dinero,
+donde ya viven `resolvePaymentRejectedTotals` y `resolvePaymentAmountBalance`— y
+la página quedó solo con el mapeo a etiquetas.
+
+Cinco casos nuevos, de 16 a 21:
+
+| Caso | Fija |
+| :--- | :--- |
+| saldo = total → sin desglose | que no repita el total en dos celdas |
+| rechazo sin nada pagado → muestra saldo | **el defecto que se corrigió**: condicionarlo a `paidAmount` dejaba el descuento invisible |
+| algo pagado → pagado + saldo | el comportamiento que ya existía |
+| saldo negativo se muestra | más comprometido que decretado se ve, no se acota a cero |
+| fila sin montos → sin desglose | `undefined` y `{}` no rompen |
+
+#### Un hallazgo del propio validador del proyecto
+
+`node utils/validateDu288Ui.js` falló en
+`Du288InstallmentFormSection.vue:90` — el chip de cuota rechazada traía un
+estilo inline estático:
+
+```html
+<span class="pds-ui-mini-chip payment-chip-warn"
+      style="background-color: var(--pds-du288-danger, #dc3545); color: #fff;">
+```
+
+Venía de un commit anterior, no de esta sesión, pero **rompe `build:prod`**, que
+corre `lint:du288-ui && test && nuxt build`. Y además peleaba con su propia
+clase: `payment-chip-warn` pinta ámbar y el inline lo tapaba con rojo.
+
+Reemplazado por `.payment-chip-danger`, con los tokens que ya existen
+(`--pds-du288-danger-soft` / `-dark`) y siguiendo el par
+`payment-chip-warn` / `payment-chip-ok` que el componente ya usaba.
+
+#### Lo que queda para cuando haya base
+
+`verificacion_rechazo.sql`, en la raíz del paquete. Son consultas de lectura —no
+crea ni borra nada— que se corren después de recorrer el flujo a mano. Cada
+bloque dice qué tiene que devolver:
+
+| | Comprueba |
+| :--- | :--- |
+| 1 | el cupo que la bandeja debe mostrar, contra la fórmula vieja, para saber cuál se está viendo |
+| 2 | el saldo descompuesto en pagado / gestión / rechazado |
+| 3 | los meses de la cuota rechazada en 4 y con su `sg_dpag` intacto, y que ninguno volvió al 1 |
+| 4 | que los tramos de compensación de una cuota rechazada siguen apareciendo como ocupados |
+| 5 | que `sg_fum2` guardó cada versión con autor y fecha, sin saltos de `correlativ` |
+
+El recorrido manual que deja esos datos está en el encabezado del script:
+resolución de 2 cuotas, rechazar las dos, intentar una tercera, y registrar un
+tramo de compensación antes de rechazar.
+
+El bloque 1 no prueba nada si no se rechazó ninguna cuota —los dos números
+coinciden—, y el script lo advierte.
+
+### 15.8 Dos PA estaban en LF, no en CRLF
+
+Revisando los 41 PA de `cambios_pa` uno por uno: `sg_fum2sSecgen01` y
+`sg_fum2sSecgen02` —los dos que leen el historial— estaban en **LF puro**,
+mientras los otros 39 están en CRLF. Los dos son de los que se tocaron en esta
+sesión, así que lo más probable es que el salto lo haya introducido la edición.
+
+Importa porque el repositorio se carga con herramientas de Windows y el resto
+del paquete es CRLF: un archivo suelto en LF es la clase de diferencia que no se
+ve en el diff y aparece al desplegar.
+
+Convertidos, con su `.txt` regenerado. Verificación final de los 41:
+
+| | |
+| :--- | :--- |
+| paridad `.sql` / `.txt` | 41 / 41 |
+| CRLF puro | 41 / 41 |
+| ASCII puro | 41 / 41 |
+
+Nota de método: en este entorno `grep` y `awk` leen en modo texto y **se comen
+los CR**, así que `grep -c $'\r'` informa que todas las líneas tienen CR incluso
+en un archivo que no tiene ninguno, y `awk` los borra al reescribir. La
+comprobación —y la conversión— se hicieron con `perl` en `binmode`, que es lo
+único que no miente aquí.
