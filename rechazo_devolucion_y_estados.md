@@ -1563,3 +1563,92 @@ pero está fuera de las dos vistas auditadas.
 Siguen abiertos de antes: `Du288InstallmentSummarySection.vue` —340 líneas que no
 se montan en ninguna parte— y los siete `hint` de la vista DGDP, que son `title=`
 y el teclado no alcanza.
+
+---
+
+## 17. Los modales de envío y de resolución (27-10-2026)
+
+### 17.1 El saldo del modal de envío era el total decretado completo
+
+`Du288InstallmentSubmitModal` —el modal «Enviar cuota a DGDP», lo último que el
+jefe de proyecto lee antes de comprometer los meses— calculaba su saldo así:
+
+```js
+Number(this.paymentBalance?.available || this.totalAmountResolution || 0)
+```
+
+**`paymentBalance` nunca tuvo una clave `available`.** El getter devuelve
+`{ authorized, consumed, proposed, remaining }`, así que `available` era siempre
+`undefined` y el `||` caía al total decretado. Las dos filas de dinero del modal
+mostraban:
+
+| Fila | Mostraba | Debía mostrar |
+| :--- | :--- | :--- |
+| Saldo disponible | el total decretado íntegro | lo que queda tras lo pagado, lo comprometido y lo rechazado |
+| Saldo después de esta cuota | total decretado − esta cuota | saldo real − esta cuota |
+
+Una prestación con tres cuotas ya pagadas mostraba, al enviar la cuarta, el
+mismo «Saldo disponible» que al enviar la primera.
+
+Encima, las dos filas iban con `v-if="availableResolutionBalance > 0"`: cuando
+el saldo llegaba a cero —el único momento en que el dato decide algo— las filas
+desaparecían. Y `remainingAfterThis` llevaba `Math.max(…, 0)`, el mismo patrón
+que escondía el sobregiro en el detalle DGDP (§16.1, A2).
+
+**Lo que se hizo.** El cálculo salió del componente y vive en el módulo de
+dinero como `resolveDraftInstallmentBalance`, con cuatro pruebas. Parte de
+`remaining` —que ya descuenta lo pagado, lo comprometido y lo que un rechazo
+dejó bloqueado— y le resta **los otros** borradores:
+
+```js
+const otherDrafts = Math.max(
+  0,
+  numberFrom(balance?.proposed) - paymentInstallmentProposedAmount(installment)
+)
+```
+
+Esa resta es el punto fino: `proposed` suma todos los borradores, incluido el
+que se está por enviar, así que sin sacarlo la cuota se descontaba dos veces de
+su propio saldo. `fallbackTotal` cubre a quien solo conoce el total decretado.
+
+Las dos filas ahora se muestran siempre, sin acotar a cero, y cuando el número
+queda negativo aparece en rojo con «Supera el saldo disponible». Lo mismo con
+«Espacio en esta cuota», que con `Math.max` leía como si la cuota agotara el
+tope justo cuando lo superaba: ahora dice «Supera el tope de la cuota».
+
+Se agregó además una fila **«Bloqueado por rechazo»**, que aparece solo cuando la
+prestación tiene cuotas rechazadas (`paymentRejected`, que la página ya tenía).
+Sirve para explicar el saldo: ese monto está dentro de `consumed`, así que se
+muestra y no se vuelve a restar.
+
+### 17.2 El modal de resolución DGDP llamaba «A pagar» a un rechazo
+
+En `_installmentNumber.vue`, el modal de confirmación mostraba la misma ficha
+para las tres decisiones, con la cifra rotulada `monthsText.netTotal` —«A
+pagar»—. Al rechazar, esa cifra no es lo que se va a pagar: es lo que queda
+bloqueado. Es el «A pagar fantasma» del §16.2, en el momento exacto en que el
+revisor confirma la decisión sin vuelta atrás. Ahora el rótulo cambia con la
+decisión: «Monto que queda bloqueado» al rechazar, «A pagar» en los otros dos
+casos. El valor no cambia; cambia lo que dice que es.
+
+### 17.3 Estándares en el mismo paso
+
+Del modal de envío salieron al catálogo doce textos que estaban en duro
+—«Antecedentes de la prestación», «Solicitud / Resolución», «Actividad»,
+«Centro de costo», los cuatro rótulos de dinero, la nota del PDF, el «de» de
+«Cuota 1 de 2» y el singular/plural de meses— y sus cuatro guiones sueltos
+pasaron a «No informado». También desapareció la **séptima** copia a mano de los
+nombres de los meses: `paymentPeriodLabel` usa `getMonthYearLabel`, que el
+archivo ya importaba.
+
+### 17.4 Verificación
+
+| | |
+| :--- | :--- |
+| `node utils/validateDu288Ui.js` | 50 archivos, sin incumplimientos |
+| `npm test` | 29 pruebas de `paymentValidations`, 0 fallidas |
+| `npx eslint` en lo tocado | 0 errores |
+| `npx nuxt build` | exit 0 |
+
+Sin verificar en navegador: no se comprobó cómo se ven las filas de sobregiro en
+rojo ni la fila nueva a 1366, 1024, 768 y 375 px.
