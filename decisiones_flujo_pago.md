@@ -273,3 +273,32 @@ El **1** es el más urgente: la PK de `sg_dpag` admite el mismo mes en dos cuota
 **⚠️ PAG-38 del catálogo** sigue redactada con contraste biométrico bloqueante, superada por la decisión de asistencia del 30-09. Ya actualizada en el catálogo, pendiente de confirmar con quien la escribió.
 
 **⚠️ «Pagada» vs «Enviada a pago».** La interfaz dice *Pagada*, *pagadas* y *Pagado* en cuatro lugares, pero el sistema solo sabe que la cuota **se envió** — no recibe acuse de Finanzas. El backend lo documenta explícitamente. Es vocabulario de negocio y quedó sin decidir.
+
+---
+
+## 16. Reglas y validaciones para el paso a certificación / producción
+
+Para el detalle operativo completo, consultar el documento maestro:
+👉 [`checklist_validaciones_y_paso_a_certificacion.md`](./checklist_validaciones_y_paso_a_certificacion.md)
+
+### 16.1 Activación del `INTERRUPTOR-DU09` (6 Puntos de sincronía)
+El interruptor temporal que permitía enviar cuotas a visación sin verificar saldo presupuestario ni afectación DU09 en el centro de costo debe cerrarse antes de subir a certificación:
+1. **Frontend:** `service-provision-payment-detail.js` → `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true`.
+2. **Backend:** `service-provision-payment.controller.ts` → `BALANCE_BLOCKS_SUBMISSION = true`.
+3. **PAs de Pago (`sg_epag`):** Descomentar la guarda de `afec_du9` en `sg_epagiSecgen01.sql`, `sg_epaguSecgen01.sql` y `sg_epaguSecgen02.sql`. Sincronizar sus respectivos archivos `.txt`.
+4. **PA de Centros de Costo (`sg_ccto`):** En `sg_cctosSecgen05.sql` invertir los pares rotulados `CRITERIO DU288` para filtrar y clasificar por `ccto.afec_du9 = 'S'` en lugar de `cod_tfinan in (21, 44)`.
+5. **Requisito previo en BDD:** Correr `datos_base/06_marcas_du09_centro_costo.sql` para asegurar que los centros de costo con resoluciones vigentes tengan poblado `afec_du9 = 'S'` en `fin21_db..es_ccto` antes de activar las guardas.
+
+### 16.2 Transición de Validaciones Relajadas a Bloqueo
+En el formulario solicitante (`PdsDu288RequestForm.vue`):
+- **Contratos Vigentes:** La condición `contracts.length === 0` (L5019) pasa de advertencia flotante (toast) a interrupción/bloqueo de selección del funcionario en cuanto la fuente definitiva de contratos esté habilitada.
+- **Cobertura Temporal:** Reactivar la comparación de fechas (L5816) asegurando que el término del contrato del funcionario cubra el total de los meses planificados de la prestación.
+
+### 16.3 Despliegue de Asistencia y Catálogos Base
+- **Asistencia:** Compilar y desplegar en Sybase el procedimiento `sp_as01sSecgen01.sql` (`cambios_pa/asistencia/`) y verificar que `ATTENDANCE_TEST_RUT` permanezca en `''` en el repositorio del backend.
+- **Catálogos:** Aplicar en Sybase los scripts `01_sg_ecuo.sql`, `02_sg_efum.sql`, `03_migracion_sg_fume.sql` y `05_sg_tacc_acciones_pago.sql`.
+
+### 16.4 Higiene de Código y Entorno
+- **Componentes Huérfanos:** Eliminar del repositorio la carpeta fuera de proyecto `d:\trabajo_ufro_2026\components`.
+- **Variables de Simulación:** Auditar que `DISABLE_AUTH` y `SIMULATION_USERS` queden inactivos en el archivo `.env` del ambiente de certificación.
+
