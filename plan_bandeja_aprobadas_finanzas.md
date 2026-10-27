@@ -55,6 +55,92 @@ Excel con las filas que correspondan a los filtros activos.
 
 ## Propuesta de integración
 
+## Distribución propuesta de las dos vistas
+
+### Vista 1: Bandeja «Cuotas aprobadas para Finanzas»
+
+```text
+Prestaciones / Cuotas aprobadas para Finanzas
+Cuotas aprobadas por DGDP, disponibles para preparar el archivo de pago.
+
+[Filtros]
+Período de pago* [MM/AAAA]  Nombre funcionario  RUT  N° solicitud/cuota
+N° resolución               Centro de costo      Fecha de envío desde / hasta
+[Buscar] [Limpiar]
+
+[Cuotas aprobadas: N] [Funcionarios: N] [Monto neto aprobado: $N]
+
+[Descargar Excel de las N cuotas filtradas]
+
+Funcionario / RUT | Solicitud | Resolución | Centro de costo / Actividad
+Cuota | Períodos incluidos | Período de pago | Monto neto aprobado | Ver
+----------------------------------------------------------------------------
+Nombre Apellido      12345      2379/2026    4000.952 / Actividad ...
+12.345.678-K         Cuota 1/2  ...          ago–sep 2026    sep 2026   $N
+                                                                  [Ver detalle]
+```
+
+- `Período de pago` es obligatorio para definir el mes del proceso y ordenar
+  los períodos cubiertos entre atrasados y nuevo/actual.
+- Los filtros se combinan; el botón Excel exporta todas las cuotas que calzan,
+  no solo una selección manual ni la página visible.
+- `Monto neto aprobado` se calcula después de descuentos. El total superior
+  debe coincidir con la suma neta de las cuotas filtradas.
+- El `Corr` secuencial pertenece a las filas del archivo Excel; no es el número
+  de cuota ni necesita mostrarse como identificador de la bandeja.
+- La tabla debe tener estados de carga, error y sin resultados. Si no hay
+  resultados, se informa que los filtros no encontraron cuotas aprobadas.
+
+### Vista 2: Detalle de cuota aprobada, solo lectura
+
+```text
+‹ Volver a cuotas aprobadas para Finanzas
+
+Detalle de cuota aprobada                          [Aprobada]
+Solicitud 12345 · Cuota 1 de 2 · Resolución 2379/2026
+Funcionario: NOMBRE APELLIDO · RUT: 12.345.678-K
+
+[Resumen del pago]
+Período de pago | Períodos incluidos | Monto solicitado
+Descuentos       | Monto neto aprobado
+
+[Cuota] [Documento de respaldo] [Documento de resolución]
+
+Pestaña «Cuota» — misma información y detalle que en la revisión DGDP, en modo lectura
+Funcionario y prestación
+  Nombre, RUT, actividad, centro de costo, contrato y responsable
+
+Resolución y financiamiento
+  Número/año de resolución, unidad, código de centro e ítem
+
+Períodos incluidos en la cuota
+  Período | Estado | Monto bruto | Licencias | Ausencias | Neto aprobado
+  ...
+
+Justificaciones y descuentos
+  Motivo/antecedente del descuento y su detalle, según la información disponible en DGDP
+
+Pestaña «Documento de respaldo»
+  Visualizador del justificativo o respaldo de pago, opción para abrir/descargar
+
+Pestaña «Documento de resolución»
+  Visualizador de la resolución, opción para abrir/descargar si está disponible
+```
+
+- Reutilizar calcada la vista de DGDP, con las mismas secciones y tres
+  pestañas: `Cuota`, `Documento de respaldo` y `Documento de resolución`.
+  Abrir por defecto `Cuota`.
+- Mantener el detalle de meses, montos, descuentos y justificaciones/respaldo,
+  para que Finanzas pueda revisar por qué el neto aprobado tiene ese valor.
+- Mantener los documentos disponibles para visualizar/descargar.
+- Quitar o deshabilitar todas las acciones de edición, aprobación, observación,
+  rechazo, cambio de fechas/montos, registro o eliminación de compensaciones,
+  carga/borrado de documentos y guardado. Todo el contenido queda en consulta.
+- No mostrar acciones de aprobar, observar, rechazar, editar, guardar ni borrar.
+- Dejar como acción principal únicamente «Volver a cuotas aprobadas para
+  Finanzas». La descarga del Excel queda en la bandeja para que respete sus
+  filtros.
+
 ### 1. Navegación y autorización
 
 - Agregar una opción «Cuotas aprobadas para Finanzas» bajo el módulo existente

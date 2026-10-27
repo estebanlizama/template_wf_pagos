@@ -1802,3 +1802,171 @@ Lo que **no** está verificado: `sg_fupssSecgen18` no se compiló —en esta má
 no hay cliente de Sybase ni Docker—, así que el agregado nuevo está escrito y
 revisado, no probado contra la base. Tampoco hay verificación en navegador a
 1366, 1024, 768 ni 375 px.
+
+---
+
+## 19. Lo que decía dos veces y lo que ya no se leía (27-10-2026)
+
+Los §16 a §18 cerraron cálculo y estándares en las dos vistas. Esta tanda es
+otra cosa: se buscó lo que la pantalla repite sin necesidad y los rótulos que
+quedaron en el catálogo sin que nadie los lea. Los hallazgos están en
+`auditoria_redundancia_vista_solicitud.md`; acá va lo que cambió.
+
+### 19.1 Datos que la pantalla decía dos veces
+
+**El período de ejecución.** La ficha de la prestación lo muestra, y tres líneas
+más abajo, en la misma pestaña, el resumen de carga semanal lo volvía a mostrar.
+Las dos funciones que lo armaban eran idénticas carácter por carácter —mismas
+claves de origen, mismo separador, mismo rótulo de dato ausente—, una en
+`Du288PaymentContextSection` y la otra en `Du288ExecutionWeekSection`. Y pasaba
+igual en DGDP, donde `executionLabel` ya lo muestra en la ficha.
+
+Se quitó la del resumen semanal, que es donde menos aporta: ese bloque habla de
+horas. La función duplicada se fue con ella.
+
+**El régimen de cuotas.** «Máximo 2 cuotas (normativa general DU288)» en la
+ficha y «Tope: 2 cuotas, por normativa general» en la barra de la lista, a
+quince centímetros. Quedó solo en la barra, que es donde está el botón de crear
+y donde el tope decide algo. La barra ahora dice «Máximo 2 cuotas por normativa
+general DU288»: el mismo texto que tenía la ficha, en el único lugar donde se
+necesita.
+
+**El avance de cuotas, que se decía cuatro veces.** Con dos cuotas decretadas y
+una enviada, la pestaña mostraba «Cuota 1 de 2» en la ficha, «2 cuotas
+decretadas» dos filas más abajo, «Cuota 1 de 2» otra vez en la barra de la lista
+y «Puede crear 1 cuota más» en su titular. Un solo dato, cuatro redacciones.
+Quedaron dos, que son las que no se pisan: la ficha dice **en cuál va** y el
+titular dice **cuántas quedan**. El campo «Cuotas autorizadas» —que solo
+repetía el número que ya estaba dos filas arriba— y el avance de la barra
+salieron.
+
+### 19.2 La misma cifra con dos nombres
+
+El monto de la cuota activa aparecía con un rótulo en la lista («Solicitado») y
+con otro en el titular del panel («Total de la cuota»), los dos visibles al
+mismo tiempo porque el compositor los pone lado a lado. No sobra ninguno —la
+lista muestra lo guardado y el titular lo que se está escribiendo— pero dos
+nombres para la misma magnitud se leen como dos magnitudes. Ahora los tres
+lugares donde aparece dicen lo mismo: **«Total solicitado»** en la lista, en el
+titular del formulario y en el modal de envío, que ya lo decía así.
+
+Lo mismo con el neto. `totalNet` y `netPerMonth` valían los dos «A pagar», uno
+para el total de la cuota y el otro para cada mes, en el mismo panel. Ahora el
+total dice **«Total a pagar»** y el mes **«A pagar»**. La tarjeta del mes de
+DGDP tenía el patrón completo —«Total de la cuota», «A pagar» para el total y «A
+pagar» para el mes, más una tercera clave con el mismo texto para el modal de
+decisión— y quedó alineada con el solicitante.
+
+### 19.3 El catálogo que ya no se leía
+
+De las 542 claves bajo `payments.detail`, **67 no las leía nadie**; de las 559 de
+`payments.review`, **56**. Ciento veintitrés rótulos muertos, uno de cada ocho
+en la vista del solicitante.
+
+Dos nodos estaban casi enteros:
+
+- `payments.detail.summary` —9 claves, 1 en uso— era el bloque «Resumen de la
+  prestación» que `Du288PaymentContextSection` reemplazó. El bloque se fue; sus
+  rótulos se quedaron.
+- `payments.review.detail.execution` tenía **34** muertas, entre ellas la
+  familia `cross*` completa (18 claves) de una tabla «Ejecución mes a mes» que
+  ya no existe.
+
+El resto es el rastro de dos rediseños: el asistente por pasos del formulario de
+cuota (`stepWhen: '1. ¿Cuándo se paga?'`, `whenPaid`, `selectMonths`,
+`capAvailable`, `periodCapAvailable`…) y los botones propios de las tarjetas de
+mes (`manage`, `registerCompensation`, `registerCompensationFor`…). No hacían
+daño en pantalla, porque no se mostraban; hacían daño al buscar el rótulo de un
+campo y encontrar tres candidatos, dos de una versión anterior.
+
+El borrado se hizo con un recorrido del archivo que reconstruye la ruta de cada
+clave por indentación, así que una clave no se borra por tener el mismo nombre
+en otro nodo. Después queda cero en los dos barridos. Dos nodos quedaron vacíos
+y se quitaron también.
+
+**Una sección leía sus rótulos de dos nodos.** `Du288ExecutionWeekSection` tiene
+su `text()` en `payments.review.detail.executionWeek`, pero dos de sus rótulos
+no existían ahí y los tomaba de `payments.detail.schedule`, el nodo de la otra
+vista. Ahora `summary` vive en su propio nodo y el cruce desapareció.
+
+### 19.4 Claves con el mismo texto en el mismo nodo
+
+Seis grupos en la vista del solicitante, trece claves. Tres eran muertas
+(`rejectedRequestedLabel`, `selectedMonths`, `selectedCount`); las demás se
+colapsaron en una. El síntoma más claro estaba en el código:
+
+```js
+return `${this.text.rejectedTitle || this.text.readTitle} (…)`
+```
+
+Un `||` entre dos claves que valían lo mismo: la segunda rama nunca corría y, si
+alguien cambiaba una, el `||` escondía cuál había ganado. Quedó `readTitle`.
+
+En `payments.review` quedan nueve grupos **a propósito**: una palabra que sirve
+a dos o tres papeles distintos —título de sección, ítem de leyenda y tooltip del
+día; título de modal, botón y columna; chip y rótulo de fila—. Colapsarlas
+obligaría a que un cambio en la leyenda arrastre el título de la sección.
+
+### 19.5 Fallbacks en duro, y uno que tapaba un texto equivocado
+
+El §18.4 quitó seis `|| 'Texto'` de claves que ya existían. Esta tanda encontró
+catorce más, casi todos en `Du288PaymentBudgetSection`, que las dos vistas
+montan. Un fallback así no protege: oculta que la clave falta y, cuando la clave
+existe con otra redacción, deja dos textos para el mismo rótulo. Tres casos
+valen la pena por separado:
+
+- **`groups.amounts` no existía.** El título «Montos decretados» de la ficha
+  DGDP venía del fallback, no del catálogo. Se agregó la clave.
+- **`relationship.empty` decía lo contrario de lo que debía.** El valor era «No
+  fue posible consultar el parentesco.» y el lugar donde se muestra es el de «no
+  registra parentesco»: el fallo de la consulta llega aparte, por
+  `relationshipError`. El fallback en duro tenía la redacción correcta y la clave
+  la equivocada. Se corrigió la clave y se quitó el fallback.
+- **`openNewTab` tenía dos fallbacks distintos** —«Abrir en pestaña nueva» para
+  el `title` y «Abrir» para la etiqueta— sobre una clave que vale «Abrir». El
+  `title` nunca mostró lo que se quiso: ahora hay una clave para cada cosa.
+
+Salieron además cuatro textos en duro sin clave de ninguna clase: los dos
+rótulos de «Decreto afecto», «Educación Continua» —que el catálogo ya nombra
+«Formación continua»—, «Saldo suficiente» y «Fondos Propios». Y «Resolución N°»,
+que estaba escrito en la plantilla teniendo la clave al lado.
+
+### 19.6 Un rótulo que no existía
+
+Verificando que ninguna referencia quedara apuntando a una clave borrada
+apareció lo contrario: `Du288InstallmentFormSection` leía
+`text.rejectedMonthStatus`, **que nunca estuvo en el catálogo**. Es el motivo
+que se muestra bajo un mes rechazado que no pertenece a ninguna cuota: salía
+vacío. Se agregó `rejectedMonth: 'Rechazado · No se puede volver a solicitar'`.
+Al lado estaba `(No pagado)` escrito dentro de una plantilla de cadena; también
+pasó al catálogo.
+
+### 19.7 Verificación
+
+| | |
+| :--- | :--- |
+| claves muertas, `payments.detail` | 67 → 0 |
+| claves muertas, `payments.review` | 56 → 0 |
+| claves con el mismo texto en un nodo, `payments.detail` | 6 grupos → 0 |
+| referencias del código a claves inexistentes | 1 → 0 |
+| `node utils/validateDu288Ui.js` | 51 archivos, sin incumplimientos |
+| `npm test` | 14 archivos, 31 pruebas de `paymentValidations`, 0 fallidas |
+| `npx eslint` en lo tocado | 0 errores (1 `no-console` preexistente) |
+| `npx nuxt build` | exit 0 |
+
+La comprobación de referencias se hizo con un script que descubre los alias del
+catálogo en cada componente (`text()`, `monthsText()`, …) y verifica que cada
+`alias.clave` resuelva. Es lo que encontró el `rejectedMonthStatus` del §19.6.
+
+Sin verificar en navegador: la ficha de contexto perdió dos campos y la barra de
+la lista una frase, así que lo que hay que mirar a 1366, 1024, 768 y 375 px es
+que la cuadrícula de campos no quede con una fila impar.
+
+### 19.8 Lo que quedó fuera
+
+`Du288InstallmentSummarySection` (340 líneas) y `Du288PaymentAttendanceSection`
+—asistencia y reloj control— no se montan en ninguna parte. Borrarlos o montarlos
+es una decisión funcional, no una limpieza, así que siguen donde estaban; sus
+referencias al catálogo se dejaron coherentes para que no apunten a claves
+borradas. Los `hint` de la vista DGDP siguen siendo `title=` y el teclado no los
+alcanza.

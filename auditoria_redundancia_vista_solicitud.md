@@ -1,15 +1,18 @@
-# Vista de solicitud de WF pagos · texto duplicado e información que sobra
+# WF pagos · texto duplicado e información que sobra
 
-**Fecha:** 27-10-2026 · **Nada de esto se modificó.**
+**Fecha:** 27-10-2026 · **Aplicado en las dos vistas.**
 
-Revisión de la vista del solicitante buscando únicamente dos cosas: texto que
-dice lo mismo dos veces y datos que la pantalla repite sin necesidad. No es una
-auditoría de cálculo ni de estándares; para eso están
-`auditoria_vista_solicitud_pagos.md` y el §18 de
+Revisión buscando únicamente dos cosas: texto que dice lo mismo dos veces y
+datos que la pantalla repite sin necesidad. No es una auditoría de cálculo ni de
+estándares; para eso están `auditoria_vistas_solicitud_dgdp.md`,
+`auditoria_vista_solicitud_pagos.md` y los §16 a §18 de
 `rechazo_devolucion_y_estados.md`, ya aplicados.
 
-El barrido se hizo contra el catálogo completo (`lang/es/pds.js`, 542 claves bajo
-`payments.detail`) y contra los 390 archivos de código del frontend.
+Las secciones A a D son la vista del solicitante, que es la que se revisó
+primero; «Lo mismo en la vista DGDP», al final, es el mismo barrido sobre
+`payments.review`. El barrido se hizo contra el catálogo completo
+(`lang/es/pds.js`: 542 claves bajo `payments.detail` y 559 bajo
+`payments.review`) y contra los 390 archivos de código del frontend.
 
 ---
 
@@ -229,22 +232,61 @@ Para no confundir repetición con redundancia:
 
 ## Resumen
 
-| | Hallazgo | Clase | Dónde |
-| :--- | :--- | :--- | :--- |
-| A1 | el período de ejecución se muestra dos veces, desde dos copias del mismo `periodLabel()` | dato repetido | `…ContextSection:127/189`, `…ExecutionWeekSection:132/171` |
-| A2 | el régimen de cuotas se muestra dos veces en la misma pestaña | dato repetido | `…ContextSection:158`, `…InstallmentsSection:153` |
-| A3 | el avance de cuotas se dice cuatro veces; «Cuotas autorizadas» repite un número que está dos filas arriba | dato repetido | `…ContextSection:144/152`, `…InstallmentsSection:145/153` |
-| A4 | el monto de la cuota activa aparece en la lista y en el titular del panel, lado a lado y con rótulos distintos | dato repetido | `…InstallmentsSection:37`, `…FormSection:86` |
-| A5 | «A pagar» rotula el neto de la cuota y el neto del mes en el mismo panel | ambigüedad | `…FormSection:113/225` |
-| B | 6 grupos de claves con el mismo texto dentro de un solo nodo (13 claves) | catálogo | `installments`, `installmentModal` |
-| B' | `rejectedTitle \|\| readTitle`: un `\|\|` entre dos claves que valen lo mismo | catálogo | `…FormSection:362` |
-| C1 | `payments.detail.summary`: 9 claves, 1 en uso | catálogo muerto | `lang/es/pds.js` |
-| C2 | `payments.detail.schedule`: 7 claves, 2 en uso, y las lee un componente de la vista DGDP | catálogo muerto | `…ExecutionWeekSection:58/172` |
-| C3 | 67 claves de `payments.detail` sin ninguna referencia (de 542) | catálogo muerto | `lang/es/pds.js` |
-| D1 | 4 fallbacks en duro de claves existentes, dos de ellos sobre la misma clave con textos distintos | §15 | `…ExecutionWeekSection:58/172`, `…DocumentTab:17/21` |
-| D2 | «Resolución N°» escrito en la plantilla | §15 | `_nroSolici:552` |
+| | Hallazgo | Clase | Dónde | Aplicado |
+| :--- | :--- | :--- | :--- | :--- |
+| A1 | el período de ejecución se muestra dos veces, desde dos copias del mismo `periodLabel()` | dato repetido | `…ContextSection:127/189`, `…ExecutionWeekSection:132/171` | sí |
+| A2 | el régimen de cuotas se muestra dos veces en la misma pestaña | dato repetido | `…ContextSection:158`, `…InstallmentsSection:153` | sí |
+| A3 | el avance de cuotas se dice cuatro veces; «Cuotas autorizadas» repite un número que está dos filas arriba | dato repetido | `…ContextSection:144/152`, `…InstallmentsSection:145/153` | sí |
+| A4 | el monto de la cuota activa aparece en la lista y en el titular del panel, lado a lado y con rótulos distintos | dato repetido | `…InstallmentsSection:37`, `…FormSection:86` | sí |
+| A5 | «A pagar» rotula el neto de la cuota y el neto del mes en el mismo panel | ambigüedad | `…FormSection:113/225` | sí |
+| B | 6 grupos de claves con el mismo texto dentro de un solo nodo (13 claves) | catálogo | `installments`, `installmentModal` | sí |
+| B' | `rejectedTitle \|\| readTitle`: un `\|\|` entre dos claves que valen lo mismo | catálogo | `…FormSection:362` | sí |
+| C1 | `payments.detail.summary`: 9 claves, 1 en uso | catálogo muerto | `lang/es/pds.js` | sí |
+| C2 | `payments.detail.schedule`: 7 claves, 2 en uso, y las lee un componente de la vista DGDP | catálogo muerto | `…ExecutionWeekSection:58/172` | sí |
+| C3 | 67 claves de `payments.detail` sin ninguna referencia (de 542) | catálogo muerto | `lang/es/pds.js` | sí |
+| D1 | 4 fallbacks en duro de claves existentes, dos de ellos sobre la misma clave con textos distintos | §15 | `…ExecutionWeekSection:58/172`, `…DocumentTab:17/21` | sí |
+| D2 | «Resolución N°» escrito en la plantilla | §15 | `_nroSolici:552` | sí |
 
-Si hay que elegir, **A1 a A4 son los que el usuario nota** y los cuatro se
-resuelven quitando, no agregando. **C** es el que más cuesta después: 67 rótulos
-muertos convierten el catálogo en un sitio donde cada campo tiene tres nombres
-posibles y dos son de una versión anterior.
+Los doce quedaron aplicados el 27-10-2026, **y lo mismo se revisó y aplicó en la
+vista DGDP**, donde el barrido encontró su propia cosecha. El detalle de qué
+cambió está en el §19 de `rechazo_devolucion_y_estados.md`.
+
+## Lo mismo en la vista DGDP
+
+El barrido se repitió sobre `payments.review` (559 claves) y sobre los
+componentes de la revisión:
+
+| | Hallazgo | Clase |
+| :--- | :--- | :--- |
+| R1 | **56 claves sin ninguna referencia**, 34 de ellas en `payments.review.detail.execution`: la familia `cross*` completa (18 claves) de una tabla «Ejecución mes a mes» que ya no existe, más los rótulos de una versión anterior del resumen semanal | catálogo muerto |
+| R2 | la tarjeta del mes repetía el patrón del formulario del solicitante: «Total de la cuota» frente a «A pagar» para el total y «A pagar» otra vez para cada mes, y una tercera clave (`netTotal`) con el mismo texto para el modal de decisión | ambigüedad |
+| R3 | `Du288PaymentBudgetSection` —compartido por las dos vistas— tenía **diez** `\|\| 'Texto'` sobre claves que ya existen, y cuatro textos en duro sin clave: los dos rótulos de «Decreto afecto», «Educación Continua», «Saldo suficiente» y «Fondos Propios» | §15 |
+| R4 | los tres títulos de grupo de la ficha DGDP iban con fallback en duro, y uno de ellos —`groups.amounts`— **no existía**, así que el fallback era el texto real | §15 |
+| R5 | `relationship.empty` decía «No fue posible consultar el parentesco.» en el lugar donde el dato significa «no registra parentesco»: el fallback en duro tenía la redacción correcta y la clave la equivocada | texto incorrecto |
+| R6 | `executionWeek.summary` no existía, así que la sección leía ese rótulo del nodo del solicitante (`payments.detail.schedule`) y el otro del suyo: **una sección con los rótulos repartidos en dos nodos** | catálogo |
+| R7 | `Du288PaymentAttendanceSection` (asistencia y reloj control) no se monta en ninguna parte | componente huérfano |
+
+R5 es el único que cambia lo que el revisor lee de la base; el resto es rótulo y
+catálogo.
+
+## Lo que quedó fuera
+
+- **Dos componentes huérfanos**: `Du288InstallmentSummarySection` (340 líneas) y
+  `Du288PaymentAttendanceSection`. Ninguno se monta. Borrarlos o montarlos es una
+  decisión funcional, no una limpieza, así que siguen donde estaban; sus
+  referencias al catálogo se dejaron coherentes para que no apunten a claves
+  borradas.
+- **Nueve grupos de claves con el mismo texto que sí tienen razón de ser**, todos
+  en `payments.review`: una palabra que sirve a dos o tres papeles distintos
+  —título de sección, ítem de leyenda y tooltip del día («Ejecución
+  comprometida», «Feriado», «Compensación comprometida», «Compensación
+  informada»); título de modal, botón y columna («Descuentos»); chip y rótulo de
+  fila («Licencia médica»); columna y fila de totales en la sección de
+  asistencia—. Colapsarlas obligaría a que un cambio en la leyenda arrastre el
+  título de la sección.
+- **`statusVariant` 3 y 11 valen los dos `warning`**: son variantes de estilo por
+  código de estado, no texto.
+- **Verificación en navegador**: nada se revisó a 1366, 1024, 768 ni 375 px. Los
+  cambios de esta tanda son rótulos y campos que desaparecen, así que lo que hay
+  que mirar es que la ficha de contexto no quede con una fila impar al perder dos
+  campos.
