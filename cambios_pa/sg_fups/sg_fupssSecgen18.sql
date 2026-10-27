@@ -23,10 +23,12 @@ go
    Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
    costo que la persona tiene a cargo, con el avance de pago de sus cuotas
    y los datos presupuestarios del centro de costo. Una cuota rechazada
-   consume su cupo y su monto queda descontado del saldo.
+   consume su cupo y su monto queda descontado del saldo. mto_rechazado
+   entrega ese monto aparte, para que la bandeja pueda decir por que el
+   saldo bajo sin que haya habido un pago.
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: ELA 2026/10/27
 */
 create procedure Analisis2.sg_fupssSecgen18
     @rut_person char(9)  = NULL,
@@ -104,6 +106,7 @@ select
         and ep.cod_estcuo in (2, 3, 4, 8, 11))                  as cuotas_gestion,
     isnull(sum(case when fume.cod_estfum = 3        then fume.mto_realpa end), 0) as mto_pagado,
     isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0) as mto_gestion,
+    isnull(sum(case when fume.cod_estfum = 4        then fume.mto_apagar end), 0) as mto_rechazado,
     fu.mto_total
       - isnull(sum(case when fume.cod_estfum = 3        then fume.mto_realpa end), 0)
       - isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0)

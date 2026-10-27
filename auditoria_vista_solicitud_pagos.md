@@ -286,23 +286,42 @@ esta auditoría:
 
 ## Resumen
 
-| | Hallazgo | Norma | Dónde | Paridad |
-| :--- | :--- | :--- | :--- | :--- |
-| A1 | `remaining` acotado a cero en el módulo de dinero; contradice `resolveProvisionRemainingAmount` | cálculo | `paymentValidations.js:156` | diverge de §16.1 |
-| A2 | «Saldo» y «Espacio» acotados en el formulario; el mensaje de error dice otra cosa | cálculo | `…FormSection:473/614`, `…ContextSection:156` | mismo patrón del §17.1 |
-| A3 | `otherProposedAmount` duplica `resolveDraftInstallmentBalance`, con un término más | §3.2 | `…FormSection:600-612` | sobre el cambio de ayer |
-| A4 | el fallback de «Comprometido» incluye lo rechazado, que además se muestra aparte | cálculo | `…ContextSection:188-192` | latente |
-| A5 | `sg_fupssSecgen18` no devuelve `mto_rechazado` | cálculo | `sg_fupssSecgen18:105-110` | falta vs. §16.1 |
-| B1 | `ResolutionDetail.vue` fuera del gate | §17 | `validateDu288Ui.js` | por confirmar |
-| C1 | 21 `'—'` contra 13 `noInformation`, cinco y diez en el mismo archivo | §6.2 | 8 archivos | mismo C1 de DGDP |
-| D1 | tag de respaldo: textos en duro, `detail`/`message` iguales, `blocking` incondicional | §15 | `_nroSolici:474-487` | copia del D5 |
-| D2 | «Máx. 2 cuotas (normativa general DU 288)» | §15 | `…ContextSection:134-135` | copia del D3 |
-| D3 | «cuota decretada» / «cuotas decretadas» | §15 | `…ContextSection:148` | copia del D1 |
-| D4 | `'Rechazada'` en duro como estado | §8 §15 | `…FormSection:91/363` | nuevo |
-| D5 | 13 textos visibles en duro, seis de ellos fallbacks de claves existentes | §15 | 4 archivos | nuevo |
-| D6 | `MONTHS` a mano en dos archivos más | §3.2 | `…FormSection:326`, `…InstallmentsSection:113` | D4 incompleto |
+| | Hallazgo | Norma | Dónde | Paridad | Aplicado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| A1 | `remaining` acotado a cero en el módulo de dinero; contradice `resolveProvisionRemainingAmount` | cálculo | `paymentValidations.js:156` | diverge de §16.1 | sí |
+| A2 | «Saldo» y «Espacio» acotados en el formulario; el mensaje de error dice otra cosa | cálculo | `…FormSection:473/614`, `…ContextSection:156` | mismo patrón del §17.1 | sí |
+| A3 | `otherProposedAmount` duplica `resolveDraftInstallmentBalance`, con un término más | §3.2 | `…FormSection:600-612` | sobre el cambio de ayer | sí |
+| A4 | el fallback de «Comprometido» incluye lo rechazado, que además se muestra aparte | cálculo | `…ContextSection:188-192` | latente | sí |
+| A5 | `sg_fupssSecgen18` no devuelve `mto_rechazado` | cálculo | `sg_fupssSecgen18:105-110` | falta vs. §16.1 | sí |
+| B1 | `ResolutionDetail.vue` fuera del gate | §17 | `validateDu288Ui.js` | por confirmar | sí |
+| C1 | 21 `'—'` contra 13 `noInformation`, cinco y diez en el mismo archivo | §6.2 | 8 archivos | mismo C1 de DGDP | sí |
+| D1 | tag de respaldo: textos en duro, `detail`/`message` iguales, `blocking` incondicional | §15 | `_nroSolici:474-487` | copia del D5 | sí |
+| D2 | «Máx. 2 cuotas (normativa general DU 288)» | §15 | `…ContextSection:134-135` | copia del D3 | sí |
+| D3 | «cuota decretada» / «cuotas decretadas» | §15 | `…ContextSection:148` | copia del D1 | sí |
+| D4 | `'Rechazada'` en duro como estado | §8 §15 | `…FormSection:91/363` | nuevo | sí |
+| D5 | 13 textos visibles en duro, seis de ellos fallbacks de claves existentes | §15 | 4 archivos | nuevo | sí |
+| D6 | `MONTHS` a mano en dos archivos más | §3.2 | `…FormSection:326`, `…InstallmentsSection:113` | D4 incompleto | sí |
 
-**Nada de esto se modificó.** A5 y A1 son los dos que cambian números en
-pantalla; A3 es el que decide si el módulo de dinero queda con una definición o
-con dos. El resto es deuda de catálogo y de convención, de la misma clase que la
-auditoría de DGDP dejó cerrada.
+Los trece quedaron aplicados el 27-10-2026. El detalle de qué cambió en cada uno
+está en el §18 de `rechazo_devolucion_y_estados.md`, porque esta auditoría
+describe el problema y no la solución.
+
+A5 y A1 son los dos que cambiaron números en pantalla; A3 dejó el módulo de
+dinero con una sola definición de «saldo del borrador», que antes estaba escrita
+a mano en tres lugares.
+
+## Lo que quedó fuera
+
+- **El guión suelto en dos archivos que la auditoría no contó.**
+  `Du288PaymentAttendanceSection` tenía dos más, uno de ellos dentro de una
+  función de módulo que no lee el catálogo. Se arreglaron igual, pasando el
+  rótulo como parámetro (`timeLabel(from, to, missingLabel)`), el mismo patrón
+  que ya usaba `formatCompensationRange`.
+- **`Du288InstallmentSummarySection.vue`**: 340 líneas que no se montan en
+  ninguna parte. Sigue sin decidirse si se borra o se monta, así que no entró al
+  gate.
+- **Los `hint` de la vista DGDP** siguen siendo `title=` y el teclado no los
+  alcanza. Es accesibilidad, no paridad con esta vista.
+- **Verificación en navegador**: nada se revisó a 1366, 1024, 768 ni 375 px.
+- **Verificación contra Sybase**: en esta máquina no hay cliente ni Docker, así
+  que `sg_fupssSecgen18` está escrito y revisado, no compilado.

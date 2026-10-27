@@ -1652,3 +1652,153 @@ archivo ya importaba.
 
 Sin verificar en navegador: no se comprobó cómo se ven las filas de sobregiro en
 rojo ni la fila nueva a 1366, 1024, 768 y 375 px.
+
+---
+
+## 18. La vista del solicitante al día con DGDP (27-10-2026)
+
+La auditoría `auditoria_vista_solicitud_pagos.md` revisó la vista del solicitante
+buscando lo que se aplicó en DGDP y acá no. Sus trece hallazgos quedaron
+aplicados. Esta sección deja por escrito qué cambió.
+
+### 18.1 El dinero: una sola definición de «saldo»
+
+**A1 — las dos funciones de saldo no respondían igual.**
+`resolvePaymentAmountBalance` devolvía `remaining: Math.max(0, authorized -
+consumed)` y `resolveProvisionRemainingAmount` —la que se creó para DGDP en el
+§16.1— no acotaba. La misma pregunta, dos respuestas: con una prestación
+sobrecomprometida la vista del solicitante decía «saldo justo» y la de DGDP
+decía cuánto faltaba. Se quitó el `Math.max`. El saldo negativo es un dato, no
+un error de cálculo que haya que esconder.
+
+**A2 — el formulario acotaba donde se escribe el monto.** En
+`Du288InstallmentFormSection` el «Espacio en la cuota» y el «Saldo después de
+esta cuota» pasaban por `Math.max(…, 0)`. No dejaban pasar plata —
+`balanceExceeded` y `capExceeded` bloquean el guardado y muestran el aviso— pero
+el panel de límites leía «queda $0» cuando en realidad sobraba. Ahora el panel
+muestra la cifra real, en rojo y con la pista de que supera el tope.
+
+El valor acotado sigue existiendo, porque la lógica lo necesita:
+`remainingCapAmount > 0 && remainingCapAmount < row.requested` se invierte si el
+número puede ser negativo, y los avisos de «baje a $X para que quepa» citan ese
+mismo número. Quedaron separados: `capRoomAmount` es el espacio real y se
+muestra; `remainingCapAmount` es la versión acotada y decide.
+
+Se quitó además el `Math.max(0, remaining)` de la línea «Saldo» de la ficha de
+contexto: acotaba un valor que el módulo de dinero ya entregaba listo, y desde
+A1 ese valor puede ser negativo a propósito.
+
+**A3 — la misma resta escrita tres veces.** El formulario calculaba a mano
+`remaining − otros borradores` en tres propiedades computadas; el modal de envío
+tenía su propia versión —la del §17.1— y el store una tercera. Las tres ahora
+llaman a `resolveDraftInstallmentBalance`, que se extendió con el término que
+solo tenía el formulario:
+
+```js
+const ownConsumed = paymentInstallmentConsumedAmount(installment)
+const available = remaining + ownConsumed - otherDrafts
+```
+
+Al corregir una cuota **ya enviada**, su monto está dentro de `consumed`: sin
+devolverlo, el formulario mostraría como ocupado justamente el dinero de la
+cuota que se está corrigiendo. En un borrador vale cero y no cambia nada. Tiene
+su propia prueba.
+
+Esto cierra algo que el cambio del §17.1 dejó a medias: ahí se creó el helper
+sin notar que el formulario ya tenía la misma lógica, más completa. La auditoría
+lo encontró.
+
+**A4 — lo rechazado se contaba dos veces.** El respaldo de «Comprometido» en la
+ficha de contexto era `consumed - paidAmount`, y `consumed` incluye los estados
+2, 3, 4, 10 y 11: lo rechazado entraba en «Comprometido» y la misma ficha lo
+volvía a mostrar en «Bloqueado por rechazo». El respaldo ahora resta también
+`rejectedAmount`. Solo afecta cuando el PA no entrega `mto_gestion`, que es
+exactamente el estado 2 y nunca tuvo el problema.
+
+**A5 — la bandeja no podía nombrar por qué bajó el saldo.**
+`sg_fupssSecgen18` —el PA de la bandeja del solicitante— devolvía total, pagado
+y saldo, pero no lo rechazado, así que un saldo más bajo que el total se leía
+como si algo se hubiera pagado. Se agregó el agregado:
+
+```sql
+isnull(sum(case when fume.cod_estfum = 4 then fume.mto_apagar end), 0) as mto_rechazado
+```
+
+mapeado a `rejectedAmount` en `du288-payable-provision-response.model.ts`, y
+`resolvePayableProvisionBreakdown` ahora nombra la parte rechazada en lugar de
+dejarla escondida en la diferencia. Es el mismo cambio que el §16.1 hizo en
+`sg_epagsSecgen03` para la vista de DGDP: el PA es otro, el dato es el mismo.
+
+### 18.2 B1 — el gate
+
+`ResolutionDetail.vue` se monta en el detalle del solicitante y no estaba en la
+lista de `validateDu288Ui.js`. Entró sin requerir arreglos previos. El gate pasó
+de 50 a 51 archivos.
+
+### 18.3 C1 — el guión suelto, esta vez del lado del solicitante
+
+Veintiún `'—'` conviviendo con trece `noInformation`, y `Du288PaymentContextSection`
+mostrando los dos: diez campos decían «No informado» y cinco, en la misma ficha,
+un guión. Es el C1 de la auditoría de DGDP con los papeles repartidos dentro de
+un archivo.
+
+Unificados en los diez archivos de la vista, con una propiedad computada
+`noInfo` por componente —`noInformation` donde ya existía con ese nombre— en
+lugar del literal repetido. Dos funciones de módulo no leen el catálogo:
+`timeLabel` en `Du288PaymentAttendanceSection` recibe el rótulo como parámetro,
+igual que `formatCompensationRange` desde el §16.5.
+
+### 18.4 D1 a D6 — textos y duplicación
+
+**D1.** El tag del respaldo justificativo del solicitante tenía el mismo defecto
+que el de DGDP, línea por línea: cinco cadenas en duro, `detail` y `message` con
+el mismo valor en las dos ramas —el panel usa `tag.detail || tag.message`, así
+que uno sobraba— y `blocking: true` incondicional. Ahora los textos están en
+`payments.detail.validations`, `message` desapareció y `blocking: !hasEvidence`
+declara el hecho: el respaldo bloquea cuando falta.
+
+**D2 y D3.** «Máx. 2 cuotas (normativa general DU 288)» y «cuota decretada» /
+«cuotas decretadas» salieron al catálogo con la redacción que el §16.5 ya había
+fijado para DGDP: sin abreviar y con la normativa escrita «DU288».
+
+**D4.** `'Rechazada'` estaba escrita a mano dos veces en
+`Du288InstallmentFormSection` como respaldo del estado que llega del backend. Un
+estado no se escribe en la plantilla: pasó a `installmentModal.rejectedStatus`.
+
+**D5.** Trece textos visibles en duro, de los cuales **seis eran fallbacks de
+claves que ya existían** —`|| 'Miércoles'`, `|| 'Total semanal'`,
+`|| 'Semana de ejecución'`, `|| 'Sin horario'`—. Un fallback así no protege:
+oculta que la clave falta y, cuando la clave existe con otra redacción, deja dos
+textos para el mismo rótulo. Se quitaron. Los otros siete —el régimen de cuotas,
+los tres textos del período de pago fijado por DGDP y las ocho etiquetas de
+espera del panel normativo— pasaron al catálogo. Las de espera eran un arreglo
+de pares a nivel de módulo: ahora el módulo solo guarda el orden
+(`PLACEHOLDER_CODES`) y los rótulos salen de `validations.placeholder`.
+
+**D6.** El §16.5 dedujo que los nombres de los meses estaban repetidos en seis
+archivos y los centralizó en `MONTH_NAMES`. Faltaban dos, porque la constante se
+llama `MONTHS` y no `MONTH_NAMES`: la copia de nombres largos de
+`Du288InstallmentFormSection` y la de abreviados de `Du288InstallmentsSection`,
+que a su vez era gemela de la de la bandeja de DGDP. Ahora
+`formatters.js` exporta también `MONTH_SHORT_NAMES` y no queda ninguna copia a
+mano.
+
+### 18.5 Verificación
+
+| | |
+| :--- | :--- |
+| `node utils/validateDu288Ui.js` | 51 archivos, sin incumplimientos |
+| `npm test` | 14 archivos, 31 pruebas de `paymentValidations`, 0 fallidas |
+| `npx eslint` en lo tocado | 0 errores (1 `no-console` preexistente) |
+| `npx nuxt build` | exit 0 |
+| `npm run build` (backend) | lb-tsc sin errores |
+| PA de `cambios_pa` | `.sql` y `.txt` idénticos, CRLF, ASCII |
+
+Las dos pruebas nuevas cubren lo que cambió de comportamiento: que el saldo de
+la prestación no se acote en cero (A1) y que una cuota ya enviada recupere su
+propio monto al editarse (A3).
+
+Lo que **no** está verificado: `sg_fupssSecgen18` no se compiló —en esta máquina
+no hay cliente de Sybase ni Docker—, así que el agregado nuevo está escrito y
+revisado, no probado contra la base. Tampoco hay verificación en navegador a
+1366, 1024, 768 ni 375 px.
