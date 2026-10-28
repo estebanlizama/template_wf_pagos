@@ -104,6 +104,10 @@ select
        from secgen_db.dbo.sg_epag ep
       where ep.id_funprse = fu.id_funprse
         and ep.cod_estcuo in (2, 3, 4, 8, 11))                  as cuotas_gestion,
+    (select count(*)
+       from secgen_db.dbo.sg_epag ep
+      where ep.id_funprse = fu.id_funprse
+        and ep.cod_estcuo in (3, 11))                           as cant_cuotas_devu,
     isnull(sum(case when fume.cod_estfum = 3        then fume.mto_realpa end), 0) as mto_pagado,
     isnull(sum(case when fume.cod_estfum = 2        then fume.mto_apagar end), 0) as mto_gestion,
     isnull(sum(case when fume.cod_estfum = 4        then fume.mto_apagar end), 0) as mto_rechazado,
@@ -115,6 +119,10 @@ select
     min(case when fume.cod_estfum = 1 then fume.ano_prop * 100 + fume.mes_prop end) as per_pendiente_min,
     case
         when count(fume.corr_fume) = 0 then 0
+        when (select count(*)
+                from secgen_db.dbo.sg_epag ep
+               where ep.id_funprse = fu.id_funprse
+                 and ep.cod_estcuo in (3, 11)) > 0 then 6
         when sum(case when fume.cod_estfum = 3 then 1 else 0 end) = count(fume.corr_fume) then 4
         when sum(case when fume.cod_estfum = 4 then 1 else 0 end) > 0 then 5
         when sum(case when fume.cod_estfum = 3 then 1 else 0 end) > 0 then 3
