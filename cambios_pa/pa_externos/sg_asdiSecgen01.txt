@@ -18,7 +18,7 @@ go
    @codigo_unidad     -> Unidad SISPER fija 05000000. (Obligatorio)
    @ano               -> Ano de la resolucion. (Obligatorio)
    @codigo_ficha      -> Codigo de ficha registrado en personal. (Obligatorio)
-   @numero_cuenta     -> Numero de cuenta registrado en SISPER. (Opcional)
+   @numero_cuenta     -> Codigo de haber de sp_para.num_cuenta. (Opcional)
    @vigencia          -> Indicador de vigencia de la asignacion. (Obligatorio)
    @fec_inicio        -> Primer dia del mes de la cuota, formato dd/mm/aaaa. (Obligatorio)
    @fec_termino       -> Ultimo dia del mismo mes, formato dd/mm/aaaa. (Obligatorio)
@@ -32,7 +32,7 @@ go
    su codigo de asignacion.
 
    Creacion: No registrada en el procedimiento original
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/29
 */
 create procedure Analisis2.sg_asdiSecgen01
     @numero_resol varchar(10),
@@ -222,6 +222,15 @@ if not exists (select 1
                 where cod_ficha = @codigo_ficha)
 begin
     select 'La persona no se encuentra registrada en SISPER' as msg
+    return
+end
+
+if @numero_cuenta is not null
+   and not exists (select 1
+                     from sisper_db.dbo.sp_para
+                    where ltrim(rtrim(num_cuenta)) = @numero_cuenta)
+begin
+    select 'El codigo de haber indicado no existe en el catalogo de cuentas' as msg
     return
 end
 

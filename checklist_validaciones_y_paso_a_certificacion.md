@@ -144,7 +144,8 @@ flowchart TD
 5. **Paso 5 (Frontend):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`. Verificar `DISABLE_AUTH = false` en `.env`.
 6. **Paso 6 (Higiene):** Borrar carpeta huérfana `d:\trabajo_ufro_2026\components`.
 7. **Paso 7 (Validación Técnica):**
-   - Frontend: `npm test` (al 28-10-2026, **16** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**53** archivos del estándar visual) y `npx eslint` limpio.
-   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 28-10-2026, **247** tests pasando).
+   - Frontend: `npm test` (al 29-10-2026, **18** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**53** archivos del estándar visual) y `npx eslint` limpio.
+   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 29-10-2026, **245** pasando y **2 fallando**).
+   - Las dos pruebas que fallan son de `sg_com1` —el motivo de la decisión DGDP— y no vienen del flujo de Finanzas: fallan igual sin los cambios de pagos. Hay que resolverlas antes de certificar: con el árbol en este estado, la suite no está verde.
    - Los conteos crecen con cada entrega: valen como piso, no como cifra exacta. Lo que no puede cambiar es que ninguno falle.
 8. **Paso 8 (Compuerta de la aprobación DGDP):** antes de certificar, cerrar la decisión de qué validaciones bloquean al aprobar y llevarlas al endpoint de decisión. Hoy esa compuerta no existe (ver la nota del §1.1): con los puntos 1 y 2 encendidos, el envío queda protegido en dos capas y la aprobación solo en la pantalla.

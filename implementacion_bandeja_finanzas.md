@@ -714,3 +714,154 @@ estado de la cuota ya está a la vista en la propia pantalla. Un subtítulo
 distinto por camino habría hecho que la misma cuota se leyera distinto según
 desde dónde se abrió, sin agregar un dato. Lo que sí distingue el origen es el
 botón de volver, que es lo que el usuario necesita que cambie.
+
+---
+
+## F5 · Ingreso a SISPER: contraste contra el alcance del 29-10-2026
+
+El alcance acordado el 29-10 agrega el paso que faltaba: Finanzas no solo
+descarga un archivo, también puede ingresar los registros a SISPER desde el
+sistema, y los dos caminos deben partir de los mismos datos. Esta sección
+contrasta ese alcance con lo que hay escrito hoy. No autoriza ningún cambio.
+
+### F5.1 Lo que ya está escrito
+
+| Pieza | Estado |
+| :--- | :--- |
+| Estados de la cuota y sus transiciones | `sg_epaguSecgen03` (2 → 3/4/10), `sg_epaguSecgen04` (4 → 8), `sg_epaguSecgen05` (4 → 2 con motivo). Nada ejecutado en ASE. |
+| Bandeja de Finanzas | Página, filtros, selección múltiple, totales, detalle de solo lectura y «Registrar envío a Finanzas». |
+| Excel de 13 columnas | `sg_epagsSecgen05`, endpoint `finance-excel-rows` y descarga con guardas de ítem, porcentajes y período. |
+| Los tres PA de SISPER | `sg_resliSecgen01`, `sg_asdiSecgen01`, `sg_ccaiSecgen01` escritos en `cambios_pa/pa_externos`. |
+| Montos y descuentos de la visación | `sg_fume.mto_deslic` / `mto_dessg` por mes; el cierre deja `sg_epag.mto_realpa`. |
+
+Lo que el paso 2 del plan pedía —guardar el pago aprobado en DGDP— ya ocurre.
+
+### F5.2 El Excel apunta en la dirección contraria
+
+`sg_epagsSecgen05` resuelve las columnas SISPER con
+`inner join sisper_db..ss_asds`, exigiendo además que la asignación cubra desde
+el primer hasta el último día del mes de pago de `sg_epag`. Es decir: **hoy el
+archivo exporta asignaciones que ya existen en SISPER**. Una cuota aprobada sin
+asignación no produce ninguna fila, y el caso del pago vigente de varios meses
+(01/09 a 31/12) no calza con la condición de mes exacto.
+
+El alcance nuevo pide lo inverso: preparar desde SG los registros que **deben**
+ingresarse. La consulta actual sirve para conciliar lo ya ingresado, no para
+generarlo. Hay que decidir si se reescribe contra SG o si convive una segunda
+lectura, y en ese caso cuál alimenta la bandeja.
+
+### F5.3 Lo que no existe todavía
+
+1. **Preparación compartida de registros** (paso 3). No hay ninguna lista de
+   registros preparados: ni atraso ni pago vigente. El Excel se arma de lo que
+   SISPER ya tiene y el botón no existe, así que hoy no hay un origen común que
+   las dos salidas puedan compartir.
+2. **Botón «Agregar a SISPER» e integración** (paso 5). Los tres wrapper no se
+   invocan desde ningún TypeScript: falta consulta, repositorio, servicio,
+   controlador, store y pantalla. Atención al límite que su README ya declara:
+   cada PA confirma su propia inserción y **no hay transacción común**, así que
+   un fallo en `sg_ccaiSecgen01` deja una asignación sin centro de costo. La
+   recuperación de ese parcial es responsabilidad del orquestador, que debe
+   reusar el `cod_asign` ya creado en lugar de insertar otra asignación.
+3. **Dónde guardar la trazabilidad** (paso 6). `sg_epag` tiene diez columnas y
+   ninguna para `cod_asign`; no existe tabla puente cuota → asignación SISPER →
+   centros de costo. Sin ella no se puede responder «¿esta cuota ya tiene
+   asignación vinculada?», y la detección de duplicados queda reducida al cruce
+   por funcionario, resolución y mes, que el propio análisis descarta como
+   identificador seguro. **Requiere tabla nueva**: es cambio de esquema, no solo
+   un PA.
+4. **Separar exportado, registrado y pagado** (paso 7). `sg_ecuo` tiene
+   1, 2, 3, 4, 8, 10 y 11. El 8 «Enviada remuneraciones» es un solo valor para
+   los tres hechos. Descargar el Excel no deja marca alguna y
+   `sg_epaguSecgen04` marca 8 directamente.
+5. **El cálculo del atraso.** Los datos están —`sg_fume.ano_ejec` / `mes_ejec`
+   y `sg_epag.ano_pago` / `mes_pago`—, pero la regla no está escrita en ninguna
+   capa, la bandeja no tiene columna que distinga atraso de pago vigente, y el
+   período que Finanzas procesa no es una entrada explícita: el filtro «Pago
+   desde / hasta» es un rango de búsqueda, no el mes de proceso contra el cual
+   se compara.
+6. **El período de varios meses en `sg_asdiSecgen01`.** El PA exige que el
+   período abarque desde el primer hasta el último día del **mismo mes**, y
+   rechaza repetir período para la misma persona y resolución. Si se confirma el
+   registro recurrente hay que ampliarlo. Es un PA propio de este paquete, así
+   que se puede ampliar sin crear otro; lo que cambia con el rango largo es la
+   validación de duplicado, que dejaría de ser comparable mes a mes.
+
+### F5.4 Detalles del archivo que ya se pueden corregir
+
+- Las fechas se exportan como texto `dd-mm-yyyy` (`excelDate` en la página de
+  Finanzas). El acuerdo pide fechas reales de Excel para evitar la ambigüedad
+  mes/día del ejemplo.
+- `Nº Resol` sale solo como número. El ejemplo entregado muestra `2379/2026`,
+  con el año incluido en la misma celda además de la columna `Año Resol`.
+
+### F5.5 Lo único que impide cerrar la regla de fechas
+
+¿La segunda fila del ejemplo —$995.554 desde 01/09 hasta 31/12— deja programado
+ese monto en cada mes, septiembre incluido? De esa respuesta dependen tres
+cosas: el cálculo del atraso sin duplicar el primer mes, la ampliación de
+`sg_asdiSecgen01` y el grano de las filas del archivo. Mientras no esté
+respondida, los puntos 1, 5 y 6 de F5.3 no se pueden programar sin adivinar.
+
+### F5.6 Decisión del 29-10-2026: los PA generan el registro y la resolución se lee
+
+Acuerdo: el ingreso a SISPER se hace con los PA, el mismo origen alimenta el
+Excel, y **la resolución es la que ya está en la base de datos** — no se crea
+desde pagos. Esto es lo que se verificó contra el código con esa regla puesta.
+
+**El flujo queda en dos PA, no tres.** El Exento vive en
+`sg_rslc.num_resolu` + `ano_resolu`, y la unidad es la constante `05000000` con
+`cod_ders = '2'`. Con la resolución leída, `sg_resliSecgen01` sale del camino y
+quedan `sg_asdiSecgen01` (asignación) y `sg_ccaiSecgen01` (centro de costo).
+
+**Pero leerla no basta: tiene que existir en SISPER.**
+`sg_asdiSecgen01` valida contra `sisper_db.dbo.sp_resl` por
+`num_resol` + `cod_ders` + `cod_unidad` y, si no la encuentra, responde
+«La resolucion no existe para los antecedentes indicados» y no inserta nada.
+Ningún procedimiento del repositorio escribe `sp_resl`. Hay que confirmar que
+Decretación registra ahí la resolución del Exento; si no lo hace, el ingreso se
+detiene y la única salida sería volver a `sg_resliSecgen01`, que es justo lo que
+esta decisión descarta.
+
+**El número de resolución no es comparable como entero.**
+`sg_rslc.num_resolu` es `int`. `sp_resl.num_resol` es `varchar(10)` y los datos
+reales de la tabla traen sufijos: `5284 RA`. Un Exento con letras no cabe en la
+columna de SG, y tampoco calza con la comparación rellenada a diez posiciones
+que ya usa `sg_epagsSecgen05`. Antes de ingresar hay que decidir qué ocurre con
+esos casos: hoy fallarían sin diagnóstico claro.
+
+**El código de haber no tiene origen en SG.** Es el único dato que
+`sg_asdiSecgen01` exige (`@numero_cuenta`) y que SG no guarda en ninguna parte:
+`sg_fups` tiene `cod_sitm` e `itm_global`, no `num_cuenta`. Hoy el Excel lo
+resuelve leyendo `ss_asds.num_cuenta`, es decir desde la asignación que todavía
+no existe — circular en cuanto SG pasa a crearla. Los códigos 2011, 2013, 2319
+y 2320 que aparecen en `sg_fupssSecgen13` pertenecen al cálculo del tope, no a
+esto. Falta decidir dónde vive el valor del ejemplo (2417): columna nueva en
+`sg_fups`, catálogo por `cod_tpps`, o parámetro de la operación.
+
+**Al Excel hay que darle vuelta el origen de cuatro columnas.** Hoy
+`codigo_haber`, `centro_costo`, `item_sisper` y `porcentaje_cc` salen de
+`ss_asds` y `ss_ccas`. Si SG genera los registros, los cuatro deben salir de SG:
+centro de costo con `cod_unifin` + `cod_ccto` —que sí están—, ítem con
+`sg_fups.cod_sitm` —que sí está—, porcentaje fijo en 100, y el haber según el
+punto anterior. Las dos guardas de la descarga cambian de sentido: `item_coincide`
+y `porcentajes_suman_100` hoy comparan contra SISPER, y pasarían a describir el
+valor que se va a escribir.
+
+**Hallazgo sobre el pago recurrente.** `ss_asds` tiene `permanente`, `cuotas` y
+`unidad_med`, y `sg_asdiSecgen01` ya acepta los tres como parámetros opcionales.
+Es posible que el «pago vigente» no se exprese con un rango 01/09 a 31/12 sino
+con `permanente` y una cantidad de cuotas, en cuyo caso la validación de mes
+único no estorba y no habría que ampliarla. Conviene verificarlo contra cómo
+SISPER liquida antes de tocar el PA: cambiaría la respuesta a la pregunta
+abierta de F5.5.
+
+Lo demás de F5.3 sigue pendiente igual: la preparación compartida de registros,
+el botón con su orquestación —los dos PA no comparten transacción, así que un
+fallo en el centro de costo deja la asignación suelta y hay que reusar su
+`cod_asign`—, la tabla de trazabilidad para guardar ese `cod_asign`, y la
+separación entre exportado, registrado y pagado.
+
+El plan de implementación de este alcance, con sus fases y los estándares de
+desarrollo que debe cumplir, está en
+[plan_ingreso_sisper.md](plan_ingreso_sisper.md).

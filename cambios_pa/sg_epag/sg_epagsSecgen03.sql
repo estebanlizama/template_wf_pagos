@@ -122,7 +122,15 @@ select
     (select isnull(sum(f6.mto_apagar), 0)
        from secgen_db.dbo.sg_fume f6
       where f6.id_funprse = epag.id_funprse
-        and f6.cod_estfum = 4) as mto_rechazado,
+        and (f6.cod_estfum = 4
+             or exists (select 1
+                          from secgen_db.dbo.sg_dpag dp6,
+                               secgen_db.dbo.sg_epag ep6
+                         where dp6.id_funprse = f6.id_funprse
+                           and dp6.corr_fume  = f6.corr_fume
+                           and ep6.id_funprse = dp6.id_funprse
+                           and ep6.nro_cuota  = dp6.nro_cuota
+                           and ep6.cod_estcuo = 10))) as mto_rechazado,
     fu.dentro_jor,
     case when isnull(fu.dentro_jor, 'N') not in ('S', 'D')
          then 0
