@@ -1,9 +1,56 @@
 # Implementación end-to-end: bandeja de cuotas aprobadas y envío a Finanzas
 
-**Fecha:** 27-10-2026
+**Fecha:** 27-10-2026, actualizado el 28-10-2026
 **Estado:** orden de construcción. El qué y el por qué están en
 `plan_bandeja_aprobadas_finanzas.md`; acá va el cómo, capa por capa, en el orden
 en que se puede ejecutar y verificar.
+
+**Avance al 28-10-2026.** F1, F2 y F3 están implementadas de punta a punta.
+Para F4 ya están confirmadas las fuentes de Código Haber, Ítem y Porcentaje CC,
+y la salida será una fila por asignación mensual SISPER y por cada centro de
+costo asociado. Se aplica el prorrateo del neto de la cuota por porcentaje CC,
+con el residuo de redondeo en la última línea para conservar el total; falta
+validar la regla con Finanzas.
+
+| Capa | Estado |
+| :--- | :--- |
+| `sg_epaguSecgen04` + par de certificación | **hecho**, sin ejecutar contra Sybase |
+| Consulta `markInstallmentSentToPayroll` | **hecho** |
+| Modelos de petición y resultado | **hecho** |
+| Repositorio `markInstallmentsSentToPayroll` | **hecho** |
+| Endpoint `POST …/installments/sent-to-payroll` | **hecho** |
+| Store `markInstallmentsSentToPayroll` | **hecho** |
+| Pruebas unitarias del lote | **hecho**, 8 casos |
+| Filtro por fecha de envío (`sentFrom`/`sentTo`) | **hecho**, con 3 pruebas |
+| Opción `showStatus` del esquema DGDP | **hecho** |
+| Texto `payments.finance` | **hecho**, 52 claves, 0 sin referencia |
+| Página `payments/finance/index.vue` | **hecho**, en la lista del validador visual |
+| Ruta, menú y tarjeta de inicio | **hecho** |
+| Pantalla de la acción (F3.6) | **hecho**, en la bandeja |
+| F2: volver a la bandeja de origen | **hecho**, por `query.origen` |
+| F4 · el Excel | implementada en código; regla de prorrateo pendiente de validación funcional y PA sin ejecutar en Sybase |
+
+**Lo que no es como lo describía el plan.** Cinco cosas se decidieron al
+construir, y valen para quien lea el plan después:
+
+1. **El estado no es fijo en 4: son dos conjuntos.** La bandeja ofrece «Por
+   enviar a Finanzas» (4) y «Ya enviadas a Finanzas» (8) en un solo selector,
+   porque el 8 lo escribe ahora `sg_epaguSecgen04` y consultar lo ya enviado es
+   el mismo PA con otro `cod_estcuo`. La acción de registrar el envío solo
+   aparece en el primero.
+2. **El mes a pagar es un mes, no un rango.** Lo que se entrega a Finanzas es la
+   nómina de un período, así que un `type="month"` obligatorio alimenta
+   `paymentFrom` y `paymentTo` con el mismo valor. Sin mes elegido la tabla
+   queda vacía a propósito, con su propio mensaje.
+3. **El lote son las cuotas a la vista.** No hay selección por fila: se
+   registran las filas filtradas, y el modal lo dice. Acotar el lote es acotar
+   los filtros, que es lo mismo que hace la descarga. Agregar casillas por fila
+   habría dejado dos definiciones del lote —lo marcado y lo filtrado— para el
+   archivo y para el registro, que tienen que ser el mismo conjunto.
+4. **El filtro de alertas no está en esta bandeja.** Las alertas son del momento
+   de visar; sobre una cuota ya aprobada sugerirían que todavía bloquean algo.
+5. **La bandeja se reconstruye desde la URL** (`estado` y `periodo`), para que
+   volver del detalle no devuelva la vista en blanco.
 
 ## Decisiones de entrada
 
@@ -227,11 +274,19 @@ markInstallmentSentToPayroll: `
 - Una conexión para todo el lote, no una por cuota: `connect()` una vez, bucle,
   `disconnect()` en el `finally`.
 - Una ejecución del PA por cuota, cada una atómica. El resultado es por cuota:
-  `{ staffProvisionId, installmentNumber, ok, message? }`. Un `msg` de una cuota
-  no cancela las demás.
-- `this.assertMutationResult` por ítem, capturando su error para el informe en
-  vez de propagarlo.
+  `{ staffProvisionId, installmentNumber, sent, message? }`. Un `msg` de una
+  cuota no cancela las demás.
+- `this.assertMutationResult` por ítem. Su error se captura **solo cuando es
+  422**, que es lo que el contrato de mutación produce con una fila `msg`:
+  cualquier otro error —la conexión, por ejemplo— aborta el lote, porque no
+  habla de esa cuota y convertirlo en ochenta «no enviada» ocultaría la falla.
 - Normalizar el RUT con `this.normalizeRut`, y nunca registrarlo en los logs.
+- Descartar las cuotas repetidas del cuerpo antes de ejecutar: la segunda
+  pasada devolvería «ya se envió» y dejaría un resultado contradictorio para
+  una cuota que sí se envió.
+- Tope de 500 cuotas por llamada (`SENT_TO_PAYROLL_MAX_ITEMS`): un período
+  completo cabe de sobra, y el límite evita que una petición mal armada
+  mantenga la conexión abierta ejecutando el PA miles de veces.
 
 Por qué el lote va acá y no en el frontend: marcar 80 cuotas con 80 llamadas HTTP
 abriría 80 conexiones y revalidaría la unidad 80 veces. Una llamada, una
@@ -243,9 +298,9 @@ conexión, 80 ejecuciones del PA.
 POST /requests/service-provision/payments/dgdp/installments/sent-to-payroll
 ```
 
-- Cuerpo: lista de `{ staffProvisionId, installmentNumber }`, con un modelo de
-  request propio (`Du288PaymentSentToPayrollRequest`) y tope de ítems por
-  llamada.
+- Cuerpo: `{ installments: [{ staffProvisionId, installmentNumber }] }`, con
+  modelo propio (`Du288PaymentSentToPayrollRequest`, con
+  `Du288PaymentSentToPayrollItem`) y tope de ítems por llamada.
 - **`assertCanResolveDgdpPayment`**, no `assertIsDgdpPaymentReviewer`: es una
   escritura, y el permiso de lectura no debe cambiar estados. Es la separación
   que ya tienen las otras seis escrituras del controlador.
@@ -254,9 +309,11 @@ POST /requests/service-provision/payments/dgdp/installments/sent-to-payroll
 
 ### F3.5 Store
 
-`markInstallmentsSentToPayroll({ items })` en
-`store/service-provision-payments.js`, y al volver, recargar la bandeja con
-`fetchDgdpInstallments({ statusCode: 4 })` para que las marcadas desaparezcan.
+`markInstallmentsSentToPayroll({ installments })` en
+`store/service-provision-payments.js`. Devuelve el informe por cuota tal cual;
+recargar la bandeja con `fetchDgdpInstallments({ statusCode: 4 })` es trabajo de
+la pantalla, no del store, para que la acción no fuerce una consulta cuando la
+vista decide mostrar antes el resumen de lo marcado.
 
 ### F3.6 Pantalla
 
@@ -279,8 +336,12 @@ Backend:
 npm run build && npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"
 ```
 
-Pruebas unitarias del lote, sin Sybase: todas ok, una con `msg`, lista vacía,
-ítem repetido, y que el RUT no aparezca en los mensajes.
+Pruebas unitarias del lote, sin Sybase, en
+`src/__tests__/unit/service-provision-payment-sent-to-payroll.unit.ts`
+(8 casos): una conexión para el lote y una ejecución por cuota, una cuota con
+`msg` que no detiene el resto, cuota repetida, lista vacía, identificador
+inválido, error de conexión que aborta y cierra, lote sobre el tope, y que el
+RUT del revisor no aparezca en ningún resultado. Suite completa: 247 pruebas.
 
 **Contra Sybase no se puede verificar en este entorno** —no hay cliente ni
 contenedor—. Lo que hay que probar en certificación:
@@ -294,20 +355,326 @@ contenedor—. Lo que hay que probar en certificación:
 
 ---
 
+## F0 · El saldo ya no bloquea la aprobación DGDP
+
+Corregido el 28-10-2026, y es **precondición de toda esta bandeja**: sin
+aprobaciones no hay cuotas en estado 4 y la bandeja de Finanzas llega vacía.
+
+El detalle DGDP revalidaba la batería normativa con `balanceBlocks: true` fijo
+en el código, así que «Centro de costo sin saldo» y «Centro de costo fuera de
+DU09» salían como `error` bloqueante y el botón Aprobar quedaba deshabilitado.
+El resto del módulo no lo hace: el `INTERRUPTOR-DU09`
+(`BALANCE_VALIDATION_BLOCKS_SUBMISSION` en el store, `BALANCE_BLOCKS_SUBMISSION`
+en el controlador) está **apagado desde el 14-10-2026** mientras los centros de
+costo de prueba no tengan cargadas sus marcas presupuestarias.
+
+La misma pantalla se contradecía: la sección de validaciones recibía
+`balanceBlocksSubmission` —el interruptor, apagado— y mostraba el aviso de que
+el saldo no bloquea, con el botón Aprobar deshabilitado al lado.
+
+La corrección es una línea: la revalidación toma el interruptor en vez del
+literal. El saldo sigue a la vista como advertencia amarilla, que es lo que el
+interruptor dice que debe pasar.
+
+**Lo que sigue bloqueando Aprobar**, y no se tocó porque son impedimentos
+reales: contrato no vigente o pendiente, inhabilidad del cargo, asignación
+inhábil, tope faltante o excedido, centro de costo cerrado y falta de respaldo
+justificativo. Si alguno de estos también debe dejar de bloquear, es otra
+decisión y hay que decirlo: no es el interruptor del saldo.
+
+**El backend no participaba.** La compuerta de saldo
+(`assertCostCenterBalanceCompliance`) solo corre en `submitInstallment`, el
+envío del jefe de proyecto, y ya respetaba el interruptor. El endpoint de
+resolución DGDP nunca validó saldo, así que no hubo cambio de backend.
+
+**Esto es transitorio, no la regla definitiva.** El saldo deja de bloquear solo
+mientras los centros de costo de prueba no tengan sus marcas presupuestarias: a
+master se entra con **todas** las validaciones bloqueando. Al conmutar el punto 1
+del `INTERRUPTOR-DU09` la aprobación DGDP vuelve a bloquear junto con el envío,
+porque desde este cambio las dos leen el mismo interruptor. Lo que ese
+interruptor **no** arregla es que el endpoint de la decisión DGDP no tiene
+compuerta normativa: está anotado en `INTERRUPTOR-DU09.md` y como paso 8 del
+checklist de certificación.
+
+### F0.1 · El modal de confirmación, calcado del envío del solicitante
+
+Consecuencia directa de lo anterior: si el saldo ya no impide aprobar, el
+resumen tiene que decir lo que antes decía el botón deshabilitado. El modal
+traía tres líneas —decisión, nombre y una cifra—, así que se aprobaba sin ver
+el mes de pago ni la resolución, los dos datos con los que Finanzas cuadra el
+pago.
+
+Las dos pantallas confirman el mismo tipo de acto sobre la misma cuota, así que
+ahora se leen igual. El modal DGDP pasó a ser
+`components/services-provision/payments/Du288PaymentDecisionModal.vue`, con la
+misma estructura de bloques que `Du288InstallmentSubmitModal`:
+
+| Bloque | Qué muestra |
+| :--- | :--- |
+| Aviso de rechazo | solo al rechazar: que la decisión no tiene vuelta atrás |
+| Antecedentes de la cuota | funcionario con RUT, solicitud, **Resolución Exenta con su año**, centro de costo con código, actividad |
+| Cifra destacada | el neto en grande, con la cuota «2 de 3» como insignia y la cobertura debajo; luego las celdas de monto, límite y saldo que detalla §F0.3 |
+| Meses de la cuota | una fila por mes con su neto, y sus descuentos cuando existen |
+| Validaciones | la fila de chips con el estado de cada validación; el aviso ámbar solo al aprobar (§F0.3) |
+| Observación | solo al observar o rechazar, con su contador de 255 |
+
+Cuatro reglas que el modal conserva o incorpora:
+
+- **Al rechazar la cifra cambia de rótulo, no de valor**: es el monto que queda
+  bloqueado, no plata por pagar. Mismo criterio que corrigió el «A pagar
+  fantasma» de la bandeja.
+- **El descuento aparece solo cuando existe.** En cero repetiría la celda
+  anterior y haría dudar de cuál es la cifra que manda.
+- **El tope se marca cuando se supera**, sin acotar a cero: una cuota sobre el
+  tope tiene que verse que lo supera, no leerse como que justo lo agota.
+- **Las advertencias van solo al aprobar.** Es la decisión que deja la plata en
+  camino; las bloqueantes no hacen falta ahí porque con una sola de ellas no se
+  llega al modal.
+
+**Por qué un componente y no estilos pegados en la página.** El modal estaba
+inline en una página de 1.500 líneas y su CSS habría tenido que duplicar el del
+modal del solicitante, que es `scoped`. Como componente, la página queda 127
+líneas más corta, el modal es reutilizable desde la bandeja de Finanzas si
+alguna vez confirma algo equivalente, y los estilos propios usan los tokens
+`--pds-du288-*` que ya existen.
+
+**Qué se quitó después de la primera versión.** El bloque «Qué efecto tiene»
+repetía, con relleno de color, la misma frase que la página ya muestra al lado
+de los botones (`decision.note`). Además pintaba de verde una acción que
+todavía no ocurrió, y en el estándar el color Éxito significa «resultado válido
+o confirmado» (§5.4), no «botón importante». Quedó un solo aviso, al rechazar:
+es la única decisión sin vuelta atrás y eso hay que leerlo antes de confirmar.
+Con eso salieron de `lang/es/pds.js` las claves `effectApprove` y
+`effectObserve`, que ya no tenían lector; `effectReject` se mantiene.
+
+### F0.2 · Colores: un solo origen para los dos flujos
+
+El mismo recorrido —solicitante que envía, DGDP que aprueba— se veía con dos
+paletas. El estándar es explícito: «Los colores DEBEN provenir de variables
+`--pds-du288-*`. No se permiten colores hexadecimales nuevos en componentes si
+el significado ya tiene token» (§5.4). Lo que había:
+
+| Incongruencia | Dónde | Qué se hizo |
+| :--- | :--- | :--- |
+| Dos ámbar distintos para la misma advertencia (`#fffbeb`/`#fef3c7`/`#92400e` contra los tokens `warning-*`) | modal del solicitante, tarjetas de día de ejecución | todo pasa a `--pds-du288-warning-soft` / `-warning-dark`, con borde `rgba(249, 143, 21, 0.35)` |
+| Dos verdes para «ejecutado» **en el mismo archivo** (`#f0fdf4` en la tarjeta, `--pds-du288-success-soft` en la celda de calendario) | `Du288PaymentExecutionSection` | los dos usan el token |
+| Grises sueltos `#f8fafc`, `#f8f9fa`, `#f1f5f9`, que es el valor exacto de `--pds-du288-soft` | seis componentes | token |
+| `var(--pds-du288-surface-alt, #f8f9fa)` y `var(--pds-du288-title, #1e293b)` / `#2c3e50` | tres componentes | **esos dos tokens no existen**: el fallback estaba vivo y pintaba un gris distinto en cada uso. Pasan a `--pds-du288-soft` y `--pds-du288-text` |
+| 49 `var(--token, #hex)` cuyo respaldo no coincidía con el token (`warning-dark` respaldaba `#d97706` contra el real `#946200`) | módulo de pagos | se quitó el respaldo: la hoja se carga en `nuxt.config` y los tokens viven en `:root`, así que nunca se usaba y solo documentaba un color falso |
+| Insignia de la cuota con `badge badge-primary` de Bootstrap, azul propio | modal del solicitante | `pds-ui-mini-chip`, la misma que usa el modal DGDP |
+| Mayúsculas completas en rótulos y encabezados, y tamaños en `rem` fuera de la escala (`0.72rem`, `0.78rem`, `1.6rem`) | modal del solicitante | formato oración y tokens de tipografía (§5.1); el monto queda en 24 px y baja a 20 px bajo 576 px |
+| Modal del solicitante sin `scrollable` | `Du288InstallmentSubmitModal` | se agregó: §11 pide scroll interno en contenido extenso |
+
+Queda **un** color sin token a propósito: el violeta de «marca de reloj
+control» (`#ede9fe`/`#5b21b6` en las marcas de mes, `#f5f3ff`/`#ddd6fe`/`#6366f1`
+en las tarjetas de ejecución). No es una infracción —§5.4 prohíbe hexadecimales
+nuevos cuando el significado *ya* tiene token, y este no lo tiene—, pero es una
+cuarta categoría de la leyenda de días que conviene resolver: o se le define un
+token con nombre propio en `pds-du288.css`, o se funde con Información y se
+pierde la distinción contra «comprometido». Es decisión del dueño del estándar,
+no del cambio de pagos, así que se dejó marcada.
+
+El estilo del modal del solicitante sí se tocó, entonces, contra lo que decía
+este documento: solo colores, radios, tamaños y el `scrollable`. Ni una regla de
+negocio, ni un dato de los que muestra, ni nada del formulario de creación de
+cuotas.
+
+**Lo que queda abierto, y por qué no se hizo acá.** Fuera de los dos modales
+siguen 21 `font-size` en `rem` fuera de la escala y una regla de mayúsculas
+completas en `Du288PaymentExecutionSection`. Son infracciones del §5.1, pero
+corregirlas cambia el aspecto de pantallas de creación de cuotas ya aprobadas,
+y eso es una pasada de tipografía con su propia revisión visual, no parte de la
+bandeja de Finanzas. Se deja listado para decidirlo aparte.
+
+---
+
+### F0.3 · Paridad de datos: los dos modales contra el Excel de Finanzas
+
+Criterio acordado: **lo que se confirma en pantalla es lo que va a salir en el
+archivo de traspaso**. No «el mismo modal», sino el mismo juego de datos, más
+lo propio de cada etapa. El archivo tiene 13 columnas (§4 de
+`plan_bandeja_aprobadas_finanzas.md`) y de ahí sale qué tiene que estar:
+
+| Columna del Excel | Dato en los dos modales | Estado |
+| :--- | :--- | :--- |
+| `Nombre`, `RUT` | funcionario con RUT | ya estaba en los dos |
+| `Monto` | **monto neto aprobado** | **era la incongruencia principal** |
+| `CC` | centro de costo con código | ya estaba |
+| `Nº Resol`, `Año Resol` | Resolución Exenta con año | se agregó al modal de envío |
+| `Fec_inicio`, `Fec_Termino` | períodos incluidos (mes–mes) | se muestra el rango de períodos, no las fechas |
+| `Corr` | correlativo de fila del archivo | no corresponde a la cuota |
+| `Cod_Unidad Res` | constante `05000000` | no se muestra: es constante |
+| `Código Haber` | — | `ss_asds.num_cuenta` (confirmado por el usuario) |
+| `Item` | — | `sg_fups.cod_sitm`, contrastado con `ss_ccas.cod_item` (confirmado) |
+| `Porcentaje CC` | — | `ss_ccas.valor_asig / ss_asds.valor × 100` (confirmado) |
+
+**La incongruencia principal: el solicitante confirmaba el bruto.** El modal de
+envío destacaba la suma de `amountToPay`; el de DGDP destaca el neto. Para la
+misma cuota, las dos pantallas mostraban dos cifras distintas como «la» cifra.
+Y el propio formulario de creación ya calcula `selectedDeductions` y
+`selectedNet` y se los muestra al solicitante: el modal volvía al bruto
+después. Ahora los dos destacan el **monto neto aprobado**, con el mismo
+rótulo, y el bruto baja a la celda «total solicitado». Es el monto que el plan
+fija para el archivo: «el monto a exportar es el neto aprobado, descontando
+licencias y ausencias».
+
+**Licencias y ausencias van separadas.** Los dos modales sumaban los descuentos
+en una sola cifra, pero el neto del archivo sale de las dos y los campos
+siempre estuvieron separados (`medicalLeaveDeduction`, `unpaidLeaveDeduction`).
+Ahora se muestran como celdas distintas en el total y bajo el neto de cada mes,
+cada una solo cuando existe.
+
+**Datos de cuota que faltaban en DGDP.** El modal de envío mostraba tope por
+cuota, espacio en la cuota, bloqueado por rechazo, saldo disponible y saldo
+después; el de DGDP, ninguno. Desde que el saldo dejó de bloquear la aprobación
+(§F0) el revisor puede aprobar sin saldo, así que son justo las celdas que
+necesita. Se calculan con el mismo helper que usa el envío,
+`resolveDraftInstallmentBalance`: la cuota ya enviada está dentro de lo
+consumido, y el helper la devuelve para mostrar el saldo sin ella y, en
+`after`, el saldo con ella. No hay un cálculo nuevo ni un segundo criterio de
+saldo.
+
+**Validaciones como etiquetas, en los dos.** Antes el envío las dejaba fuera
+del modal —estaban al lado, en la página— y DGDP mostraba solo las **no**
+bloqueantes, como lista de texto. Ahora los dos llevan la fila completa de
+chips con su estado: verde lo cumplido, ámbar lo revisable, rojo lo que
+bloquea, con el mismo par de clases `payment-chip-*` que usa el formulario de
+la cuota, para que una etiqueta no cambie de color al pasar de una pantalla a
+otra. El aviso ámbar quedó reducido a su frase, bajo los chips y solo al
+aprobar.
+
+**Lo que no se igualó, a propósito**, porque es propio de cada acto: «se envía a
+DGDP» y el aviso de que la cuota deja de ser editable (envío); el aviso de
+rechazo, la observación con su contador de 255 y el botón por decisión
+(revisión). El respaldo con botón «ver PDF» queda solo en el envío: en la
+revisión el PDF tiene su propia pestaña y el estado del respaldo ya viaja como
+chip de validación.
+
+#### Lo que apareció al mirar las dos pantallas lado a lado
+
+Ocho diferencias que no eran de datos sino de cómo se escribía el mismo dato.
+Seis corregidas:
+
+| Qué pasaba | Dónde | Qué se hizo |
+| :--- | :--- | :--- |
+| **El RUT se mostraba en crudo**, `087962717`, con el relleno de ceros del PA | los dos modales | `runFormatToRequest` → `8.796.271-7` |
+| **El formateador de las bandejas borraba el dígito verificador**: `replace(/\D/g, '')` se come la K, así que `06706447K` se mostraba como `6.706.447` —otro RUT— | las tres bandejas de pagos, con tres copias locales idénticas | una sola implementación en `utils/formatters`, con pruebas |
+| Licencia y permiso **se leían pegados** bajo el neto del mes | revisión DGDP | `display: block` (el modal de envío ya lo tenía) |
+| **«Total solicitado» repetía el neto** cuando no había descuentos | los dos | se muestra solo si hay descuentos, mismo criterio que ya tenían las celdas de licencia y permiso |
+| El mes de pago se llamaba **«Se paga en»** en una pantalla y **«Mes de pago»** en la otra | envío | «Mes de pago» en las dos |
+| La solicitud era **«Prestación: Solicitud N° 208»** contra **«Solicitud: N° 211»** | revisión DGDP | rótulo «Solicitud», valor «N° 208» |
+| El centro de costo era **`NOMBRE (9010.5)`** contra **`NOMBRE · 9010.36`** | revisión DGDP | el formato con punto medio, el de la vista del solicitante |
+| Los títulos de tarjeta salían en **MAYÚSCULAS** | los dos | `app.css` pone en mayúsculas todos los `h1`–`h6` de la aplicación; se anula en los dos modales, que es lo que pide el §5.1 |
+
+Y el tope por cuota no aparecía en la revisión: tomaba `installment.monthlyCap`
+sin el respaldo de la ficha del funcionario que la propia página ya resuelve en
+`modalStaff.topValidation.appliedCap`. Ahora usa ese.
+
+**Dos que no se tocaron, porque exceden estas pantallas:**
+
+1. **Nombres con `Ñ` llegan rotos** desde el backend: la captura muestra
+   «SERGIO HERIBERTO DELGADO ZU?IGA». No es del modal —el dato llega así— y hay
+   que resolverlo en la codificación de la respuesta de Sybase, no maquillarlo
+   en la vista.
+2. **Las etiquetas de campo van en mayúsculas completas en toda la aplicación**
+   (`.pds-ui-read-label` y compañía, seis reglas de `pds-du288.css`, más
+   `h1`–`h6` en `app.css`). El §5.1 del estándar pide formato oración. Cambiarlo
+   restyliza todas las pantallas DU288, así que es decisión del dueño del
+   estándar y no de este cambio.
+
+**Pendiente que esto deja a la vista:** `Fec_inicio`/`Fec_Termino` no se
+muestran como fechas porque la regla para derivarlas sigue abierta —decisión
+pendiente 1 del plan, la reconciliación del mes de proceso con el tramo
+`01-09` a `31-12` del ejemplo—. Mostrar fechas calculadas con una regla no
+cerrada sería inventar el dato. Cuando se cierre, las dos pantallas deberían
+mostrar el mismo par de fechas que va al archivo.
+
+---
+
+### F0.4 · El máximo de cuotas, siempre a la vista
+
+Regla: **en toda pantalla donde aparezca el número de una cuota debe aparecer
+el máximo decretado para la prestación.** Siete lugares lo escribían por su
+cuenta y cinco lo omitían:
+
+| Dónde | Decía | Ahora |
+| :--- | :--- | :--- |
+| Listado de cuotas de la solicitud | «Cuota 1», sin máximo | «Cuota 1 de 3» |
+| Modal de envío | «Cuota 1» si el total no venía | siempre con el total |
+| Resumen de la cuota (solicitud) | «Cuota única (1 de 1)» con una sola cuota | «Cuota 1 de 1» |
+| Pestaña de meses | igual que el anterior | igual que el anterior |
+| Título de la cuota en revisión DGDP | «Cuota 2» si el decretado era 1 | siempre con el total |
+| Ficha de antecedentes DGDP | dos ramas escritas a mano | una sola |
+| Bandejas de revisión y Finanzas | «de Sin información» | «total de cuotas no informado» |
+
+El punto que importa: **sin el dato y «prestación de una sola cuota» se leían
+igual.** Las dos terminaban en «Cuota 1», y quien leía suponía lo segundo.
+Ahora el total ausente se declara ausente.
+
+Queda un solo origen: `formatInstallmentOfTotal` en
+`utils/services-provision/normative/formatters.js`, con el vocabulario en
+`payments.installmentLabel`, y cinco pruebas que fijan la regla —incluida la
+que exige que dato ausente y cuota única **no** se lean igual—.
+
+`authorized` es lo que decretó la resolución (`authorizedInstallments`), no
+cuántas se enviaron ni cuántas se pueden declarar: eso último es
+`getMaxDeclarableInstallments`, que es la regla del formulario y responde otra
+pregunta.
+
+### F0.5 · Lo que faltaba para decidir
+
+- **Las marcas del mes**, en los dos modales. `monthRows` ya traía las cuatro
+  que entrega el PA —licencia médica, sin goce, inhabilidad, centro de costo
+  cerrado— y ninguno de los dos modales las mostraba: se veía el descuento sin
+  su causa, y una inhabilidad o un centro de costo cerrado **no** se deducen
+  mirando el monto. Van como chips bajo el período del mes. El vocabulario
+  quedó en `payments.monthFlags`, que ahora leen la pestaña de meses y los dos
+  modales.
+- **La observación anterior**, en el modal de DGDP. La cuota puede ir y volver
+  varias veces; el motivo con que se devolvió ya estaba en la pestaña, pero no
+  en el modal donde se confirma. Aprobar sin comprobar si eso se subsanó es
+  exactamente el error que la devolución quería evitar. Se muestra con su fecha
+  y autor, en tono de información y no de advertencia: que la cuota ya volvió
+  una vez es contexto, no un problema de esta decisión.
+- **El anclaje del saldo**, en los dos. «Saldo disponible $12.024.252» no dice
+  si es mucho o nada. Ahora va en su propia tarjeta —«Saldo de la resolución»—
+  con el monto autorizado, lo pagado, lo en trámite, lo bloqueado por rechazo y
+  el saldo antes y después de esta cuota. Separarlo de la grilla de la cuota no
+  es cosmética: son dos niveles distintos —la cuota y la prestación— y
+  mezclados en una sola grilla de hasta doce celdas se leían como uno solo.
+- **Tipo de monto**, en los dos. Fijo o variable cambia qué se está aprobando:
+  en monto variable la cifra del mes se define al pagar, así que el neto del
+  resumen no es una cifra cerrada.
+- **Modalidad de jornada**, en los dos. Define si la prestación exigía
+  compensación —fuera de jornada no se compensa—, y hasta ahora eso solo se
+  infería del chip de compensación, que no dice por qué.
+
+No se agregó la antigüedad de la cuota (fecha de envío y días en espera):
+sirve para priorizar en la bandeja, que es donde está, y no para decidir con el
+modal abierto.
+
+---
+
 ## F4 · El Excel
 
-Bloqueada. Lo que la desbloquea, en este orden:
+Fuentes confirmadas por el usuario el 28-10-2026:
 
-1. `Código Haber`, `Item` y `Porcentaje CC`: constantes de DU288 o datos por
-   solicitud.
-2. El mes de proceso del ejemplo frente a `01-09`–`31-12`.
-3. Plantilla oficial, si existe.
+- `Código Haber`: `ss_asds.num_cuenta`.
+- `Item`: `sg_fups.cod_sitm`, contrastado con `ss_ccas.cod_item`.
+- `Porcentaje CC`: `ss_ccas.valor_asig / ss_asds.valor × 100`.
+- Grano: una fila por mes/asignación SISPER.
+- `Nº Resol` es el Exento (`num_resolu_ext`) con su `Año Resol`, nunca el
+  consecutivo interno.
 
-Cuando se abra, el diseño ya decidido: lectura dedicada que devuelva para un
-período de pago las cuotas aprobadas **con sus meses** en una consulta —los
-meses de hoy se piden de a una cuota, y 80 cuotas serían 80 viajes—, y el libro
-armado en backend si el formato es contractual. `Nº Resol` es el **Exento**
-(`num_resolu_ext`) con su `Año Resol`, nunca el consecutivo interno.
+La consulta dedicada debe devolver los meses/asignados de las cuotas
+seleccionadas en una lectura, con estos campos SISPER y neto aprobado por mes.
+El archivo conserva las 13 columnas indicadas en el plan y el RUT como texto.
+Cuando `ss_ccas` tiene varias filas para una asignación SISPER, se genera una
+fila por cada centro de costo. El monto exportado se prorratea por el porcentaje
+de esa línea; el residuo de redondeo se asigna a la última línea, de modo que la
+suma coincida con el neto aprobado de la cuota. Las fechas SISPER corresponden
+al mes de pago de `sg_epag`, y el neto es la suma neta de todos los meses de la
+cuota.
 
 ---
 
@@ -321,3 +688,29 @@ Si hay que elegir una sola, **F3 antes que F1**: es la que evita que la misma
 cuota se exporte y se pague dos veces. Pero sin F1 no hay dónde ponerle el
 botón, así que entregar F1+F2 primero y F3 enseguida es el orden que menos
 trabajo repite.
+
+**Lo que se hizo el 28-10-2026** fue F3, F1 y F2, en ese orden, por lo que pedía
+el encargo: antes de la bandeja, que DGDP pueda cambiar el estado de una cuota
+aprobada. Aprobar ya existía (`sg_epaguSecgen03`, destino 4 desde el 2); lo que
+no existía era ninguna salida del 4. Con `sg_epaguSecgen04` el estado 4 deja de
+ser terminal, y sobre eso la bandeja tiene de dónde partir y a dónde llegar.
+
+Verificación ejecutada: backend `npm run build` y 247 pruebas unitarias;
+frontend `node utils/validateDu288Ui.js` (52 archivos), `npm test`
+(15 archivos), `npx eslint` sin hallazgos nuevos y `npx nuxt build` con la ruta
+`/prestacion-de-servicios/pagos/finanzas` generada. **Nada se ejecutó contra
+Sybase**: la PA nueva está sin probar en base de datos y su lista de
+comprobaciones de certificación está en F3.7.
+
+F2.2 queda comprobado y no construido, como decía el plan:
+`Du288PaymentDocumentTab` no tiene props ni eventos de carga ni de borrado —solo
+ver, abrir en pestaña nueva y descargar—, así que la pestaña de respaldo no
+ofrece escrituras en ningún estado, no solo en el 4.
+
+De F2 queda sin hacer una sola cosa, a propósito: **el encabezado del detalle no
+cambia según el origen**. «Antecedentes enviados a visación DGDP» es cierto en
+los dos caminos —la cuota se envió a visación, y por eso está aprobada—, y el
+estado de la cuota ya está a la vista en la propia pantalla. Un subtítulo
+distinto por camino habría hecho que la misma cuota se leyera distinto según
+desde dónde se abrió, sin agregar un dato. Lo que sí distingue el origen es el
+botón de volver, que es lo que el usuario necesita que cambie.

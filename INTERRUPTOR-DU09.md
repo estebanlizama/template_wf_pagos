@@ -1,14 +1,16 @@
-# INTERRUPTOR-DU09 — quitar antes de producción
+# INTERRUPTOR-DU09 — quitar antes de certificación
 
 > **Esto es temporal.** Se encendió el **14-10-2026** para poder probar el envío
 > a DGDP de punta a punta mientras los centros de costo de prueba no tienen
-> cargadas sus marcas presupuestarias. **No puede llegar a producción así.**
+> cargadas sus marcas presupuestarias. **No puede llegar a certificación así:
+> a master se entra con todas las validaciones bloqueando.**
 
 ---
 
 ## Qué está apagado
 
-Dos validaciones **se siguen mostrando** y **dejaron de impedir el envío**:
+Dos validaciones **se siguen mostrando** y **dejaron de impedir el envío del
+solicitante y la aprobación DGDP**:
 
 | Validación | Qué se ve | Qué hace hoy |
 | :--- | :--- | :--- |
@@ -38,6 +40,15 @@ grep -rn "INTERRUPTOR-DU09" .
 | :-: | :--- | :--- |
 | 1 | `sg-solicitudes-frontend/store/service-provision-payment-detail.js` | `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` |
 | 2 | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` | `BALANCE_BLOCKS_SUBMISSION = true` |
+
+**El punto 1 gobierna dos pantallas, no una.** Desde el 28-10-2026 la
+aprobación DGDP lee el mismo interruptor: la página de revisión pasa
+`balanceBlocks: this.balanceBlocksSubmission` al armar sus etiquetas
+(`pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue`).
+Antes lo tenía fijo en `true`, así que el saldo impedía aprobar aunque el
+interruptor estuviera apagado, y la propia sección de validaciones mostraba el
+aviso de que no bloquea con el botón deshabilitado. Al encender el punto 1
+vuelven a bloquear **las dos**: el envío del solicitante y la aprobación DGDP.
 | 3 | `cambios_pa/sg_epag/sg_epagiSecgen01.sql` | borrar las dos líneas del comentario que envuelve la guarda de `afec_du9` |
 | 4 | `cambios_pa/sg_epag/sg_epaguSecgen01.sql` | lo mismo |
 | 5 | `cambios_pa/sg_epag/sg_epaguSecgen02.sql` | lo mismo |
@@ -110,3 +121,32 @@ plantilla.
    devuelve 422 con el motivo del saldo.
 4. Con `afec_du9` vacío, los tres PA rechazan con
    *«El centro de costo no pertenece al flujo DU09»*.
+5. **En la revisión DGDP**, con un centro de costo sin saldo el botón *Aprobar*
+   queda deshabilitado y el chip pasa de ámbar a rojo entre los bloqueantes. El
+   modal de confirmación deja de mostrar el aviso de advertencias, porque con un
+   bloqueante no se llega a abrirlo.
+6. El chip de saldo del modal de confirmación de la revisión muestra el mismo
+   color que el de la pantalla de envío: los dos salen del punto 1.
+
+---
+
+## Lo que el punto 2 **no** cubre: la aprobación DGDP
+
+El punto 2 vive dentro de la compuerta de `submitInstallment`. El endpoint de la
+decisión DGDP —`POST …/payments/dgdp/provisions/{id}/installments/{n}/decision`—
+**no tiene compuerta normativa de ninguna clase**: valida el permiso
+(`assertCanResolveDgdpPayment`) y nada más. Lo normativo lo decide el navegador,
+con `blockingTags`, y el PA `sg_epaguSecgen03` solo exige la asignación DGDP
+(`cod_organi = 696`) y que la cuota esté en estado 2.
+
+Es decir: encender los puntos 1 y 2 deja el **envío** protegido en dos capas y
+la **aprobación** protegida solo en la pantalla. Una llamada directa al endpoint
+de decisión aprueba una cuota sin saldo, sin tope y sin evidencia.
+
+Eso no lo arregla el interruptor: hace falta decidir **qué validaciones aplican
+al aprobar**, que no son las mismas que al enviar. El propio controlador deja
+dicho que un contrato no vigente en SISPER no debe bloquear el pago de cuotas ya
+devengadas —«por desfase administrativo de pago»—, así que copiar
+`assertInstallmentNormativeCompliance` tal cual bloquearía aprobaciones
+legítimas. Está anotado en el checklist de certificación, §3, en tres controles
+que piden exactamente eso (PAG-36, RES-CC-05/PAG-39 y RES-IN-07/PAG-32).

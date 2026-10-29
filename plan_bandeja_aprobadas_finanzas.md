@@ -1,7 +1,15 @@
 # Plan propuesto: bandeja de cuotas aprobadas para Finanzas
 
 **Fecha:** 27-10-2026  
-**Estado:** incorpora los acuerdos funcionales del 27-10-2026, la revisión contra el código y las dos decisiones de arquitectura de esa fecha (§B y §C). **Las fases 1 a 3 quedan listas para implementar**; la del Excel sigue bloqueada por las tres columnas sin fuente y por el mes de proceso del ejemplo.
+**Estado:** incorpora los acuerdos funcionales del 27-10-2026 y las decisiones posteriores del 28-10-2026. Las columnas y el grano del Excel quedaron definidos; revisar §I, que reemplaza las preguntas antiguas sobre agrupación y fuentes.
+
+**Actualización funcional 28-10-2026:** los acuerdos de Excel de esta fecha
+reemplazan las preguntas anteriores sobre columnas y agrupación de períodos:
+Código Haber viene de `ss_asds.num_cuenta`; Item de `sg_fups.cod_sitm` y se
+contrasta con `ss_ccas.cod_item`; Porcentaje CC es
+`ss_ccas.valor_asig / ss_asds.valor × 100`. La salida lleva una fila por mes y
+asignación SISPER, y además una fila por cada centro de costo asociado en
+`ss_ccas`. Las cuotas se seleccionan desde la bandeja.
 
 ## Objetivo
 
@@ -556,5 +564,18 @@ veces la misma cuota y no espera ninguna decisión.
 
 ### H. Lo que este documento no autoriza
 
-Nada de lo anterior se implementó. Es revisión del plan contra el código: no se
-tocó ninguna pantalla, PA ni modelo para esta bandeja.
+Al redactar esta revisión, nada de lo anterior se había implementado. La
+actualización de acuerdos y el trabajo posterior se registran en §I y en
+`implementacion_bandeja_finanzas.md`.
+
+## I. Acuerdo posterior para el Excel (28-10-2026)
+
+El usuario confirmó las fuentes de las columnas y el grano de salida descritos
+al inicio. La regla anterior de agrupar meses atrasados en un rango queda
+reemplazada: se exporta cada asignación SISPER del mes de pago y se expande una
+fila por cada registro `ss_ccas`, manteniendo el centro de costo y su porcentaje.
+El número de resolución es el Exento de `sg_rslc`; la unidad de resolución se
+mantiene como texto `05000000`. La fecha de asignación corresponde a
+`sg_epag.ano_pago/mes_pago`; el monto de cada fila es el neto de la cuota
+prorrateado por el porcentaje CC. El residuo de redondeo se asigna a la última
+línea para que los montos exportados sumen el neto aprobado de la cuota.

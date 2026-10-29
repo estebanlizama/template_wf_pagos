@@ -13,7 +13,8 @@ Un PA por rol, como el resto del flujo: `sg_epagsSecgen01` es la lectura del jef
 de proyecto y `sg_epagsSecgen03`/`sg_epagsSecgen04` las de DGDP. Cada uno lleva el
 `not exists` de su propio rol, copiado del PA equivalente.
 
-El **insert no tiene PA propio**: va inline en `sg_epaguSecgen03`, dentro de la
+El **insert no tiene PA propio**: va inline en `sg_epaguSecgen03` al resolver
+desde estado 2 y en `sg_epaguSecgen05` al reabrir desde estado 4, dentro de la
 misma transacción que mueve `cod_estcuo`. Un comentario siempre acompaña una
 decisión, así que separarlos solo abre la puerta a los dos estados inconsistentes
 que antes existían —cuota devuelta sin motivo, o motivo sin devolución—. Si más
@@ -66,10 +67,12 @@ siguen vigentes y ahora son obligatorios:
 | :---: | :--- | :--- |
 | 32 | DGDP devolvio a correccion la cuota de pago | `cod_estcuo` → 3 |
 | 33 | DGDP rechazo la cuota de pago | `cod_estcuo` → 10 |
+| 34 | DGDP devolvio una cuota aprobada a visacion | `cod_estcuo` 4 → 2 |
 
 Los carga `datos_base/05_sg_tacc_acciones_pago.sql`. **Tiene que estar aplicado
-antes** de recompilar `sg_epaguSecgen03`: sin las dos filas, el `insert` viola la
-FK y la transacción se revierte, de modo que DGDP no puede resolver ninguna cuota.
+antes** de recompilar `sg_epaguSecgen03` y `sg_epaguSecgen05`: sin la acción usada,
+el `insert` viola la FK y la transacción se revierte, de modo que DGDP no puede
+resolver o reabrir una cuota.
 
 Lo que dejó de usarse es `sg_hist` como tabla y el prefijo en el texto. El código
 de acción no: se mudó de una columna sin FK a una con FK.

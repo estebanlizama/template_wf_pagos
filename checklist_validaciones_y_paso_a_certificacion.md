@@ -13,7 +13,7 @@ Son mecanismos que se introdujeron deliberadamente en el código para permitir p
 ### 1.1 El Interruptor Maestro: `INTERRUPTOR-DU09` (6 Puntos)
 
 > **Contexto:** Temporalmente habilitado para probar el flujo de cuotas y el envío a visación DGDP mientras los centros de costo de prueba no tenían cargada la marca `afec_du9 = 'S'`.  
-> **Comportamiento actual:** El saldo y la pertenencia a DU09 se evalúan e informan visualmente en pantalla (chips de advertencia/rojo), pero **no bloquean el botón ni el endpoint de envío**.
+> **Comportamiento actual:** El saldo y la pertenencia a DU09 se evalúan e informan visualmente en pantalla (chips de advertencia/rojo), pero **no bloquean el botón ni el endpoint de envío, ni la aprobación DGDP**.
 
 | Punto | Capa / Archivo | Ubicación exacta | Acción requerida para Certificación / Producción |
 | :---: | :--- | :--- | :--- |
@@ -26,6 +26,12 @@ Son mecanismos que se introdujeron deliberadamente en el código para permitir p
 
 > [!WARNING]
 > **Regla de Sincronía Front/Back:** Los puntos 1 y 2 deben conmutarse estrictamente al mismo tiempo. Si se enciende el backend y no el frontend, la pantalla se mostrará habilitada pero el botón fallará con error `HTTP 422 Unprocessable Entity`. Si se enciende el frontend y no el backend, el formulario bloqueará al usuario pero la API quedará desprotegida ante llamadas directas.
+
+> [!IMPORTANT]
+> **El punto 1 gobierna dos pantallas.** Desde el 28-10-2026 la aprobación DGDP lee el mismo interruptor (`balanceBlocks: this.balanceBlocksSubmission` en `pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue`). Antes lo tenía fijo en `true`, de modo que el saldo impedía aprobar aun con el interruptor apagado. Al conmutarlo vuelven a bloquear el **envío** del solicitante y la **aprobación** DGDP, y la verificación debe cubrir las dos.
+
+> [!CAUTION]
+> **El punto 2 no cubre la aprobación DGDP.** La constante vive dentro de la compuerta de `submitInstallment`. El endpoint de la decisión —`POST /requests/service-provision/payments/dgdp/provisions/{id}/installments/{n}/decision`— **no tiene compuerta normativa**: valida el permiso (`assertCanResolveDgdpPayment`) y nada más; `sg_epaguSecgen03` solo exige la asignación DGDP (`cod_organi = 696`) y el estado 2. Encender los puntos 1 y 2 deja el envío protegido en dos capas y la aprobación protegida solo en el navegador: una llamada directa aprueba una cuota sin saldo, sin tope y sin evidencia. No lo resuelve el interruptor — requiere decidir **qué validaciones aplican al aprobar**, que no son las mismas que al enviar (el propio controlador establece que un contrato no vigente en SISPER no debe bloquear el pago de cuotas ya devengadas). Es el trabajo que piden los controles PAG-36, RES-CC-05/PAG-39 y RES-IN-07/PAG-32 de la §3.
 
 ---
 
@@ -127,7 +133,8 @@ flowchart TD
     H --> I["7. Desplegar y compilar sp_as01sSecgen01 (Asistencia)"]
     I --> J["8. Eliminar carpeta huérfana /components y limpiar .env"]
     J --> K["9. Ejecutar batería de tests (Unitarios Frontend y Backend)"]
-    K --> L["✅ Listo para Certificación"]
+    K --> M["10. Cerrar la compuerta normativa de la aprobación DGDP"]
+    M --> L["✅ Listo para Certificación"]
 ```
 
 1. **Paso 1 (BDD - Diagnóstico):** Correr `06_marcas_du09_centro_costo.sql` y regularizar centros sin marca.
@@ -137,5 +144,7 @@ flowchart TD
 5. **Paso 5 (Frontend):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`. Verificar `DISABLE_AUTH = false` en `.env`.
 6. **Paso 6 (Higiene):** Borrar carpeta huérfana `d:\trabajo_ufro_2026\components`.
 7. **Paso 7 (Validación Técnica):**
-   - Frontend: `npm test` (verificar 14/14 suites pasando) y `npx eslint` limpio.
-   - Backend: `npm run test:unit` (verificar 231 tests pasando) y `npm run build` sin errores.
+   - Frontend: `npm test` (al 28-10-2026, **16** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**53** archivos del estándar visual) y `npx eslint` limpio.
+   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 28-10-2026, **247** tests pasando).
+   - Los conteos crecen con cada entrega: valen como piso, no como cifra exacta. Lo que no puede cambiar es que ninguno falle.
+8. **Paso 8 (Compuerta de la aprobación DGDP):** antes de certificar, cerrar la decisión de qué validaciones bloquean al aprobar y llevarlas al endpoint de decisión. Hoy esa compuerta no existe (ver la nota del §1.1): con los puntos 1 y 2 encendidos, el envío queda protegido en dos capas y la aprobación solo en la pantalla.

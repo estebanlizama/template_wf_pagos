@@ -307,13 +307,13 @@ Detalle del modelo, acceso y largos en [`sg_com1/README.md`](sg_com1/README.md).
 ### Orden de instalación
 
 1. `sg_com1` — ya está en la BDD de prueba.
-2. `datos_base/05_sg_tacc_acciones_pago.sql` — las acciones 32 y 33.
+2. `datos_base/05_sg_tacc_acciones_pago.sql` — las acciones 32, 33 y 34.
 3. `sg_com1sSecgen01` y `sg_com1sSecgen02`.
-4. `sg_epaguSecgen03` recompilado, junto con el backend.
+4. `sg_epaguSecgen03` y `sg_epaguSecgen05` recompilados, junto con el backend y frontend.
 
 **El paso 2 antes del 4, sin excepción.** `sg_com1.id_tipacc` tiene FK a
-`sg_tacc` y el `insert` vive dentro de la transacción: sin las dos filas la
-decisión se revierte y DGDP no puede resolver ninguna cuota. Antes ese mismo
+`sg_tacc` y el `insert` vive dentro de la transacción: sin la acción usada, la
+decisión o reapertura se revierte y DGDP no puede resolver la cuota. Antes ese mismo
 error se perdía en un `catch` silencioso, así que la falta de semillas no se
 notaba; ahora bloquea.
 
@@ -335,10 +335,10 @@ notaba; ahora bloquea.
 
 ### Riesgos y decisiones abiertas
 
-- Las filas con `id_tipacc in (32, 33)` que ya estén en `sg_hist` siguen ahí y
+- Las filas con `id_tipacc in (32, 33, 34)` que ya estén en `sg_hist` siguen ahí y
   `sg_histsSecgen02` las sigue devolviendo, con el prefijo a la vista en el
   historial de la resolución. Borrarlas es
-  `delete from secgen_db.dbo.sg_hist where id_tipacc in (32, 33)`; conviene
+  `delete from secgen_db.dbo.sg_hist where id_tipacc in (32, 33, 34)`; conviene
   decidirlo antes de un ambiente con datos reales.
 - `sg_com1` no guarda `id_perfil`, la única columna de auditoría que `sg_hist`
   tenía y esta no. Si la auditoría la necesita, es una columna más.

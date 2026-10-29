@@ -1,8 +1,8 @@
 # PA del encabezado de cuota — `sg_epag` / `sg_dpag`
 
 Gestión de cuotas del **jefe de proyecto** y revisión de **DGDP**. Los PA existentes del jefe de
-proyecto autorizan contra `fin21_db..es_ecct`; los PA `sg_epagsSecgen03/04` y
-`sg_epaguSecgen03` verifican contrato activo más `sp_orde.cod_organi = 696`, RUT autenticado
+proyecto autorizan contra `fin21_db..es_ecct`; los PA DGDP
+`sg_epagsSecgen03/04/05` y `sg_epaguSecgen03/04/05` verifican contrato activo más `sp_orde.cod_organi = 696`, RUT autenticado
 coincidente y `vigente = 'S'`. El RUT llega del token.
 
 | PA | Qué hace | Estados que admite |
@@ -12,9 +12,12 @@ coincidente y `vigente = 'S'`. El RUT llega del token.
 | `sg_epaguSecgen01` | Edita mes de pago, respaldo y el conjunto de meses | 1, 3 |
 | `sg_epagdSecgen01` | Elimina el borrador y libera sus meses | 1 |
 | `sg_epaguSecgen02` | **Envía** a visación: `→ 2` y compromete los meses | 1, 3 |
-| `sg_epagsSecgen03` | Bandeja DGDP: cuotas en visación | 2 |
-| `sg_epagsSecgen04` | Detalle DGDP: meses de una cuota en revisión | 2 |
+| `sg_epagsSecgen03` | Bandeja DGDP: cuotas por estado | 2, 3, 4, 8, 10, 11 |
+| `sg_epagsSecgen04` | Detalle DGDP: meses de una cuota | 2, 3, 4, 8, 10, 11 |
+| `sg_epagsSecgen05` | Datos SISPER por mes/asignación y centro de costo para el Excel de Finanzas | 4, 8 |
 | `sg_epaguSecgen03` | Aprobar, observar o rechazar y actualizar el estado de la cuota | 2 |
+| `sg_epaguSecgen04` | **Registrar el envío a Finanzas**: cierra la cuota en 8 y sus meses en 3 | 4 |
+| `sg_epaguSecgen05` | Devuelve una cuota aprobada a visación DGDP, con motivo auditado | 4 → 2 |
 
 ---
 
@@ -27,13 +30,44 @@ coincidente y `vigente = 'S'`. El RUT llega del token.
   enviar     →  2 En visación          1 → 2 Comprometida
   observar   →  3 Observada            sin cambio (sigue 2)
   reenviar   →  2 En visación          sin cambio (ya está 2)
-  rechazar   → 10 Rechazada            2 → 1 Propuesta
+  rechazar   → 10 Rechazada            2 → 4 Rechazada (bloqueados)
   aprobar    →  4 Aprobada             sin cambio
+  devolver aprobada → 2 En visación     sin cambio (meses siguen en 2)
   enviar rem →  8 Enviada remun.       2 → 3 Enviada a pago
 ```
 
-Las transiciones DGDP se limitan a aprobar, observar o rechazar desde estado 2. El envío a
-remuneraciones (estado 8) sigue sin PA.
+`sg_epaguSecgen03` cubre aprobar, observar y rechazar desde el estado 2. `sg_epaguSecgen04`
+registra el envío a remuneraciones y cierra la cuota: deja `sg_epag.mto_realpa` con la suma de los
+meses enviados.
+
+`sg_epaguSecgen05` permite que DGDP devuelva una cuota aprobada (4) a visación (2) para ajustar
+montos y antecedentes antes de enviarla a Finanzas. Exige un motivo, confirma que todos sus meses
+sigan comprometidos en estado 2, conserva la asociación y registra el motivo en `sg_com1` con
+acción 34 dentro de la misma transacción. Una cuota ya enviada a Finanzas (8) no se puede reabrir.
+
+Antes de desplegarlo, cargar `datos_base/05_sg_tacc_acciones_pago.sql` (ruta relativa al paquete
+`template_wf_pagos`). La carga agrega solo las acciones faltantes 32, 33 y 34. El PA valida la
+existencia de la acción 34 antes de modificar la cuota; si falta, devuelve un mensaje de
+configuración en lugar de intentar insertar un comentario que viola la FK hacia `sg_tacc`.
+
+**Por qué el envío es un PA aparte.** `sg_epaguSecgen03` está acotado al estado 2 y a los destinos
+3, 4 y 10: una cuota aprobada no entra, y ampliarlo a 4 → 8 mezclaría dos actos en un PA cuyo
+nombre y validaciones hablan de visación. Vale acá la regla del paquete: pagos no modifica un PA
+para sus propias necesidades, crea uno nuevo.
+
+**Qué escribe y qué no, `sg_epaguSecgen04`.** Es la transición que los catálogos ya describían
+—`sg_ecuo = 8` «se registró en Finanzas, los meses pasan a `sg_efum = 3`»— y hasta ahora nadie la
+escribía, así que `fec_envrem`, `mto_realpa` y los estados 8 y 11 estaban muertos.
+
+- Exige `cod_estcuo = 4`: una segunda ejecución sobre la misma cuota responde `msg` y no cambia
+  nada. Es lo que evita pagar dos veces la misma cuota.
+- No recalcula `sg_fume.mto_realpa` donde ya existe: `sg_fumeuSecgen03` lo dejó al registrar los
+  descuentos, y ese es el neto que DGDP revisó. Solo lo completa donde nunca se ajustó, para que
+  ningún mes llegue al estado 3 sin su monto enviado.
+- Los meses que DGDP descartó uno a uno quedan en `sg_efum = 4` y no se tocan: solo pasan a 3 los
+  que están comprometidos.
+- Cierra la cuota dejando `sg_epag.mto_realpa = sum(sg_fume.mto_realpa)` de los meses enviados, que
+  es la consistencia que este README ya exigía al PA de cierre y que ningún PA mantenía.
 
 **Crear no compromete.** El borrador deja los meses en `cod_estfum = 1`. Si crear ya los
 comprometiera, un borrador abandonado bloquearía meses y consumiría cupo sin que nadie haya pedido
@@ -42,6 +76,27 @@ nada — mismo criterio que usa resolución para no escribir `sg_fume` desde un 
 **Observar no libera.** Por eso `sg_epaguSecgen01` no deja cambiar los meses de una cuota en 3:
 siguen comprometidos, y cambiar el conjunto exigiría liberar unos y tomar otros en el mismo acto.
 Cambiar los meses de una cuota ya enviada es rechazarla y rehacerla.
+
+`sg_epagsSecgen05` es una lectura masiva para construir el Excel de Finanzas. Recibe el RUT
+DGDP, el estado (4 o 8) y una lista numérica de prestaciones; vuelve a validar la asignación
+DGDP y devuelve los meses de las cuotas de esas prestaciones junto con sus asignaciones SISPER.
+El resultado tiene una fila por asignación mensual y por cada `ss_ccas` asociado, para conservar
+cada centro de costo y su porcentaje. Las fechas se cruzan con el mes de pago de `sg_epag`, y el
+monto neto de la cuota se prorratea entre sus centros; cualquier residuo del redondeo queda en la
+última asignación para que el total siga cuadrando. El backend limita luego la respuesta a los
+números de cuota seleccionados por el usuario.
+
+Las columnas de nómina salen de estas fuentes: `ss_asds.num_cuenta` para Código Haber;
+`sg_fups.cod_sitm` para Item, contrastado con `ss_ccas.cod_item`; y
+`ss_ccas.valor_asig / ss_asds.valor * 100` para Porcentaje CC. El monto base es el neto total de
+la cuota (`sum(sg_fume.mto_apagar - mto_deslic - mto_dessg)`), y las fechas son las de la
+asignación del mes de pago. La resolución es el número Exento de `sg_rslc`.
+
+Corrección del 29-10-2026 en `sg_epagsSecgen05`: los netos de las cuotas seleccionadas se
+calculan en `#montos_cuota_finanzas`. El agregado que ajusta el redondeo consulta ese neto y el
+valor de la asignación mediante alias locales, para evitar el error 146 de ASE por columnas
+externas dentro de `sum`. Conserva parámetros, columnas de salida y distribución del monto.
+Desplegar el par SQL/TXT actualizado; la compilación y ejecución en ASE quedan pendientes.
 
 ---
 
@@ -183,6 +238,9 @@ sp_helpconstraint 'secgen_db.dbo.sg_dpag'
 10. `sg_usacs/sg_usacsSecgen01` y actualizar `sg_epagsSecgen01`
 11. `sg_epagsSecgen03/04` y `sg_epaguSecgen03`
 12. Backend y frontend DGDP
+13. `sg_epag/sg_epaguSecgen04`   envío a Finanzas (cierre de la cuota)
+14. Backend y frontend de la bandeja de cuotas aprobadas
+15. `datos_base/05_sg_tacc_acciones_pago.sql` (acción 34) y `sg_epag/sg_epaguSecgen05`
 ```
 
 Todos los PA usan las columnas declaradas para `sg_epag` en el diagrama vigente. La decisión
