@@ -935,32 +935,218 @@ El paso 4 de la tabla sirve de prueba rápida sin tocar la base: si el detalle d
 la cuota muestra el «Ítem presupuestario», el dato existe y lo único que falta es
 el punto 1.
 
+> **La respuesta del endpoint no distingue los dos primeros casos.**
+> `ModelTransformUtil.renameKeysOfObject` recorre el mapa de nombres y, cuando el
+> valor llega `null`, lo reemplaza por el `default` del campo —que no existe—, así
+> que queda `undefined` y **la clave desaparece del JSON**. Un `cod_sitm` nulo y
+> una columna que el PA no devuelve se ven exactamente igual: sin
+> `budgetItemCode`. Se comprueba en el mismo payload del 30-10-2026, donde
+> `monthlyCap` está en dos filas y falta en la primera, y donde ninguna fila trae
+> `costCenterInFlow` ni `costCenterCapped` —los dos del `left join` a
+> `es_ccto`—. Por eso el diagnóstico va a la base y no al JSON.
+
 ```sql
--- 1. El procedimiento compilado, devuelve la columna?
-select o.name
-  from secgen_db.dbo.sysobjects o, secgen_db.dbo.syscomments c
- where o.id = c.id
-   and o.name = 'sg_epagsSecgen03'
-   and c.text like '%cod_sitm%'
+-- 1. La misma union que hace la bandeja, para las cuotas que lista.
+--    Los corchetes y el datalength delatan el vacio y el relleno.
+select  epag.id_funprse,
+        epag.nro_cuota,
+        '[' + isnull(fu.cod_sitm, '<nulo>') + ']'   as cod_sitm,
+        datalength(fu.cod_sitm)                     as largo_bytes,
+        '[' + isnull(fu.itm_global, '<nulo>') + ']' as itm_global
+  from  secgen_db.dbo.sg_epag epag
+        inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
+ where  epag.cod_estcuo in (4, 8)
+ order by epag.id_funprse, epag.nro_cuota
 
--- 2. Las prestaciones con cuotas aprobadas o enviadas, tienen item guardado?
-select fu.cod_sitm, count(*) as cuotas
-  from secgen_db.dbo.sg_epag epag
-       inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
- where epag.cod_estcuo in (4, 8)
- group by fu.cod_sitm
+-- 2. El procedimiento compilado, devuelve la columna? Se mira la salida:
+--    si no aparece cod_sitm entre las columnas, el PA de la base es el viejo.
+--    El RUT es el del revisor DGDP, el mismo que manda la aplicacion.
+use secgen_db
+go
+exec Analisis2.sg_epagsSecgen03 @rut_person = '<rut del revisor>', @cod_estcuo = 4
+go
 
--- 3. Cuales de esos codigos existen de verdad en el catalogo
-select distinct cod_sitm, des_item
-  from fin21_db..pt_sitm
- where cod_sitm like '30%'
+-- 3. Cuales de esos codigos existen de verdad en el catalogo.
+select  cod_sitm, des_item
+  from  fin21_db..pt_sitm
+ where  cod_sitm like '30%'
  order by cod_sitm
 ```
 
-El paso 3 es el que decide el arreglo de fondo: si `pt_sitm` solo tiene códigos
-de cinco, el catálogo estático del backend está ofreciendo códigos que no
-existen, y corregirlo es cambiar ese catálogo por los subítems reales —no seguir
-traduciendo con un puente de tres entradas—.
+La consulta 1 responde sola la mayor parte: si `cod_sitm` vuelve `<nulo>` para
+`id_funprse` 4 y 8, no falta nada en la bandeja —el ítem nunca se guardó en esas
+solicitudes, que es lo esperable en datos de prueba creados sin elegirlo— y el
+arreglo es de captura, no de lectura. Si vuelve con valor, entonces lo que falta
+es ejecutar el PA.
+
+#### Dónde vive el `00`: en `pt_sitm.item_antig` (confirmado con datos)
+
+El 306 **no es un `pt_item.cod_item`**, y el código completo **no sale del centro
+de costo**. Los datos de `pt_sitm` lo dejan sin dudas:
+
+| cod_sitm | cod_item | des_item | vigencia | **item_antig** | itm_global |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 30000 | 30000 | REMUNERACIONES DIRECTIVOS | 1 | **300** | 201010001 |
+| 30300 | 30300 | REMUNERACIONES ACADEMICOS | 1 | **303** | 201020001 |
+| 30600 | 30600 | REMUNERACIONES NO ACADEMICOS | 1 | **306** | 201030001 |
+
+`cod_item` también tiene cinco caracteres —es la clave foránea a `pt_item`, cuya
+definición en `diagrama_fin21_db.md` es `cod_item varchar(5)`—, así que unir por
+ahí contra un `306` no encuentra nada. Lo que sí guarda los tres caracteres es
+**`item_antig smallint`**: el *ítem antiguo*.
+
+**Ese es el puente, y explica todo lo anterior.** El catálogo de SG —300
+Directivos, 303 Académicos, 306 No Académicos— es la **codificación antigua**,
+no una lista inventada. `pt_sitm` la conserva fila por fila, y la relación es
+directa:
+
+```sql
+where convert(varchar(5), si.item_antig) = ltrim(rtrim(fu.cod_sitm))
+  and si.vigencia = '1'
+```
+
+| Nivel | Quién lo decide | Dónde está |
+| :--- | :--- | :--- |
+| **Ítem antiguo** (`306`) | la clasificación del funcionario: directivo, académico, no académico | lo elige el solicitante, se guarda en `sg_fups.cod_sitm` |
+| **Subítem vigente** (`30600`) | el catálogo, por `item_antig` | `fin21_db..pt_sitm`, una fila |
+
+**El centro de costo no identifica el subítem**, solo dice si hay saldo para
+cargarlo (`fin21_db..pt_depr` por `cod_unifin` + `cod_ccto` + `cod_sitm`), y por
+eso **quedó fuera del PA**: ver «La poda» más abajo. Que SISPER espera el subítem
+y no el ítem lo confirma nuestro propio `sg_ccaiSecgen01`: recibe `@cod_sitm
+varchar(5)` y lo escribe en `ss_ccas.cod_item`.
+
+**El error del catálogo, ahora con el nombre correcto.**
+`selectStaffBudgetItems` filtra `WHERE cod_sitm IN ('300'…'306')`: busca ítems
+antiguos en la columna del subítem vigente, no encuentra nada, y el controlador
+cae al catálogo estático. El `WHERE` correcto es sobre `item_antig`. Y como la
+relación es uno a uno, lo que conviene guardar en `sg_fups.cod_sitm` —que es
+`varchar(5)`— es el subítem vigente, con lo que el puente desaparece del todo.
+
+> **Este documento se equivocó en el nivel anterior.** El 30-10 concluyó que el
+> código de tres era un `pt_item.cod_item`, leyendo la cadena
+> `pt_ticp → pt_titl → pt_item → pt_sitm` de `valida_saldo_cc_cs.sql`. La cadena
+> es correcta; la lectura, no: los cuatro niveles usan códigos de cinco, y el de
+> tres es de otra codificación, la antigua. El PA se corrigió el mismo día.
+
+```sql
+-- A. Los siete codigos de SG contra el catalogo, por item antiguo.
+--    Si cada uno devuelve una sola fila, la relacion es uno a uno.
+select  si.item_antig, si.cod_sitm, si.des_item, si.vigencia
+  from  fin21_db..pt_sitm si
+ where  si.item_antig in (300, 301, 302, 303, 304, 305, 306)
+ order by si.item_antig, si.cod_sitm
+
+-- B. Si ese subitem tiene presupuesto en el centro de costo de la cuota.
+--    Unidad y centro salen de la propia bandeja.
+select  distinct si.cod_sitm, si.des_item
+  from  fin21_db..pt_sitm si
+        inner join fin21_db..pt_depr dp on dp.cod_sitm = si.cod_sitm
+ where  si.item_antig = 306
+   and  dp.cod_unifin = 9050
+   and  dp.cod_ccto   = 2
+```
+
+**A dice cuántos de los siete códigos de SG existen** en el catálogo y si alguno
+apunta a más de un subítem vigente. **B ya no decide el código**: dice si hay
+saldo donde cargarlo.
+
+#### Lo aplicado el 30-10-2026
+
+El arreglo es la unión, no el puente, y está aplicado en las tres capas. Se
+resuelve **por subconsulta escalar y no por `join`**: un `join` a `pt_sitm`
+multiplicaría las filas de la bandeja cuando un ítem tenga varios subítems, que
+es justamente el caso que hay que advertir, no esconder.
+
+| Capa | Qué quedó |
+| :--- | :--- |
+| `sg_epagsSecgen03` | `cod_sitm` más dos columnas: `cant_subitm` (cuántos subítems vigentes tiene ese ítem antiguo) y `cod_subitm` (el menor de ellos) |
+| `Du288PaymentReviewInstallmentResponse.resolveSubitem` | la regla, con 6 pruebas unitarias; expone `budgetSubitemCode`, `budgetSubitemCandidates` y `budgetSubitemStatus` |
+| Bandeja de Finanzas | usa el subítem del PA; si no llegó, el respaldo de tres entradas. La celda vacía redacta el motivo que trae el estado |
+
+**La regla:** `cant_subitm = 1` → ese es el subítem. `> 1` → **no se elige** y la
+bandeja lo informa como ambiguo, porque elegir sería inventar una regla que le
+toca a Finanzas. `0` → no hay subítem para ese ítem, o la cuota no traía ítem.
+
+#### La poda del 30-10: de cuatro columnas a dos
+
+La primera versión del cambio traía dos columnas más, `cant_subitm_cc` y
+`cod_subitm_cc`: las mismas subconsultas restringidas a los subítems con
+presupuesto en el centro de costo, para desempatar cuando un ítem antiguo
+apuntara a varios. Se retiraron el mismo día, y conviene decir por qué:
+
+1. **El desempate no se ejecutaba nunca.** La relación es uno a uno en los
+   códigos cargados, así que `cant_subitm` siempre vale 1 y la segunda rama
+   quedaba muerta.
+2. **Era una regla nuestra, no de Finanzas.** «Si hay varios, elige el que
+   tiene presupuesto» suena razonable y no está escrita en ninguna parte. El
+   documento ya decía que elegir entre varios le toca a Finanzas, y después
+   elegía por presupuesto: una contradicción.
+3. **Costaba dos subconsultas correlacionadas por fila**, con su correlación a
+   `prse.cod_unifin` y `prse.cod_ccto`, para nada.
+
+El bloque bajó de 31 líneas a 9 y el PA ya no toca `pt_depr`. Si algún día un
+ítem antiguo apunta a varios subítems vigentes, la bandeja lo dice en vez de
+elegir, que era lo que el documento pedía desde el principio.
+
+> **Por qué subconsulta y no `join`, ahora con el motivo fuerte.** El `select`
+> de este PA agrega: `sum(fume.mto_apagar)`, `count(dpag.corr_fume)` y cuatro
+> más. Un `join` a `pt_sitm` que multiplicara filas no multiplicaría solo las
+> filas de la bandeja, **duplicaría los montos de la cuota**. El `group by` las
+> colapsaría de vuelta y el error no se vería en el conteo.
+
+#### Los cinco casos, y qué muestra cada uno
+
+`budgetSubitemStatus` viaja resuelto desde el backend para que la pantalla no lo
+vuelva a deducir y los casos no se mezclen en un mensaje genérico:
+
+| Estado | Qué pasó | Qué muestra la celda |
+| :--- | :--- | :--- |
+| `resolved` | subítem único | el código: `30600` |
+| `ambiguous` | el ítem antiguo apunta a varios subítems vigentes | «Varios subítems para el ítem 310 (2)» |
+| `unmapped` | el código no tiene subítems en el catálogo | «Sin subítem en el catálogo para el ítem 301» |
+| `unavailable` | el PA todavía no devuelve los contadores | «El listado todavía no entrega el ítem de esta cuota.» |
+| `missing` | el PA respondió y la cuota no trae ítem | «La cuota no trae ítem presupuestario.» |
+
+> **`unavailable` se agregó el 30-10 después de verlo en pantalla, y es una
+> corrección de este documento.** Más arriba decía que el quinto caso «no es un
+> estado del backend» y que la celda quedaría neutral; el código no hacía eso:
+> ponía `missing` en los dos casos, porque los dos dejaban `cod_sitm` vacío. El
+> resultado era que la bandeja afirmaba «La cuota no trae ítem presupuestario»
+> mientras el panel de contexto de **la misma cuota** mostraba `306 - No
+> Académico` y `sg_fups` tenía el `306` guardado. Una pantalla negando lo que
+> otra muestra.
+>
+> La distinción es `cant_subitm` **ausente** contra `cant_subitm = 0`: ausente
+> significa que el PA no devuelve la columna, y cero que el PA respondió y no
+> hay subítem. Es segura porque `count()` nunca devuelve `null`, así que una vez
+> desplegado el PA la columna llega siempre, con cero o con un número.
+
+**Lo que no se hace, a propósito:** elegir el subítem por el usuario, ni
+ofrecerle elegirlo en la bandeja. Lo segundo parece razonable y no lo es todavía:
+no hay dónde guardar esa elección —`sg_epag` no tiene columna de ítem— así que
+se perdería al recargar y el archivo saldría distinto cada vez. Si Finanzas
+confirma que la elección es necesaria, primero hay que decidir dónde se
+persiste.
+
+La comparación se escribe sobre texto —`ltrim(rtrim(convert(varchar(10),
+si.cod_item)))`— a propósito: si `pt_sitm.cod_item` fuera numérico, comparar
+contra `fu.cod_sitm` haría que ASE convirtiera ese `varchar(5)`, y un valor
+sucio abortaría la consulta entera en vez de devolver cero candidatos.
+
+**Degrada a lo que había.** Si la hipótesis fuera falsa —si `pt_sitm.cod_item`
+no guardara los códigos de tres— las dos subconsultas devuelven 0 y vacío, el
+modelo descarta el subítem, y la bandeja cae al respaldo de tres entradas: el
+comportamiento de antes de este cambio. El riesgo de aplicarlo sin la consulta A
+es que no arregle nada, no que rompa algo.
+
+**Lo que sigue pendiente, y no se tocó:** el `WHERE` equivocado de
+`selectStaffBudgetItems`. Corregirlo cambia qué se guarda al **crear** la
+solicitud, y con ello el catálogo estático, `formatStaffBudgetItem` y las
+pantallas que rotulan los códigos de tres. Es un cambio del flujo de solicitud,
+no de la bandeja, y conviene hacerlo con el resultado de la consulta A a la
+vista: si cada ítem tiene un solo subítem, lo correcto es guardar los cinco
+caracteres y el puente desaparece del todo.
 
 ### F4.4 La bandeja queda en una sola acción (30-10-2026)
 

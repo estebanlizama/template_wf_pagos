@@ -24,9 +24,16 @@ go
 
    Creacion: ELA 2026/10/06
    Actualizacion: ELA 2026/10/27
-   Actualizacion: ELA 2026/10/30 - Devuelve cod_sitm. El item presupuestario
-   de la solicitud va en el archivo de Finanzas y en la asignacion de SISPER,
-   y la bandeja ya tenia unido sg_fups sin devolverlo.
+   Actualizacion: ELA 2026/10/30 - Devuelve el item presupuestario de la
+   solicitud y su subitem vigente. La bandeja ya tenia unido sg_fups sin
+   devolver cod_sitm, que va en el archivo de Finanzas y en la asignacion de
+   SISPER. Ese codigo es el item ANTIGUO de tres (306) y ss_ccas.cod_item
+   espera el subitem vigente de cinco (30600): pt_sitm conserva el antiguo en
+   item_antig, asi que la relacion es directa y no pasa por el centro de
+   costo: 300 -> 30000, 303 -> 30300, 306 -> 30600. Se devuelve la cuenta de
+   subitems vigentes y el menor de ellos: con uno solo la resolucion es
+   inequivoca, y con varios quien lee decide, porque elegir entre ellos no le
+   toca al sistema.
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
@@ -100,6 +107,14 @@ select
     fu.ext_cuotas,
     fu.cod_tpps,
     fu.cod_sitm,
+    (select count(distinct si.cod_sitm)
+       from fin21_db..pt_sitm si
+      where convert(varchar(5), si.item_antig) = ltrim(rtrim(isnull(fu.cod_sitm, '')))
+        and si.vigencia = '1') as cant_subitm,
+    (select min(si.cod_sitm)
+       from fin21_db..pt_sitm si
+      where convert(varchar(5), si.item_antig) = ltrim(rtrim(isnull(fu.cod_sitm, '')))
+        and si.vigencia = '1') as cod_subitm,
     epag.ano_pago,
     epag.mes_pago,
     count(dpag.corr_fume) as cant_meses,

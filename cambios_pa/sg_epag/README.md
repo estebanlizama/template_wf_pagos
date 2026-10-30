@@ -110,11 +110,54 @@ de `sg_fups`, que está unido por `id_funprse`, así que no multiplica el agrega
 > desincronizado en dos días y el otro se resolvió al contrario, así que conviene comparar los dos
 > archivos antes de cada entrega.
 
-`sg_fups.cod_sitm` guarda tres caracteres (`306`) y el archivo necesita el subítem de cinco
-(`30600`) de `fin21_db..pt_sitm`, donde solo existen 300→30000, 303→30300 y 306→30600. Por eso
-`item_coincide` de `sg_epagsSecgen05` da 0 siempre: compara largos distintos. La comparación se
-hace ahora en el frontend sobre los dos códigos traducidos; el PA conserva la columna y la
-descarga ya no la usa como guarda. El arreglo de fondo es el catálogo, no el puente.
+Cambio del 30-10-2026 en `sg_epagsSecgen03`: devuelve `cod_sitm` más dos columnas,
+`cant_subitm` y `cod_subitm`. Lo que `sg_fups.cod_sitm` guarda es el **ítem antiguo** de tres
+(`306`), y `pt_sitm` lo conserva en su columna `item_antig smallint`; el archivo y
+`ss_ccas.cod_item` esperan el **subítem vigente** de cinco (`30600`), que es el `cod_sitm` de esa
+misma fila. Las dos columnas cuentan los subítems vigentes con ese ítem antiguo y devuelven el
+menor: con uno solo la resolución es inequívoca, y el contador es lo que distingue «no existe» de
+«hay varios».
+
+> Unir por `pt_sitm.cod_item` no sirve: también tiene cinco caracteres, es la clave foránea a
+> `pt_item`, y contra un `306` no encuentra nada. La primera versión de este cambio, del mismo
+> día, unía por ahí y habría devuelto cero candidatos siempre.
+
+**El mismo día se podaron dos columnas más.** La primera versión traía también `cant_subitm_cc` y
+`cod_subitm_cc`, que repetían las dos subconsultas restringidas a los subítems con presupuesto en
+el centro de costo (`fin21_db..pt_depr`), para desempatar cuando un ítem antiguo apuntara a
+varios. Se retiraron por tres razones: la relación es **uno a uno** en los códigos cargados, así
+que el desempate no se ejecutaba nunca; desempatar por presupuesto era una **regla inventada aquí**
+y no una de Finanzas; y costaban dos subconsultas correlacionadas por fila, con su correlación a
+`prse.cod_unifin`/`prse.cod_ccto`, para nada. Si algún día un ítem antiguo apunta a varios, la
+bandeja lo informa como ambiguo en vez de elegir, que es lo correcto. El bloque bajó de 31 líneas
+a 9.
+
+Se resuelve por subconsulta escalar y **no por `join`**, y esto no es estilo: el `select` de este
+PA agrega (`sum(fume.mto_apagar)`, `count(dpag.corr_fume)` y cuatro más), así que un `join` a
+`pt_sitm` que multiplicara filas **duplicaría los montos de la cuota**, no solo las filas. La
+comparación va sobre texto a propósito: convirtiendo `item_antig` a `varchar` es ASE quien no
+tiene que convertir `fu.cod_sitm`, y un valor sucio devuelve cero candidatos en vez de abortar la
+consulta.
+
+La regla de decisión vive en `Du288PaymentReviewInstallmentResponse.resolveSubitem`, con pruebas
+unitarias, y no en el PA.
+
+Al certificar:
+
+1. El conteo de filas no cambia respecto de la versión anterior: las dos son subconsultas
+   escalares, no uniones, y los montos agregados dan lo mismo.
+2. Una prestación con un ítem de un solo subítem devuelve `cant_subitm = 1` y ese subítem,
+   **tenga o no presupuesto el centro de costo**.
+3. Una con un ítem de varios subítems vigentes devuelve `cant_subitm > 1`, y la bandeja lo marca
+   ambiguo sin elegir.
+4. Una con `cod_sitm` nulo o con un código que no existe como `item_antig` devuelve `0` y `null`,
+   sin error de conversión.
+5. Los tres códigos conocidos resuelven: 300 → 30000, 303 → 30300 y 306 → 30600, que es lo que
+   `pt_sitm` tiene cargado con `vigencia = '1'`.
+
+> Queda pendiente, y no se tocó: `item_coincide` de `sg_epagsSecgen05` compara `fu.cod_sitm` de
+> tres contra `ss_ccas.cod_item` de cinco, así que da 0 siempre. No estorba hoy porque la bandeja
+> ya no usa ese archivo, pero cuando vuelva hay que comparar contra el subítem resuelto.
 
 ---
 
