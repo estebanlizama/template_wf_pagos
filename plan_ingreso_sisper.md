@@ -57,7 +57,7 @@ flowchart TD
 
     BOT --> PA1["sg_asdiSecgen01<br/>inserta ss_asds · devuelve cod_asign"]:::ok
     PA1 --> PA2["sg_ccaiSecgen01<br/>inserta ss_ccas · devuelve cod_ccasig"]:::ok
-    PA1 -. "la resolución tiene que existir<br/>en sp_resl o rechaza" .-> RESL["sp_resl<br/>SIN CONFIRMAR"]:::gap
+    PA1 -. "la resolución tiene que existir<br/>en sp_resl o rechaza" .-> RESL["sp_resl<br/>la escribe el Contralor"]:::ok
 
     PA2 --> TRAZA["Guardar cuota → cod_asign → cod_ccasig<br/>NO HAY DÓNDE"]:::falta
     XLSNOTA --> TRAZA
@@ -82,7 +82,7 @@ dos datos que esa preparación necesitaría y hoy nadie define.
 
 | | Decisión | Qué bloquea |
 | :--- | :--- | :--- |
-| D1 | ¿La resolución del Exento está registrada en `sisper_db.dbo.sp_resl`? | El ingreso completo. `sg_asdiSecgen01` la exige y rechaza si no está. Si no lo está, hay que reponer `sg_resliSecgen01` en el flujo, contra la decisión de solo leerla. |
+| ~~D1~~ | ~~¿La resolución del Exento está registrada en `sp_resl`?~~ **Cerrada el 30-10-2026: no lo estaba, y la escribe SG.** `sg_resliSecgen01` se repone en el flujo, pero **en la etapa de resolución y no en pagos**: en la aprobación del Contralor Universitario. | — ver «D1 cerrada» más abajo |
 | ~~D2~~ | ~~¿Dónde vive el código de haber?~~ **Resuelta el 29-10-2026: constante `2417` del flujo.** | — ver «El código de haber» más abajo |
 | ~~D3~~ | ~~El pago vigente de varios meses~~ **Cerrada el 30-10-2026 para las cuotas**: un registro por cuota, con las fechas del mes donde se paga. | La fila de varios meses del ejemplo no es una cuota — ver «D3 cerrada» más abajo |
 | ~~D6~~ | ~~¿Hay que acumular las cuotas atrasadas en una sola?~~ **Cerrada el 30-10-2026: no. Una asignación por cuota, varias filas, y el período es el mes en que se paga.** | — queda un hueco de conciliación, no de ingreso. Ver «D6 cerrada» más abajo |
@@ -668,3 +668,37 @@ que se escribe en SISPER.
 
 Lo que no conviene adelantar es la fase 4 sin la fase 3: sin la traza, un
 ingreso parcial no se puede reanudar ni distinguir de un duplicado.
+
+
+---
+
+## D1 cerrada: la resolución la registra el Contralor, no pagos
+
+La decisión anterior era **leer** la resolución y no crearla desde pagos, apoyada en que alguien ya
+la registraba en SISPER. **No la registraba nadie.** Se verificó sobre el código: ni
+`sg_resliSecgen01` ni `sp_resl` aparecen en una sola línea de `sg-solicitudes-backend/src`.
+`sg_asdiSecgen01` la exige por `num_resol` + `cod_ders` + `cod_unidad` + `ano`, así que el ingreso
+entero se habría detenido en la primera cuota.
+
+**La salida no contradice la regla del proyecto.** La regla es que pagos no crea la resolución, y
+sigue en pie: la crea **la etapa de resolución del workflow**, al aprobar el **Contralor
+Universitario** (perfil `17`, penúltima etapa). Pagos sigue leyendo lo que ya existe.
+
+**Por qué ese momento y no Decretación**, que es donde nace el Exento: en Decretación la resolución
+todavía no está firmada, y una solicitud puede devolverse después de esa etapa. El acto del
+Contralor es el que la da por válida. Y los datos están garantizados por una validación que ya
+existía: desde Secretario General el workflow rechaza la aprobación si el documento oficial no está
+generado y el firmado no está cargado.
+
+**El registro es condición para continuar**, dentro de la transacción de la aprobación. Si SISPER
+rechaza, la etapa no avanza. Registrar después del commit dejaría solicitudes archivadas sin
+resolución en `sp_resl`, y eso no se descubriría hasta el ingreso de pagos, cuando ya no hay a quién
+devolverle la tarea.
+
+El detalle de parámetros, el texto del motivo, la normalización de la fecha y los seis puntos de
+certificación están en `cambios_pa/pa_externos/README.md`. Lo que queda **sin certificar** es la
+ejecución: el PA no se ha corrido en ASE.
+
+**D4 no bloquea esto.** Los Exentos con sufijo (`5284 RA`) son resoluciones que SG no puede
+producir, porque `sg_rslc.num_resolu` es `int`. Lo que registremos será siempre numérico; el sufijo
+sigue siendo un problema para leer resoluciones ajenas, no para escribir las nuestras.

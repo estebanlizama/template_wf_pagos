@@ -27,8 +27,28 @@ go
    Objetivo : Registrar en SISPER la resolucion que respalda las asignaciones
    de prestaciones de servicios del workflow.
 
+   Que la resolucion ya este registrada se responde como exito, con el codigo
+   EXISTS: lo que se pide es que exista en sp_resl, no insertarla. Una misma
+   resolucion cubre varias solicitudes, y cada una la registra al aprobar su
+   propio Contralor, de modo que de la segunda en adelante la fila ya esta y
+   tratarlo como error dejaria esas solicitudes sin poder avanzar nunca.
+
+   La existencia se consulta antes del insert y otra vez si el insert falla.
+   La garantia real es el indice unico pk_sp_resl sobre la llave de sp_resl:
+   si dos Contralores aprueban a la vez solicitudes de la misma resolucion,
+   el segundo insert choca con el indice y la segunda consulta reconoce que
+   la fila quedo registrada, de modo que esa aprobacion tambien continua.
+
+   El llamador es dueno de la transaccion: este procedimiento no abre ninguna.
+   Se invoca desde la aprobacion del Contralor Universitario, que ya corre en
+   una transaccion, y en ASE un rollback anidado vuelve al begin mas externo,
+   de modo que un begin propio haria que un fallo aqui deshiciera la
+   aprobacion completa. El insert es una sola sentencia y es atomico por si.
+
    Creacion: No registrada en el procedimiento original
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/10/30 - Se retira el control de transaccion propio
+   para que lo gobierne el llamador y se reconoce la resolucion ya registrada,
+   tambien cuando el insert choca con el indice unico. Ver los motivos arriba.
 */
 create procedure Analisis2.sg_resliSecgen01
     @num_resoluc varchar(10),
@@ -51,6 +71,7 @@ declare @ano_fecha int
 declare @dias_mes int
 declare @fecha_resol datetime
 declare @error int
+declare @filas int
 
 select @num_resoluc = ltrim(rtrim(@num_resoluc)),
        @codigo_unid = ltrim(rtrim(@codigo_unid)),
@@ -147,11 +168,10 @@ if exists (select 1
               and cod_unidad = @codigo_unid
               and ano = @ano)
 begin
-    select 'La resolucion ya se encuentra registrada' as msg
+    select 1 as status, 'EXISTS' as code,
+           'La resolucion ya se encuentra registrada' as msg
     return
 end
-
-begin tran
 
 insert into sisper_db.dbo.sp_resl
        (num_resol, cod_ders, cod_unidad, ano, f_resoluc, motivo,
@@ -159,25 +179,23 @@ insert into sisper_db.dbo.sp_resl
 values (@num_resoluc, @cod_tipo_rs, @codigo_unid, @ano, @fecha_resol,
         @motivo, @vistos, @considera, @resuelvo, @num_doc_ant, getdate())
 
-select @error = @@error
+select @error = @@error, @filas = @@rowcount
 
-if @error <> 0 or @@transtate = 2 or @@transtate = 3
+if @error <> 0 or @filas <> 1
 begin
-    if @@transtate = 2
-        rollback tran
+    if exists (select 1
+                 from sisper_db.dbo.sp_resl
+                where num_resol = @num_resoluc
+                  and cod_ders = @cod_tipo_rs
+                  and cod_unidad = @codigo_unid
+                  and ano = @ano)
+    begin
+        select 1 as status, 'EXISTS' as code,
+               'La resolucion ya se encuentra registrada' as msg
+        return
+    end
+
     select 'No fue posible registrar la resolucion' as msg
-    return
-end
-
-commit tran
-
-select @error = @@error
-
-if @error <> 0 or @@transtate = 2 or @@transtate = 3
-begin
-    if @@transtate = 2
-        rollback tran
-    select 'No fue posible confirmar el registro de la resolucion' as msg
     return
 end
 
