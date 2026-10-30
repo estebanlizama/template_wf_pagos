@@ -16,12 +16,17 @@ go
    @numero_resol      -> Numero de la resolucion. (Obligatorio)
    @codigo_decres     -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
    @codigo_unidad     -> Unidad SISPER fija 05000000. (Obligatorio)
-   @ano               -> Ano de la resolucion. (Obligatorio)
+   @ano               -> Ano de la resolucion, con el que se la identifica en
+                         sp_resl. No es el ano del periodo que se paga: una
+                         cuota de una resolucion de un ano puede pagarse en el
+                         siguiente. (Obligatorio)
    @codigo_ficha      -> Codigo de ficha registrado en personal. (Obligatorio)
    @numero_cuenta     -> Codigo de haber de sp_para.num_cuenta. (Opcional)
    @vigencia          -> Indicador de vigencia de la asignacion. (Obligatorio)
-   @fec_inicio        -> Primer dia del mes de la cuota, formato dd/mm/aaaa. (Obligatorio)
-   @fec_termino       -> Ultimo dia del mismo mes, formato dd/mm/aaaa. (Obligatorio)
+   @fec_inicio        -> Primer dia del mes que se paga, formato dd/mm/aaaa.
+                         (Obligatorio)
+   @fec_termino       -> Ultimo dia de ese mismo mes, formato dd/mm/aaaa.
+                         (Obligatorio)
    @observacion       -> Observacion de la asignacion, maximo 100 caracteres. (Opcional)
    @valor             -> Monto de la asignacion, mayor que cero. (Obligatorio)
    @permanente        -> Indicador de permanencia. (Opcional)
@@ -33,6 +38,14 @@ go
 
    Creacion: No registrada en el procedimiento original
    Actualizacion: ELA 2026/10/29
+   Actualizacion: 2026/10/29 - El periodo deja de exigirse dentro del ano de la
+   resolucion. Una cuota decretada en diciembre y pagada en enero es el caso
+   normal del atraso, y la condicion anterior la hacia imposible de registrar.
+   Actualizacion: 2026/10/30 - Se retira el rechazo por periodo repetido. El PA
+   original no lo tiene y ss_asds admite varias asignaciones de una persona con
+   el mismo periodo, cada una con su cod_asign. Las prestaciones necesitan una
+   asignacion por cuota, y dos cuotas atrasadas pagadas en el mismo mes son el
+   caso normal: el rechazo impedia registrar la segunda.
 */
 create procedure Analisis2.sg_asdiSecgen01
     @numero_resol varchar(10),
@@ -196,11 +209,15 @@ end
 else
     select @dias_mes = 31
 
+/* El periodo tiene que abarcar un mes completo y uno solo, pero no tiene que
+   caer dentro de @ano: ese es el ano de la resolucion, con el que se la
+   identifica en sp_resl, y no el del mes que se paga. Una cuota de una
+   resolucion de diciembre pagada en enero del ano siguiente es el caso normal
+   del atraso del pago; atarla a @ano la dejaba sin asignacion posible. */
 if @dia <> @dias_mes or datepart(mm, @fecha_inicio) <> @mes
    or datepart(yy, @fecha_inicio) <> @ano_fecha
-   or @ano_fecha <> convert(int, @ano)
 begin
-    select 'La fecha de termino debe cerrar el mismo mes de la cuota' as msg
+    select 'La fecha de termino debe cerrar el mismo mes de la fecha de inicio' as msg
     return
 end
 
@@ -231,20 +248,6 @@ if @numero_cuenta is not null
                     where ltrim(rtrim(num_cuenta)) = @numero_cuenta)
 begin
     select 'El codigo de haber indicado no existe en el catalogo de cuentas' as msg
-    return
-end
-
-if exists (select 1
-             from sisper_db.dbo.ss_asds
-            where cod_ficha = @codigo_ficha
-              and num_resol = @numero_resol
-              and cod_ders = @codigo_decres
-              and cod_unidad = @codigo_unidad
-              and ano = @ano
-              and f_inicio = @fecha_inicio
-              and f_termino = @fecha_termino)
-begin
-    select 'Ya existe una asignacion para esa persona y ese mes de la resolucion' as msg
     return
 end
 

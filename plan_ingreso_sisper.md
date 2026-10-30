@@ -84,7 +84,8 @@ dos datos que esa preparación necesitaría y hoy nadie define.
 | :--- | :--- | :--- |
 | D1 | ¿La resolución del Exento está registrada en `sisper_db.dbo.sp_resl`? | El ingreso completo. `sg_asdiSecgen01` la exige y rechaza si no está. Si no lo está, hay que reponer `sg_resliSecgen01` en el flujo, contra la decisión de solo leerla. |
 | ~~D2~~ | ~~¿Dónde vive el código de haber?~~ **Resuelta el 29-10-2026: constante `2417` del flujo.** | — ver «El código de haber» más abajo |
-| D3 | El pago vigente de varios meses: ¿`permanente` + `cuotas` en `ss_asds`, o un rango 01/09 a 31/12? | El grano de los registros y si hay que ampliar la validación de mes único de `sg_asdiSecgen01`. |
+| ~~D3~~ | ~~El pago vigente de varios meses~~ **Cerrada el 30-10-2026 para las cuotas**: un registro por cuota, con las fechas del mes donde se paga. | La fila de varios meses del ejemplo no es una cuota — ver «D3 cerrada» más abajo |
+| ~~D6~~ | ~~¿Hay que acumular las cuotas atrasadas en una sola?~~ **Cerrada el 30-10-2026: no. Una asignación por cuota, varias filas, y el período es el mes en que se paga.** | — queda un hueco de conciliación, no de ingreso. Ver «D6 cerrada» más abajo |
 | D4 | Exentos con sufijo (`5284 RA` existe en `sp_resl`): `sg_rslc.num_resolu` es `int` y no los representa. | El manejo de excepción. Hoy esos casos fallarían sin diagnóstico. |
 | D5 | ¿Puede una cuota incluir el mes en curso, o solo meses ya terminados? | Si solo terminados, toda cuota es atraso por naturaleza y la fila de «pago vigente» del Excel no sale de una cuota. Ver F1.1. |
 
@@ -125,6 +126,144 @@ Dos límites de esa constante:
 - `sg_asdiSecgen01` valida `@numero_cuenta` contra `sp_para` desde el
   29-10-2026. Antes lo aceptaba sin consultar el catálogo, así que un código
   equivocado se insertaba como una fila mal pagada; ahora devuelve un mensaje.
+
+### D3 cerrada: un registro de `ss_asds` por cuota (30-10-2026)
+
+La especificación de `sp_asds1` —el PA externo que `sg_asdiSecgen01` reemplaza—
+lo dice sin ambigüedad:
+
+> inserta la asignación (en el caso de las prestaciones de servicio, se debe
+> ingresar un registro por cada cuota, donde la fecha de inicio y término debe
+> ser las fechas del mes donde se pagan)
+
+Esto cuadra con lo que ya está escrito y lo confirma por tres lados:
+
+- `sg_asdiSecgen01` exige que el período abarque del primer al último día **del
+  mismo mes**. No había que ampliar esa validación: era la regla.
+- `sg_epagsSecgen05` une `ss_asds` por el mes de pago de `sg_epag`, con
+  `f_inicio` = día 1 y `f_termino` = último día de ese mes. El archivo y el
+  ingreso hablan del mismo registro.
+- Ni `permanente` ni `cuotas` ni un rango 01/09–31/12 entran para una cuota.
+
+**Consecuencia sobre el Excel:** `Fec_inicio` y `Fec_Termino` dicen **cuándo se
+paga**, no qué se trabajó. Los meses trabajados no viajan en el archivo; están
+en la bandeja, en «Meses cubiertos». Por eso la fila de 995.554 del 01/09 al
+31/12 del ejemplo **no puede ser una cuota**: abarca cuatro meses y
+`sg_asdiSecgen01` la rechazaría. Es la asignación mensual de la prestación,
+registrada una vez —la hipótesis de F1.1, ahora con respaldo—. Queda por
+confirmar quién la crea y cuándo, pero ya no compite con el grano de las
+cuotas.
+
+### D6 cerrada: una asignación por cuota, con el mes en que se paga (30-10-2026)
+
+> **Este documento se equivocó tres veces en D6 y conviene dejarlo escrito.**
+> Primero concluyó que había que reprogramar el `mes_pago` de la atrasada.
+> Después que cada cuota conservara su mes porque el guard impedía lo
+> contrario. Después que, si el período era el mes en que se paga, había que
+> acumular las atrasadas en una sola cuota. **Las tres salían del mismo error**:
+> dar por buena una regla de negocio que no existe en SISPER y que habíamos
+> escrito nosotros.
+
+El PA original, `pa_externos_no_crear/sspasd1.sql`, **no controla duplicados**.
+Calcula el siguiente `cod_asign` de la ficha e inserta:
+
+```sql
+select  @codigo_asignac = convert(varchar, max(convert(int, cod_asign)) +1) from ss_asds
+where cod_ficha = @codigo_ficha
+```
+
+`ss_asds` identifica cada fila por `cod_asign` —correlativo por ficha—, **no por
+el período**. Varias asignaciones de una persona con el mismo mes son legales y
+siempre lo fueron. El rechazo por período repetido lo agregamos en la
+estandarización, y bloqueaba exactamente el caso que la especificación describe:
+
+> se debe ingresar **un registro por cada cuota**, donde la fecha de inicio y
+> término debe ser las fechas del mes donde se pagan
+
+Las dos cláusulas se sostienen juntas sin inventar nada: **una asignación por
+cuota, todas con el período del mes en que se pagan**. Dos atrasadas de abril y
+mayo pagadas en octubre son dos filas con período de octubre y `cod_asign`
+distinto. **No se acumulan**: acumular era una salida al guard, y el guard no
+debía existir.
+
+Retirado el 30-10-2026 de `sg_asdiSecgen01`, con su motivo en la cabecera y en
+el README de `pa_externos`. Protegerse de ingresar **la misma** cuota dos veces
+no puede hacerse en el PA: no recibe la cuota y nada en `ss_asds` la nombra, así
+que esa idempotencia le toca al flujo que invoca.
+
+#### Lo que queda abierto: la conciliación, no el ingreso
+
+El ingreso queda resuelto. Lo que no, es volver del archivo a la cuota.
+`sg_epagsSecgen05` une `ss_asds` por `epag.ano_pago`/`mes_pago`:
+
+```sql
+and convert(char(8), asds.f_inicio, 112)
+    = convert(char(8), convert(datetime,
+        convert(char(4), epag.ano_pago)
+        + right('0' + convert(varchar(2), epag.mes_pago), 2) + '01', 112), 112)
+```
+
+Eso deja dos problemas, los dos de ida y vuelta entre cuota y asignación:
+
+1. **La atrasada no calza.** Asignación de octubre contra cuota con `mes_pago`
+   de abril: la unión falla y devuelve cero filas. **Es el `[]` de la prueba del
+   29-10**, que hasta ahora se atribuía solo a que nadie había creado el
+   registro.
+2. **Dos cuotas del mismo mes calzan de más.** Con dos asignaciones de octubre
+   para la misma persona y resolución, la unión —ficha, resolución, período— hace
+   que **cada cuota cruce con las dos**, y el archivo repetiría el monto. No hay
+   nada que distinga una asignación de la otra: `sg_epag` no guarda `cod_asign`.
+
+Los dos son el mismo hueco, el de trazabilidad ya registrado: **falta el enlace
+entre la cuota y su asignación**. Con `cod_asign` guardado en el momento del
+ingreso, la conciliación une por ese código y los dos problemas desaparecen sin
+tocar fechas. Sin él, cualquier arreglo de la unión es una heurística sobre
+fechas que seguirá fallando en los casos de arriba.
+
+Eso es un cambio de esquema en `sg_epag` y está fuera de lo decidido hoy —«no se
+crea ninguna tabla ahora»—. Mientras no exista:
+
+- La **proyección** desde SG es la vista utilizable: no depende de la unión.
+- El **archivo conciliado** sirve para lo que está al día y con una sola cuota
+  por mes; fuera de eso hay que revisarlo, y por eso la bandeja avisa cuando dos
+  cuotas comparten mes de pago. El aviso **ya no dice que SISPER las rechaza**
+  —eso era falso—, dice que la conciliación no puede atribuirlas.
+
+#### Los dos ejes, que se confunden
+
+| Eje | Dónde vive | Valores | Qué dice |
+| :--- | :--- | :--- | :--- |
+| **Estado de la cuota** | `sg_epag.cod_estcuo`, catálogo `sg_ecuo` | 1 Propuesta · 2 En visación · 3 Devolver · 4 Aprobada · 8 Enviada a remuneraciones · 10 Rechazada · 11 Devuelta de Finanzas | en qué parte del flujo está |
+| **Oportunidad del pago** | derivado, no persistido | Atrasada · Del mes · Mes posterior · Sin mes de pago | si su mes de pago llegó tarde al mes que se paga |
+
+Son ortogonales: una cuota **aprobada y atrasada** es el caso normal de esta
+bandeja, no una excepción. La bandeja de Finanzas consulta un solo estado a la
+vez —4 por enviar, 8 ya enviadas—, así que el estado vive en el filtro y la
+oportunidad en cada fila.
+
+El eje de oportunidad **no se persiste y no debe persistirse**: depende del mes
+que se paga, que cambia en cada proceso. La misma cuota es «del mes» en octubre
+y «atrasada» en diciembre. Un `cod_estpag` o una columna nueva quedarían
+desactualizados sin que nada los toque.
+
+#### Cómo quedó en la bandeja (30-10-2026)
+
+- **El mes que se paga es «Pago hasta»**, el extremo del rango de filtro. No es
+  `new Date()` ni una entrada aparte: es el mes que quien arma el archivo ya
+  declara al filtrar, y duplicarlo en otro campo abría dos sitios para decir lo
+  mismo.
+- **«Pago desde» abre vacío.** Antes la bandeja abría con desde = hasta = mes
+  actual, de modo que **escondía todas las atrasadas**: justo las cuotas que
+  esta bandeja existe para arrastrar. Ahora entra todo lo pagable hasta el mes
+  que se paga.
+- **Columna «Oportunidad del pago»**, entre el número de cuota y las columnas
+  del archivo —califica las dos fechas que sí van al archivo, así que no se
+  intercala entre ellas, que son el formato—. Con los meses de atraso debajo,
+  contados sobre `ano * 12 + mes`.
+- **Filtro de oportunidad** junto al estado: «Atrasadas y del mes» por omisión,
+  o una sola clase cuando hay que aislarla.
+- El aviso de mes duplicado se conserva tal cual: es el único caso que SISPER
+  rechaza de verdad.
 
 ---
 

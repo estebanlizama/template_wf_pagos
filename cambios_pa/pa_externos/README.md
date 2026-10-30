@@ -29,7 +29,16 @@ su propia insercion; no hay una transaccion comun que revierta PA anteriores si 
   inexistente deja de insertarse como una fila mal pagada y devuelve un mensaje. La cuenta del
   flujo es `2417`, «D.U. 288, Asig. de Prest. de Servicios» según `sp_para`;
   exige monto positivo y un período que abarque desde el primer hasta el último día del mismo mes.
-  Rechaza duplicar el período para la misma persona y resolución.
+  **No rechaza repetir el período** para la misma persona y resolución: desde el 30-10-2026 se
+  retiró esa comprobación. El PA original `sspasd1` no la tiene, `ss_asds` identifica cada fila por
+  `cod_asign` —correlativo por ficha— y no por el período, y las prestaciones necesitan una
+  asignación por cuota: dos cuotas atrasadas pagadas en el mismo mes son el caso normal y la
+  comprobación impedía registrar la segunda. Protegerse de un doble ingreso de la *misma* cuota no
+  puede hacerse acá: el PA no recibe la cuota y no hay nada en `ss_asds` que la nombre, así que esa
+  idempotencia le toca al flujo que invoca. **El período no tiene que caer
+  dentro del año de la resolución**: `@ano` identifica la resolución en `sp_resl` y no es el año del
+  mes que se paga. Una cuota decretada en diciembre y pagada en enero del año siguiente es el caso
+  normal del atraso del pago, y hasta el 29-10-2026 la validación de fechas la rechazaba.
 - `sg_ccaiSecgen01`: confirma la asignación, permite asociarle distribuciones de centro de costo,
   valida monto positivo cuando se informa y valida formato y orden de fechas.
 - Los errores entregan solo `msg`. El éxito usa `status`, `code` y `msg`; los dos últimos PA incluyen
@@ -59,8 +68,23 @@ Confirmar ambiente, usuario ejecutor y autorizacion de despliegue antes de insta
 
 ## Pendiente de certificacion (29-10-2026)
 
-`sg_asdiSecgen01` cambio: valida `@numero_cuenta` contra `sp_para`. El par SQL/TXT esta
-actualizado y es identico, en ASCII y CRLF, pero **no se ejecuto contra ASE**. Al certificar hay
-que comprobar que el PA compile, que con `@numero_cuenta = '2417'` la insercion siga pasando, que
-un codigo inexistente devuelva el mensaje sin insertar, y que `@numero_cuenta` nulo siga siendo
-aceptado como antes.
+`sg_asdiSecgen01` cambio tres veces. El par SQL/TXT esta actualizado y es identico, en ASCII y
+CRLF, pero **no se ejecuto contra ASE**.
+
+> El 30-10-2026 el `.sql` y el `.txt` estaban desincronizados: el `.txt` tenia el cambio 2 y el
+> `.sql` no, porque se regenero desde una version anterior y lo perdio. Se tomo el `.txt` como
+> contenido correcto. Vale revisar el par antes de cada entrega, no solo despues de editarlo.
+
+1. Valida `@numero_cuenta` contra `sp_para`. Al certificar hay que comprobar que el PA compile, que
+   con `@numero_cuenta = '2417'` la insercion siga pasando, que un codigo inexistente devuelva el
+   mensaje sin insertar, y que `@numero_cuenta` nulo siga siendo aceptado como antes.
+2. El periodo dejo de exigirse dentro del ano de `@ano`. Al certificar hay que comprobar que con
+   `@ano = '2026'` y periodo `01/01/2027` a `31/01/2027` la insercion **pase** --antes era
+   rechazada--, que un periodo que no cierra su mes (`01/01/2027` a `30/01/2027`) siga siendo
+   rechazado, que un periodo que cruza dos meses (`01/01/2027` a `28/02/2027`) siga siendo
+   rechazado, y que la fila quede con `ano = '2026'`, porque de eso depende el join de
+   `sg_epagsSecgen05` (`asds.ano = rslc.ano_resolu`).
+3. Se retiro el rechazo por periodo repetido. Al certificar hay que comprobar que dos inserciones
+   con la misma ficha, resolucion, tipo, unidad, ano y periodo **pasen las dos**, que cada una
+   devuelva su propio `codigo_asignac` y que el segundo sea el primero mas uno, y que en `ss_asds`
+   queden las dos filas. Es el caso de dos cuotas atrasadas pagadas en el mismo mes.

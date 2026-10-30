@@ -676,6 +676,184 @@ suma coincida con el neto aprobado de la cuota. Las fechas SISPER corresponden
 al mes de pago de `sg_epag`, y el neto es la suma neta de todos los meses de la
 cuota.
 
+### F4.1 Los datos del archivo, a la vista en la bandeja (29-10-2026)
+
+La bandeja muestra una fila **por cuota**; el archivo, una **por asignación
+SISPER y centro de costo**, con el neto repartido. Seis de las trece columnas
+—`Código Haber`, `Monto` por CC, `Fec_inicio`, `Fec_Termino`, `Item`,
+`Porcentaje CC`— no están en `sg_epagsSecgen03`, así que la bandeja no puede
+mostrarlas por su cuenta: o las pide a SISPER, o las inventa.
+
+Se pide a SISPER. «Ver datos del archivo» consulta `sg_epagsSecgen05` —el mismo
+PA que genera el Excel— para las cuotas seleccionadas y las muestra en una
+sección aparte, con las trece columnas, sus cabeceras y su orden. **No hay una
+segunda definición**: las celdas de la hoja y las de la pantalla salen de
+`financeExcelCells`, y las cabeceras y anchos de `FINANCE_EXCEL_COLUMNS`, las
+dos listas en la propia página. Lo que se revisa es el archivo.
+
+Lo que esto resuelve:
+
+- Las tres comprobaciones que bloquean la descarga —ítem distinto del de
+  SISPER, porcentajes que no suman 100 %, datos faltantes— se ven **antes** de
+  intentarla, con la cuenta de filas de cada caso y marcadas en la celda que
+  las causa. Antes solo aparecían como un mensaje de error al presionar
+  «Descargar Excel», sin decir cuál fila.
+- Si la asignación SISPER no existe para el mes de pago, la consulta no trae
+  filas y lo dice. Es el mismo `inner join ss_asds` que hace el archivo: la
+  pantalla no finge que hay datos donde no hay.
+
+Lo que **no** hace: no escribe en SISPER, no crea asignaciones y no deriva
+ningún valor por su cuenta. `Código Haber` y `Cod_Unidad Res` se muestran como
+los devuelve el PA —`ss_asds.num_cuenta` y la constante `'05000000'`—, no como
+las constantes `2417` y `05000000` que el flujo da por ciertas.
+
+La vista se invalida cuando cambia la selección: las filas pertenecen a una
+selección concreta y, cambiada esa, dejan de ser el archivo que se bajaría.
+Cada consulta lee SISPER, así que se pide a mano y no con cada clic.
+
+### F4.2 Resultado vacío: por qué, y cómo saber cuál unión falla (29-10-2026)
+
+Primera prueba en el sistema, cuota `id_funprse 4 / nro_cuota 2` en estado 4:
+la consulta devolvió `[]`. **No es una falla de la pantalla ni del PA**: es el
+hueco estructural que ya estaba registrado en F5.2 —`sg_epagsSecgen05`
+*concilia* contra SISPER, no *prepara*—. Sin asignación en `ss_asds` para el mes
+a pagar, el `inner join` no deja filas y el archivo sale vacío.
+
+Lo que se corrigió a raíz de la prueba fue el mensaje, que decía lo que no era:
+
+| Caso | Antes | Ahora |
+| :--- | :--- | :--- |
+| Cero filas | «La selección no tiene meses/asignaciones SISPER **completos**» | «Ninguna cuota de la selección tiene su asignación registrada en SISPER para el mes a pagar, así que el archivo saldría vacío» |
+| Filas con campos vacíos | el mismo mensaje | «Faltan datos SISPER o de resolución en una de las filas» |
+| Mes distinto o más de un mes | el mismo mensaje | «Una cuota trae asignaciones SISPER de un mes distinto al suyo, o de más de un mes» |
+
+Los tres eran un solo texto, así que una cuota sin asignación y una cuota con
+una asignación a medias mandaban a buscar lo mismo. Además, cero filas ya no es
+un error rojo: la sección se abre con las trece cabeceras, el estado vacío y la
+explicación de cómo se arma cada fila. Lo que se mira es el archivo, y el
+archivo está vacío.
+
+Hay **cinco uniones internas** que pueden dejar una cuota fuera. Esta consulta
+las cuenta en orden: el primer paso con `0` es el que falla.
+
+```sql
+declare @id_funprse int, @nro_cuota tinyint, @cod_estcuo tinyint
+select @id_funprse = 4, @nro_cuota = 2, @cod_estcuo = 4
+
+select '1 cuota en el estado' as paso, count(*) as filas
+  from secgen_db.dbo.sg_epag
+ where id_funprse = @id_funprse
+   and nro_cuota = @nro_cuota
+   and cod_estcuo = @cod_estcuo
+union all
+select '2 resolucion en sg_rslc', count(*)
+  from secgen_db.dbo.sg_fups fu
+ inner join secgen_db.dbo.sg_soli soli on soli.nro_solici = fu.nro_solici
+ inner join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
+                                      and rslc.ano_resolu = soli.ano_resolu
+ where fu.id_funprse = @id_funprse
+union all
+select '3 ficha en sp_pers', count(*)
+  from secgen_db.dbo.sg_fups fu
+ inner join sisper_db..sp_pers pers on pers.rut_person = fu.rut
+ where fu.id_funprse = @id_funprse
+union all
+select '4 meses con monto (sg_dpag + sg_fume)', count(*)
+  from secgen_db.dbo.sg_dpag d
+ inner join secgen_db.dbo.sg_fume f on f.id_funprse = d.id_funprse
+                                   and f.corr_fume = d.corr_fume
+ where d.id_funprse = @id_funprse
+   and d.nro_cuota = @nro_cuota
+union all
+select '5 ss_asds de la ficha', count(*)
+  from secgen_db.dbo.sg_fups fu
+ inner join sisper_db..sp_pers pers on pers.rut_person = fu.rut
+ inner join sisper_db..ss_asds asds on asds.cod_ficha = pers.cod_ficha
+ where fu.id_funprse = @id_funprse
+union all
+select '6 ss_asds + resolucion exenta', count(*)
+  from secgen_db.dbo.sg_fups fu
+ inner join secgen_db.dbo.sg_soli soli on soli.nro_solici = fu.nro_solici
+ inner join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
+                                      and rslc.ano_resolu = soli.ano_resolu
+ inner join sisper_db..sp_pers pers on pers.rut_person = fu.rut
+ inner join sisper_db..ss_asds asds on asds.cod_ficha = pers.cod_ficha
+                                   and right('0000000000' + ltrim(rtrim(asds.num_resol)), 10)
+                                       = right('0000000000' + convert(varchar(10), rslc.num_resolu), 10)
+ where fu.id_funprse = @id_funprse
+union all
+select '7 ss_asds + cod_ders 2, unidad 05000000, ano', count(*)
+  from secgen_db.dbo.sg_fups fu
+ inner join secgen_db.dbo.sg_soli soli on soli.nro_solici = fu.nro_solici
+ inner join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
+                                      and rslc.ano_resolu = soli.ano_resolu
+ inner join sisper_db..sp_pers pers on pers.rut_person = fu.rut
+ inner join sisper_db..ss_asds asds on asds.cod_ficha = pers.cod_ficha
+                                   and right('0000000000' + ltrim(rtrim(asds.num_resol)), 10)
+                                       = right('0000000000' + convert(varchar(10), rslc.num_resolu), 10)
+                                   and asds.cod_ders = '2'
+                                   and asds.cod_unidad = '05000000'
+                                   and asds.ano = convert(char(4), rslc.ano_resolu)
+ where fu.id_funprse = @id_funprse
+union all
+select '8 ss_asds + periodo del mes a pagar (condicion completa)', count(*)
+  from secgen_db.dbo.sg_epag epag
+ inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
+ inner join secgen_db.dbo.sg_soli soli on soli.nro_solici = fu.nro_solici
+ inner join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
+                                      and rslc.ano_resolu = soli.ano_resolu
+ inner join sisper_db..sp_pers pers on pers.rut_person = fu.rut
+ inner join sisper_db..ss_asds asds on asds.cod_ficha = pers.cod_ficha
+                                   and right('0000000000' + ltrim(rtrim(asds.num_resol)), 10)
+                                       = right('0000000000' + convert(varchar(10), rslc.num_resolu), 10)
+                                   and asds.cod_ders = '2'
+                                   and asds.cod_unidad = '05000000'
+                                   and asds.ano = convert(char(4), rslc.ano_resolu)
+                                   and convert(char(8), asds.f_inicio, 112)
+                                       = convert(char(8), convert(datetime,
+                                           convert(char(4), epag.ano_pago)
+                                           + right('0' + convert(varchar(2), epag.mes_pago), 2) + '01', 112), 112)
+                                   and convert(char(8), asds.f_termino, 112)
+                                       = convert(char(8), dateadd(dd, -1, dateadd(mm, 1, convert(datetime,
+                                           convert(char(4), epag.ano_pago)
+                                           + right('0' + convert(varchar(2), epag.mes_pago), 2) + '01', 112))), 112)
+ where epag.id_funprse = @id_funprse
+   and epag.nro_cuota = @nro_cuota
+```
+
+Qué significa cada corte:
+
+| Paso en `0` | Qué pasó |
+| :--- | :--- |
+| 1 | la cuota ya no está en el estado consultado |
+| 2 | la solicitud no tiene su resolución en `sg_rslc` |
+| 3 | el RUT de `sg_fups` no calza con `sp_pers.rut_person` |
+| 4 | la cuota no tiene meses con monto en `sg_dpag`/`sg_fume` |
+| 5 | la persona no tiene ninguna asignación en `ss_asds` |
+| 6 | tiene asignaciones, pero ninguna de esta resolución Exenta |
+| 7 | la asignación existe pero no es `cod_ders = '2'`, o no es de la unidad `05000000`, o su `ano` no es el de la resolución |
+| 8 | **el caso esperado hoy**: la asignación no cubre exactamente del primer al último día del mes a pagar, o no existe para ese mes |
+
+Si el corte está en 5, 6, 7 u 8, el dato no está en SISPER y la pantalla no
+puede inventarlo: lo que falta es el ingreso de la asignación, que son las
+fases pendientes del `plan_ingreso_sisper.md`. Si el corte está en 1 a 4, el
+problema es del lado de SG y sí se arregla sin SISPER.
+
+El log de la primera prueba deja dos cosas más:
+
+- **La consulta se ejecutó dos veces** con los mismos parámetros, 2.177 ms y
+  1.609 ms: una por la vista previa y otra por la descarga. Se corrigió
+  guardando las filas crudas de la consulta y reutilizándolas al descargar.
+  No es solo ahorro: **el archivo tiene que ser el que se revisó**, y con dos
+  lecturas se podía revisar un conjunto y bajar otro. Para refrescar está
+  «Volver a consultar», que es explícito.
+- **El RUT del revisor viaja en claro al log** —`@rut = '117994910'`,
+  `@rut_person='117994910'`—. Lo escribe el registro de `SyBaseService` para
+  toda llamada a PA, así que no es propio de esta pantalla ni de este PA, pero
+  contradice la regla de no dejar RUT en los logs. Corregirlo es enmascarar el
+  identificador en ese registro compartido, con alcance sobre todos los
+  módulos: queda anotado, no resuelto aquí.
+
 ---
 
 ## Orden de entrega
