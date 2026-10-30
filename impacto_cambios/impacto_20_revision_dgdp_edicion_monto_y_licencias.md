@@ -1,5 +1,7 @@
 # Impacto 20 — Revisión DGDP: Edición de Aporte a la Cuota, Licencias Médicas y Período de Pago
 
+> Contraste 30-10-2026: la edición de aporte y descuentos está en `sg_fumeuSecgen03` y versiona el estado anterior completo en `sg_fum2` con `rut_regist`/`f_regist`. La query actual `selectDgdpProvisionMonths` ejecuta `sg_fumesSecgen03`; el SELECT directo descrito en 2.1 es antecedente histórico, no la implementación actual. El detalle ahora tiene cuatro pestañas, incluida Resumen de cuotas (impacto 29). Ver impacto 30 para distinguir código existente y despliegue no verificado.
+
 **Fecha:** 16-10-2026  
 **Módulo:** Pagos DU288 / Fase 2 — Revisión y Visación DGDP  
 **Archivos impactados:**

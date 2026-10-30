@@ -207,6 +207,11 @@ origen. Es un cambio de dos computados; el contenido de la vista no se toca.
 Es la única fase que atraviesa todas las capas. Se puede implementar antes del
 Excel porque no depende de ninguna decisión abierta.
 
+> **El 30-10-2026 esta operación salió de la pantalla de Finanzas** a pedido del
+> usuario: la bandeja quedó con una sola acción, descargar el archivo. El PA, el
+> endpoint y la acción del store siguen entregados y probados; lo que falta es
+> desde dónde se invoca. Ver «F4.4».
+
 ### F3.1 PA nueva: `sg_epaguSecgen04`
 
 Por qué nueva y no ampliar `sg_epaguSecgen03`: esa PA registra la **decisión**
@@ -853,6 +858,159 @@ El log de la primera prueba deja dos cosas más:
   contradice la regla de no dejar RUT en los logs. Corregirlo es enmascarar el
   identificador en ese registro compartido, con alcance sobre todos los
   módulos: queda anotado, no resuelto aquí.
+
+### F4.3 El ítem, de la solicitud al archivo (30-10-2026)
+
+La columna `Item` salía vacía en las dos vistas. El dato existe —`sg_fups.cod_sitm`—
+y el PA de la bandeja ya tenía unido ese alias, pero no lo devolvía, así que la
+proyección no tenía de dónde leerlo. Se cerró en las tres capas:
+
+| Capa | Cambio |
+| :--- | :--- |
+| `sg_epagsSecgen03` | `fu.cod_sitm` en el `select` y en el `group by` |
+| `Du288PaymentReviewInstallmentResponse` | `cod_sitm` → `budgetItemCode` |
+| Bandeja de Finanzas | la proyección ya lo consumía; el archivo conciliado pasa a escribir el subítem |
+
+**El par `.sql`/`.txt` estaba desincronizado** y se resolvió a favor del `.sql`:
+tenía la ampliación de `mto_rechazado` que descuenta lo que un rechazo dejó
+bloqueado, que es lo que el propio objetivo del PA declara, y al `.txt` le
+faltaba. Es el segundo par desincronizado en dos días, y el anterior se resolvió
+al contrario. Conviene comparar los dos archivos antes de cada entrega.
+
+#### Tres caracteres contra cinco
+
+El archivo lleva el **subítem** de `fin21_db..pt_sitm`, de cinco caracteres
+(`30600`). SG guarda tres (`306`), de una lista escrita a mano, y solo tres de
+sus siete códigos tienen contraparte en la tabla real: 300→30000, 303→30300,
+306→30600. Los otros cuatro (301, 302, 304 y 305) no existen en `pt_sitm`.
+
+De ahí dos consecuencias que quedan a la vista en la pantalla, no escondidas:
+
+- **El puente traduce los tres que se pueden** y deja la celda vacía en los
+  otros cuatro. Rellenar con `00` acierta en esos tres y falla en general:
+  `31001` es el subítem 01 del ítem 31000, y un `310` quedaría ambiguo entre
+  HONORARIOS DOCENTES y HONORARIOS NO DOCENTES.
+- **`item_coincide` de `sg_epagsSecgen05` da 0 siempre**, porque compara
+  `fu.cod_sitm` (tres) contra `ss_ccas.cod_item` (cinco). Bloqueaba toda
+  descarga conciliada, incluso cuando SISPER tenía exactamente el ítem pedido.
+  La comparación pasó al frontend, sobre los dos códigos ya traducidos al mismo
+  largo. El PA sigue devolviendo la columna; la descarga ya no la usa como
+  guarda.
+
+**El arreglo de fondo es el catálogo**, no el puente: mientras `sg_fups.cod_sitm`
+guarde tres caracteres, las prestaciones con ítem 301, 302, 304 o 305 no pueden
+exportarse.
+
+#### De dónde viene el ítem, de punta a punta
+
+| Paso | Dónde | Qué pasa |
+| :--- | :--- | :--- |
+| 1. Lo elige el solicitante | `GET /staff-items` | consulta `fin21_db..pt_sitm where cod_sitm in ('300'…'306')` |
+| 2. Esa consulta vuelve vacía | `staff-item.controller.ts` | **cae al catálogo estático** `STAFF_BUDGET_ITEMS` del backend: los siete códigos de tres |
+| 3. Se guarda con la solicitud | `sg_fupsiSecgen01` / `sg_fupsuSecgen01` | `@cod_sitm varchar(5)` → `sg_fups.cod_sitm`, con `itm_global` como descripción |
+| 4. Ya se lee en el detalle del pago | `sg_fupssSecgen18` | devuelve `max(fu.cod_sitm)`, y es el «Ítem presupuestario» que muestra `Du288PaymentContextSection` |
+| 5. Faltaba en la bandeja | `sg_epagsSecgen03` | tenía `sg_fups` unido y no devolvía la columna; agregada el 30-10-2026 |
+
+**Ahí está el origen de los tres caracteres**: no los escribe el catálogo
+presupuestario sino el respaldo estático del paso 2, que existe porque el paso 1
+no encuentra nada. Son códigos de la clasificación de personal (300 Directivos,
+303 Académicos, 306 No Académicos…), no subítems de `pt_sitm`.
+
+#### Si la columna sigue vacía, en este orden
+
+**No hace falta otra consulta.** `sg_fups` ya viene unido por `id_funprse` en la
+bandeja; leer el ítem aparte sería una consulta por fila para un dato que viaja
+en la misma unión. Lo que puede faltar es una de tres cosas:
+
+1. **El PA no está en la base.** El cambio está en el par `.sql`/`.txt` de
+   `cambios_pa`, y nadie lo ejecutó en ASE. Mientras el procedimiento compilado
+   siga siendo el del 27-10, el endpoint no trae `cod_sitm` y la celda sale
+   vacía aunque el dato exista.
+2. **`sg_fups.cod_sitm` está nulo** para esas prestaciones, porque el ítem es
+   opcional al crear la solicitud.
+3. **El código no se traduce**: 301, 302, 304 o 305. La celda queda vacía a
+   propósito y debajo se muestra el código que traía.
+
+El paso 4 de la tabla sirve de prueba rápida sin tocar la base: si el detalle de
+la cuota muestra el «Ítem presupuestario», el dato existe y lo único que falta es
+el punto 1.
+
+```sql
+-- 1. El procedimiento compilado, devuelve la columna?
+select o.name
+  from secgen_db.dbo.sysobjects o, secgen_db.dbo.syscomments c
+ where o.id = c.id
+   and o.name = 'sg_epagsSecgen03'
+   and c.text like '%cod_sitm%'
+
+-- 2. Las prestaciones con cuotas aprobadas o enviadas, tienen item guardado?
+select fu.cod_sitm, count(*) as cuotas
+  from secgen_db.dbo.sg_epag epag
+       inner join secgen_db.dbo.sg_fups fu on fu.id_funprse = epag.id_funprse
+ where epag.cod_estcuo in (4, 8)
+ group by fu.cod_sitm
+
+-- 3. Cuales de esos codigos existen de verdad en el catalogo
+select distinct cod_sitm, des_item
+  from fin21_db..pt_sitm
+ where cod_sitm like '30%'
+ order by cod_sitm
+```
+
+El paso 3 es el que decide el arreglo de fondo: si `pt_sitm` solo tiene códigos
+de cinco, el catálogo estático del backend está ofreciendo códigos que no
+existen, y corregirlo es cambiar ese catálogo por los subítems reales —no seguir
+traduciendo con un puente de tres entradas—.
+
+### F4.4 La bandeja queda en una sola acción (30-10-2026)
+
+Pedido del usuario, en sus términos: mostrar el ítem, ordenar los filtros y
+dejar solo los que corresponden a la tabla, quitar los contadores de cuotas,
+**«dejamos solo el botón de descargar el excel»**, y limpiar los atributos de la
+tabla y la responsividad.
+
+| Qué | Antes | Ahora |
+| :--- | :--- | :--- |
+| Filtros | 11 campos, incluida la actividad | 10, sin actividad, en el orden en que se usan |
+| Barra | 2 contadores + marcar todo + 2 descargas + registrar envío | 1 descarga |
+| Tabla | «Sin descuentos» en cada fila | solo cuando hay descuento |
+| Ítem | celda vacía | el subítem, y debajo el código cuando no se traduce |
+
+**Los filtros quedaron en tres grupos**: lo que define el conjunto (estado,
+oportunidad, rango de meses de pago), a quién (funcionario, RUT, centro de
+costo) y lo que ubica una fila (resolución, solicitud, número de cuota). La
+actividad se retiró porque no es columna de la tabla ni del archivo.
+
+**La descarga que quedó es la proyección**, no el archivo conciliado: el usuario
+pidió «uno solo que permita descargar lo seleccionado», y lo seleccionado es lo
+que la tabla muestra, que se arma con datos de SG sin consultar SISPER. El
+conciliado descargaba algo distinto de lo que se estaba revisando y hoy devuelve
+cero filas mientras nadie haya registrado las asignaciones —que es justamente lo
+que se registra con este archivo—. Pasó a llamarse «Descargar Excel» y el
+archivo conserva el nombre del conciliado (`Cuotas_Finanzas_aaaamm.xlsx`).
+
+**Dos consecuencias que conviene no perder de vista:**
+
+- **`sg_epaguSecgen04` se quedó sin entrada.** El registro del envío (4 → 8) era
+  la única escritura de esta pantalla. El PA, el endpoint y
+  `markInstallmentsSentToPayroll` siguen ahí; falta decidir desde dónde se
+  invoca —el detalle de la cuota es el candidato natural— porque sin eso una
+  cuota aprobada no puede cerrarse.
+- **`sg_epagsSecgen05` se quedó sin cliente en el front.** `fetchFinanceExcelRows`
+  ya no se llama. Con eso salieron también las guardas que solo servían a ese
+  archivo: filas incompletas, haber distinto, porcentajes que no suman 100,
+  período que no calza y la comparación del ítem. Son verificaciones de lo que
+  SISPER tiene, y vuelven cuando vuelva esa descarga.
+
+El aviso de cuotas que comparten mes de pago **se mantiene**: no era del archivo
+conciliado sino de la selección, y describe lo que pasará al registrar en SISPER.
+
+**Responsividad.** La página dejó de pisar al paquete: `pds-ui-section-actions`
+ya es flex con `wrap` y `gap`, y bajo 768 px el paquete apila la cabecera y
+alinea las acciones a la izquierda. La clase local `pds-finance-toolbar` repetía
+las dos cosas y se retiró, junto al CSS de la columna de actividad y de los
+modales que salieron. La tabla conserva su propio desplazamiento horizontal, que
+es inherente a trece columnas de archivo.
 
 ---
 

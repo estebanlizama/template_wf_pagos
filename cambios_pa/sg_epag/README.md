@@ -98,6 +98,24 @@ valor de la asignación mediante alias locales, para evitar el error 146 de ASE 
 externas dentro de `sum`. Conserva parámetros, columnas de salida y distribución del monto.
 Desplegar el par SQL/TXT actualizado; la compilación y ejecución en ASE quedan pendientes.
 
+Cambio del 30-10-2026 en `sg_epagsSecgen03`: devuelve `fu.cod_sitm`, agregado al `select` y al
+`group by`. El ítem presupuestario va en la columna Item del archivo de Finanzas y en la
+distribución de la asignación SISPER, y la bandeja ya tenía unido `sg_fups` sin devolverlo. Al
+certificar basta comprobar que la columna llega y que el conteo de filas no cambia: `cod_sitm` es
+de `sg_fups`, que está unido por `id_funprse`, así que no multiplica el agregado.
+
+> El par estaba desincronizado al tomarlo: al `.txt` le faltaba la ampliación de `mto_rechazado`
+> —la que descuenta lo que un rechazo dejó bloqueado, que es lo que declara el objetivo del PA—.
+> Se tomó el `.sql` como contenido correcto y se reescribieron los dos. Es el segundo par
+> desincronizado en dos días y el otro se resolvió al contrario, así que conviene comparar los dos
+> archivos antes de cada entrega.
+
+`sg_fups.cod_sitm` guarda tres caracteres (`306`) y el archivo necesita el subítem de cinco
+(`30600`) de `fin21_db..pt_sitm`, donde solo existen 300→30000, 303→30300 y 306→30600. Por eso
+`item_coincide` de `sg_epagsSecgen05` da 0 siempre: compara largos distintos. La comparación se
+hace ahora en el frontend sobre los dos códigos traducidos; el PA conserva la columna y la
+descarga ya no la usa como guarda. El arreglo de fondo es el catálogo, no el puente.
+
 ---
 
 ## Los tres montos de una cuota

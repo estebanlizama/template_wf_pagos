@@ -1,5 +1,7 @@
 # Flujo de pago DU288 — decisiones tomadas
 
+> Relectura 30-10-2026: este documento conserva decisiones y estados históricos. Para el estado actual ver `impacto_cambios/impacto_30_consolidado_vistas_datos_acciones_y_clickup.md`. Se implementaron motivos en `sg_com1`, cierre 4→8 y reapertura 4→2; el rechazo bloquea meses y conserva relaciones. La vista nueva conserva relaciones múltiples para consulta, pero no implementa reparto monetario de un mes entre cuotas. La clasificación actual de atraso en Finanzas compara mes programado con «Pago hasta»; no reprograma fechas por sí sola. Las propuestas de extensión ilimitada, PA sin desplegar y otras etiquetas de este texto requieren revalidación y no se deben trasladar literalmente a ClickUp.
+
 **Actualizado:** 02-10-2026 · rama `bandeja_pagos`
 
 Clasificación: **✅ implementado y verificado** · **📦 construido, sin desplegar** · **📋 decidido, sin construir** · **🔶 abierto** · **⚠️ conflicto de fuentes**

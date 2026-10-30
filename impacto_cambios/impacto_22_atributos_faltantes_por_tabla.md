@@ -1,5 +1,7 @@
 # Atributos faltantes por tabla — WF de pagos
 
+> Relectura 30-10-2026: este documento contiene propuestas de DDL y hallazgos históricos, no una constancia de que todas las columnas hayan sido agregadas. Los PA actuales sí versionan montos y descuentos en `sg_fum2` con `rut_regist`/`f_regist`; el cierre 4→8 escribe `sg_epag.mto_realpa`. El nuevo consolidado `impacto_30` separa esos cambios de las propuestas aún no verificadas. No presentar `rut_actua`, `fec_actua` u otros ALTER de este archivo como instalados sin contraste de catálogo.
+
 Revisión de las tablas del flujo de pagos contra lo que los PA ya escriben y leen.
 
 **Fuente de verdad usada:** los PA de `cambios_pa/`, no el diagrama. `diagrama_secgen_actualizado.md`

@@ -24,6 +24,9 @@ go
 
    Creacion: ELA 2026/10/06
    Actualizacion: ELA 2026/10/27
+   Actualizacion: ELA 2026/10/30 - Devuelve cod_sitm. El item presupuestario
+   de la solicitud va en el archivo de Finanzas y en la asignacion de SISPER,
+   y la bandeja ya tenia unido sg_fups sin devolverlo.
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
@@ -96,6 +99,7 @@ select
     fu.tot_cuotas,
     fu.ext_cuotas,
     fu.cod_tpps,
+    fu.cod_sitm,
     epag.ano_pago,
     epag.mes_pago,
     count(dpag.corr_fume) as cant_meses,
@@ -172,7 +176,7 @@ group by fu.nro_solici, epag.id_funprse, epag.nro_cuota, epag.cod_estcuo,
     prse.actividad, prse.cod_unifin, prse.cod_ccto, ccto.nom_ab_cct,
     ccto.afec_du9, ccto.con_topdu9,
     soli.nro_resolu, soli.ano_resolu, rslc.num_resolu, fu.mto_total,
-    fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, fu.dentro_jor,
+    fu.mto_tope, fu.tot_cuotas, fu.ext_cuotas, fu.cod_tpps, fu.cod_sitm, fu.dentro_jor,
     epag.ano_pago, epag.mes_pago
 order by epag.fec_solici, fu.nro_solici, epag.id_funprse, epag.nro_cuota
 go
