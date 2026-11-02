@@ -15,13 +15,14 @@ go
    Entrada :
    @rut_person          -> RUT del revisor DGDP. (Obligatorio)
    @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
+   @nro_cuota           -> Correlativo de la cuota. Nulo entrega toda la
+                           prestacion. (Opcional)
 
-   Objetivo : Listar las compensaciones realizadas de los meses de una cuota
-   enviada, para la revision DGDP.
+   Objetivo : Listar las compensaciones realizadas por el funcionario, para la
+   revision DGDP: las de una cuota, o las de toda la prestacion.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: ELA 2026/10/26 (Se agrega fc.rut_regist a la proyeccion)
+   Actualizacion: ELA 2026/11/02 (El correlativo de cuota pasa a ser opcional)
 */
 create procedure Analisis2.sg_fuc2sSecgen02
     @rut_person char(9) = null,
@@ -29,7 +30,7 @@ create procedure Analisis2.sg_fuc2sSecgen02
     @nro_cuota  tinyint = null
 as
 
-if @rut_person is null or ltrim(rtrim(@rut_person)) = '' or isnull(@id_funprse, 0) <= 0 or isnull(@nro_cuota, 0) <= 0
+if @rut_person is null or ltrim(rtrim(@rut_person)) = '' or isnull(@id_funprse, 0) <= 0
 begin
     select 'Faltan antecedentes para consultar la compensacion de la cuota.' as msg
     return
@@ -63,7 +64,7 @@ if not exists (
     select 1
       from secgen_db.dbo.sg_epag
      where id_funprse = @id_funprse
-       and nro_cuota = @nro_cuota
+       and (@nro_cuota is null or nro_cuota = @nro_cuota)
        and cod_estcuo in (2, 3, 4, 8, 10, 11)
 )
 begin
@@ -86,14 +87,16 @@ select
     fm.mes_prop,
     fm.cod_estfum
 from secgen_db.dbo.sg_fuc2 fc
-inner join secgen_db.dbo.sg_dpag dpag
-    on dpag.id_funprse = fc.id_funprse
-   and dpag.corr_fume  = fc.corr_fume
 inner join secgen_db.dbo.sg_fume fm
     on fm.id_funprse = fc.id_funprse
    and fm.corr_fume  = fc.corr_fume
-where dpag.id_funprse = @id_funprse
-  and dpag.nro_cuota  = @nro_cuota
+where fc.id_funprse = @id_funprse
+  and (@nro_cuota is null
+       or exists (select 1
+                    from secgen_db.dbo.sg_dpag dpag
+                   where dpag.id_funprse = fc.id_funprse
+                     and dpag.corr_fume  = fc.corr_fume
+                     and dpag.nro_cuota  = @nro_cuota))
 order by fc.id_funprse, fc.corr_fume, fc.fec_comrea, fc.hora_ini
 go
 

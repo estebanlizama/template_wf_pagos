@@ -178,6 +178,44 @@ viajan tal cual desde la `Secgen01`. Si alguna cambia, hay que cambiarla en las 
 
 ---
 
+## El compromiso no se mide por cuota (2026/11/02)
+
+`sg_fuco` se liga a `id_funprse` y **no tiene dimensión de cuota**: fija un total de compensación
+para el período de la prestación. Si el funcionario compensa esas horas íntegras en un solo mes,
+queda cumplido, y los demás meses no deben nada. Esa es la regla, y el modelo de datos ya la
+expresa: la cuota aparece recién en `sg_fuc2`, que es lo realizado.
+
+Por eso `sg_fuc2sSecgen02` pasó a recibir `@nro_cuota` **opcional**. Nulo entrega toda la
+prestación. Con el correlativo obligatorio, la revisión DGDP comparaba lo realizado de UNA cuota
+contra el compromiso de TODO el período y entregaba una cobertura falsa: una prestación que
+compensó sus 25 h en enero mostraba la cuota de abril-junio reclamando 25 h faltantes y 0 % de
+cobertura, con las horas ya trabajadas y aceptadas en la cuota anterior.
+
+Dos detalles de la consulta:
+
+- La cuota se filtra con un `exists` sobre `sg_dpag`, **no con un `join`**. El `join` duplicaría la
+  fila si un mes llegara a quedar en dos cuotas, y esa duplicación inflaría los minutos realizados
+  sin que nada la delate.
+- Sin correlativo no se consulta `sg_dpag` en absoluto, así que entran también los meses que
+  todavía no se asignaron a ninguna cuota y los de cuotas rechazadas. Es el mismo criterio que
+  `sg_fuc2sSecgen03` ya aplica para el choque entre prestaciones: la hora quedó trabajada igual.
+
+El recorte por mes sigue existiendo donde hace falta —el editor de compensación de cada mes— y lo
+aplica la vista con `executedForMonth`, no el PA.
+
+**Al certificar:**
+
+1. Con `@nro_cuota` entrega exactamente lo mismo que antes del cambio. Es lo primero que hay que
+   probar, porque el editor por mes depende de ese modo.
+2. Sin `@nro_cuota` entrega la compensación de toda la prestación, incluidos los meses sin cuota
+   asignada y los de cuotas rechazadas.
+3. Un mes que quedó en una cuota aparece **una sola vez**, no duplicado.
+4. Un revisor que no es DGDP sigue recibiendo el mensaje de alcance, con y sin correlativo.
+5. Una prestación sin ninguna cuota revisable sigue siendo rechazada con el mensaje de
+   disponibilidad.
+
+---
+
 ## Despliegue
 
 ```
@@ -186,7 +224,8 @@ viajan tal cual desde la `Secgen01`. Si alguna cambia, hay que cambiarla en las 
 3. sg_fuc2dSecgen01
 4. sg_fuc2iSecgen02   (compensación corregida por DGDP)
 5. sg_fuc2dSecgen02   (ídem, borrado)
-6. Backend
+6. sg_fuc2sSecgen02   (lectura DGDP; @nro_cuota opcional desde 2026/11/02)
+7. Backend
 ```
 
 Ninguno toca nada existente: `sg_fuc2` está vacía y ningún flujo la consulta hoy. Los dos
