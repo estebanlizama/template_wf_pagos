@@ -348,7 +348,49 @@ que confirmarlo.
 13. `sg_epag/sg_epaguSecgen04`   envío a Finanzas (cierre de la cuota)
 14. Backend y frontend de la bandeja de cuotas aprobadas
 15. `datos_base/05_sg_tacc_acciones_pago.sql` (acción 34) y `sg_epag/sg_epaguSecgen05`
+16. `sg_epag/sg_epagsSecgen06` e ingreso a SISPER desde el detalle de la cuota
 ```
+
+## Ingreso a SISPER y doble ingreso (2026/11/02)
+
+`sg_epagsSecgen06` responde, por cada cuota seleccionada, si su asignación ya existe en
+`sisper_db..ss_asds`, y entrega en la misma lectura lo que habría que ingresar si no está. El
+ingreso usa los dos PA externos en su orden —`sg_asdiSecgen01` y después `sg_ccaiSecgen01`— y la
+protección contra el doble ingreso vive en el repositorio, no en el PA.
+
+Puntos a certificar:
+
+1. **No hay tabla que relacione la cuota con la asignación**, y por eso la respuesta tiene dos
+   criterios y no uno. `cant_marcadas` cuenta las filas cuyo `ss_asds.observac` trae el marcador
+   que el flujo escribe al registrar (`PRESTACION <id_funprse> CUOTA <nro_cuota>`): ese nombra la
+   cuota y por lo tanto es exacto. `cant_asignaciones` cuenta las que coinciden por llave natural
+   —misma ficha, misma resolución, mismo mes de pago—, que no la nombra.
+2. **La llave natural no distingue dos cuotas de la misma resolución pagadas en el mismo mes**, que
+   es el caso normal del atraso y el que ya advierte la bandeja. Por eso coincidir solo por llave
+   natural omite el ingreso en lugar de autorizarlo: el reingreso lo decide quien revisa, con
+   `allowProbableDuplicates`.
+3. **Las filas cargadas a mano desde el archivo de Finanzas no traen el marcador.** Para ellas el
+   único criterio disponible sigue siendo la llave natural, con su límite.
+4. **Los dos PA no comparten transacción.** Si falla `sg_ccaiSecgen01`, la asignación de `ss_asds`
+   ya quedó escrita y nadie la deshace; el marcador deja esa cuota como registrada, así que el
+   reintento la omite en vez de duplicarla y el centro de costo queda pendiente de revisión.
+5. **Coincidir en la llave no dice que lo ingresado corresponda.** El PA devuelve `valor_sisper`
+   junto al neto de la cuota y `cant_centros_costo`, y el detalle contrasta los dos: un monto
+   distinto o una asignación sin centro de costo se avisan en pantalla en vez de darse por buenos.
+6. **`vigencia` se envía como `S`.** El plan de ingreso la tiene como dato sin semántica definida:
+   es el único valor que este flujo asume y hay que confirmarlo con Personal antes de certificar.
+7. **El subítem vigente se exige único.** Con `cant_subitem` distinto de 1 la cuota falla sin
+   insertar nada, porque elegir entre varios sería escribir en SISPER un ítem que nadie decidió.
+8. **El detalle ofrece los dos registros por separado.** El de la resolución (`sg_resliSecgen01`,
+   el mismo que ejecuta el Contralor al aprobar) solo aparece cuando `sg_epagsSecgen03` informa que
+   falta, y mientras falte el ingreso de la cuota queda bloqueado, porque `sg_asdiSecgen01` exige la
+   resolución en `sp_resl`. Los datos de la resolución salen de la cuota, nunca del cliente.
+9. **`sg_epagsSecgen03` unía `sg_rslc` solo por `nro_resolu`.** La PK es `(ano_resolu, nro_resolu)`,
+   así que dos años con el mismo correlativo multiplicaban la fila y duplicaban los montos
+   agregados. Corregido el 2026/11/02: la unión agrega `ano_resolu`, igual que `sg_epagsSecgen05`.
+   Importa aquí porque el número exento que se registra en SISPER sale de esa unión.
+10. El PA **no escribe nada**: es solo lectura y respeta el mismo control de revisor DGDP que
+   `sg_epagsSecgen05`.
 
 Todos los PA usan las columnas declaradas para `sg_epag` en el diagrama vigente. La decisión
 actualiza el estado y el rechazo libera los meses; el motivo, RUT revisor y fecha no se persisten

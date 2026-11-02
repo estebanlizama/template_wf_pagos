@@ -178,6 +178,7 @@ left join secgen_db.dbo.sg_fume fume on fume.id_funprse = dpag.id_funprse and fu
 left join sisper_db..sp_pers pers on pers.rut_person = fu.rut
 left join fin21_db..es_ccto ccto on ccto.cod_ccto = prse.cod_ccto and ccto.cod_unifin = prse.cod_unifin
 left join secgen_db.dbo.sg_rslc rslc on rslc.nro_resolu = soli.nro_resolu
+                                    and rslc.ano_resolu = soli.ano_resolu
 where epag.cod_estcuo <> 1
   and (@cod_estcuo = 0 or epag.cod_estcuo = @cod_estcuo)
   and isnull(prse.cod_modprs, 1) = 2
