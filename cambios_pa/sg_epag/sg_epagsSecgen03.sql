@@ -24,16 +24,8 @@ go
 
    Creacion: ELA 2026/10/06
    Actualizacion: ELA 2026/10/27
-   Actualizacion: ELA 2026/10/30 - Devuelve el item presupuestario de la
-   solicitud y su subitem vigente. La bandeja ya tenia unido sg_fups sin
-   devolver cod_sitm, que va en el archivo de Finanzas y en la asignacion de
-   SISPER. Ese codigo es el item ANTIGUO de tres (306) y ss_ccas.cod_item
-   espera el subitem vigente de cinco (30600): pt_sitm conserva el antiguo en
-   item_antig, asi que la relacion es directa y no pasa por el centro de
-   costo: 300 -> 30000, 303 -> 30300, 306 -> 30600. Se devuelve la cuenta de
-   subitems vigentes y el menor de ellos: con uno solo la resolucion es
-   inequivoca, y con varios quien lee decide, porque elegir entre ellos no le
-   toca al sistema.
+   Actualizacion: ELA 2026/10/30 - Item presupuestario y subitem vigente.
+   Actualizacion: ELA 2026/11/02 - Registro de la resolucion en sp_resl.
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
@@ -101,6 +93,12 @@ select
     soli.nro_resolu,
     soli.ano_resolu,
     rslc.num_resolu as num_resolu_ext,
+    (select count(*)
+       from sisper_db.dbo.sp_resl sr
+      where sr.num_resol  = convert(varchar(10), rslc.num_resolu)
+        and sr.cod_ders   = '2'
+        and sr.cod_unidad = '05000000'
+        and sr.ano        = convert(varchar(4), soli.ano_resolu)) as cant_sisper,
     fu.mto_total,
     fu.mto_tope,
     fu.tot_cuotas,

@@ -38,14 +38,8 @@ go
 
    Creacion: No registrada en el procedimiento original
    Actualizacion: ELA 2026/10/29
-   Actualizacion: 2026/10/29 - El periodo deja de exigirse dentro del ano de la
-   resolucion. Una cuota decretada en diciembre y pagada en enero es el caso
-   normal del atraso, y la condicion anterior la hacia imposible de registrar.
-   Actualizacion: 2026/10/30 - Se retira el rechazo por periodo repetido. El PA
-   original no lo tiene y ss_asds admite varias asignaciones de una persona con
-   el mismo periodo, cada una con su cod_asign. Las prestaciones necesitan una
-   asignacion por cuota, y dos cuotas atrasadas pagadas en el mismo mes son el
-   caso normal: el rechazo impedia registrar la segunda.
+   Actualizacion: 2026/10/29 - El periodo no se exige dentro del ano.
+   Actualizacion: 2026/10/30 - Se retira el rechazo por periodo repetido.
 */
 create procedure Analisis2.sg_asdiSecgen01
     @numero_resol varchar(10),

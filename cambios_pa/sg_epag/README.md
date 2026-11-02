@@ -284,6 +284,52 @@ sp_helpconstraint 'secgen_db.dbo.sg_dpag'
 
 ---
 
+## El indicador de registro en SISPER (2026/11/02)
+
+`sg_epagsSecgen03` devuelve `cant_sisper`: cuántas filas de `sisper_db..sp_resl` corresponden a la
+resolución de la cuota, por la llave completa `num_resol` + `cod_ders = 2` + `cod_unidad = 05000000`
++ `ano`. Es 0 o 1, porque esa llave es única.
+
+Sirve a **las dos pantallas con un solo dato**: la bandeja de Finanzas y el detalle de revisión DGDP
+salen del mismo PA, así que el indicador no cuesta una consulta por fila. Por eso va como subconsulta
+escalar y no como un PA aparte llamado por pantalla.
+
+Es **solo lectura y solo indicador**: dice si el número de resolución existe y quedó asignado en
+SISPER. No bloquea nada ni dispara ningún registro — eso lo hace `sg_resliSecgen01` al aprobar el
+Contralor.
+
+El backend traduce la columna a cuatro estados en `resolveSisperResolution`, con la misma distinción
+que el subítem: **la columna ausente no es cero**. Ausente significa que el PA todavía no está
+desplegado y del registro no se sabe nada; cero significa que el PA respondió y la fila no está. Si
+los dos dieran lo mismo, la pantalla afirmaría que la resolución no se registró cuando solo falta
+desplegar. `count()` nunca devuelve null, así que la columna presente siempre trae un número.
+
+| Estado | Qué significa |
+| :--- | :--- |
+| `registered` | la fila está en `sp_resl` |
+| `missing` | la resolución tiene exento y la fila no está |
+| `withoutNumber` | la resolución todavía no tiene exento asignado, así que no puede estar |
+| `unavailable` | el PA no devuelve la columna; no se sabe |
+
+**Al certificar:**
+
+1. Una cuota cuya resolución ya se registró devuelve `cant_sisper = 1`.
+2. Una cuya resolución no se registró devuelve 0, y la fila de la bandeja sigue saliendo igual: el
+   indicador no filtra ni excluye.
+3. Una resolución sin exento (`num_resolu` nulo) devuelve 0 sin error.
+4. Los montos y el conteo de meses de la cuota **no cambian** respecto de la versión anterior. Es lo
+   que hay que mirar con más cuidado, porque la subconsulta se agregó dentro de un `select` con
+   `group by` y agregados.
+
+### Pendiente de revisar en este PA
+
+El `left join` a `sg_rslc` une solo por `nro_resolu`, pero la PK de esa tabla es
+`(ano_resolu, nro_resolu)`. Si dos años compartieran correlativo interno, la fila se multiplicaría y
+**los montos agregados se duplicarían**. No se tocó aquí para no mezclarlo con este cambio, pero hay
+que confirmarlo.
+
+---
+
 ## Orden de despliegue
 
 ```

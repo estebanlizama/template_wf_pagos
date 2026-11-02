@@ -25,30 +25,12 @@ go
    @num_doc_ant       -> Numero del documento antecedente. (Opcional)
 
    Objetivo : Registrar en SISPER la resolucion que respalda las asignaciones
-   de prestaciones de servicios del workflow.
-
-   Que la resolucion ya este registrada se responde como exito, con el codigo
-   EXISTS: lo que se pide es que exista en sp_resl, no insertarla. Una misma
-   resolucion cubre varias solicitudes, y cada una la registra al aprobar su
-   propio Contralor, de modo que de la segunda en adelante la fila ya esta y
-   tratarlo como error dejaria esas solicitudes sin poder avanzar nunca.
-
-   La existencia se consulta antes del insert y otra vez si el insert falla.
-   La garantia real es el indice unico pk_sp_resl sobre la llave de sp_resl:
-   si dos Contralores aprueban a la vez solicitudes de la misma resolucion,
-   el segundo insert choca con el indice y la segunda consulta reconoce que
-   la fila quedo registrada, de modo que esa aprobacion tambien continua.
-
-   El llamador es dueno de la transaccion: este procedimiento no abre ninguna.
-   Se invoca desde la aprobacion del Contralor Universitario, que ya corre en
-   una transaccion, y en ASE un rollback anidado vuelve al begin mas externo,
-   de modo que un begin propio haria que un fallo aqui deshiciera la
-   aprobacion completa. El insert es una sola sentencia y es atomico por si.
+   de prestaciones de servicios del workflow. Si ya esta registrada responde
+   exito con el codigo EXISTS. No abre transaccion: la gobierna el llamador.
 
    Creacion: No registrada en el procedimiento original
-   Actualizacion: ELA 2026/10/30 - Se retira el control de transaccion propio
-   para que lo gobierne el llamador y se reconoce la resolucion ya registrada,
-   tambien cuando el insert choca con el indice unico. Ver los motivos arriba.
+   Actualizacion: ELA 2026/10/30 - Sin transaccion propia y reconoce la
+   resolucion ya registrada.
 */
 create procedure Analisis2.sg_resliSecgen01
     @num_resoluc varchar(10),
