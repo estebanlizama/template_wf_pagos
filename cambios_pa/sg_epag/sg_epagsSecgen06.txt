@@ -21,7 +21,7 @@ go
    este o no registrada.
 
    Creacion: ELA 2026/11/02
-   Actualizacion: Sin registro
+   Actualizacion: 2026/11/02 - Indicadores de integridad de asignacion y CC.
 */
 create procedure Analisis2.sg_epagsSecgen06
     @rut_person char(9) = null,
@@ -225,6 +225,7 @@ select cla.id_funprse,
        asds.cod_asign,
        asds.valor,
        asds.num_cuenta,
+       asds.vigencia,
        asds.observac,
        case when ltrim(rtrim(isnull(asds.observac, ''))) = cla.marcador
             then 1 else 0 end as es_marcada
@@ -255,6 +256,13 @@ select cla.id_funprse,
        cla.cod_sitm,
        cla.cant_subitem,
        cla.cod_sitm_vigente,
+       (select count(*)
+          from sisper_db..sp_resl res
+         where right('0000000000' + ltrim(rtrim(res.num_resol)), 10)
+               = right('0000000000' + convert(varchar(10), cla.num_resolu_ext), 10)
+           and res.cod_ders = '2'
+           and res.cod_unidad = '05000000'
+           and res.ano = convert(char(4), cla.ano_resolu)) as cant_resoluciones,
        (select count(*)
           from #asignaciones_consulta a
          where a.id_funprse = cla.id_funprse
@@ -296,6 +304,11 @@ select cla.id_funprse,
            and a.nro_cuota = cla.nro_cuota
            and a.es_marcada = 1
            and ltrim(rtrim(a.num_cuenta)) = '2417') as cant_haber_correcto,
+       (select min(a.vigencia)
+          from #asignaciones_consulta a
+         where a.id_funprse = cla.id_funprse
+           and a.nro_cuota = cla.nro_cuota
+           and a.es_marcada = 1) as vigencia_marcada,
        (select count(*)
           from sisper_db..ss_ccas cc
           inner join #asignaciones_consulta a

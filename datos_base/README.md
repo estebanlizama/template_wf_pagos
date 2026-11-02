@@ -11,6 +11,7 @@ Un archivo por tabla, en orden de ejecución.
 | 4 | `04_roles_privilegios_pagos.sql` | `bd_per1` / `bd_prvg` | Configura el rol 33 de revisor DGDP y sus privilegios |
 | 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución) y 33 (rechazo) de cuotas DGDP para trazabilidad en `sg_hist` |
 | 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | Carga marcas de afectación DU09 en centros de costo |
+| 7 | `07_sg_ecuo_descripciones.sql` | `sg_ecuo` | Actualiza solo las descripciones de los estados existentes; conserva códigos y transiciones |
 
 El DDL está en `00_ddl_pagos.sql`. Hasta el 26-10-2026 no existía como script: el modelo
 describía el destino y `orden_de_despliegue.md` lo narraba en pasos, pero nada lo aplicaba, así
@@ -25,16 +26,17 @@ los `DROP` siguen siendo el paso 9 del orden de despliegue.
 
 | cod | Estado | |
 | :---: | :--- | :--- |
-| 1 | Propuesta | borrador; no compromete cupo ni saldo |
-| 6 | Solicitada pago | ENVIAR — nace el flujo formal |
-| 2 | En visación | DGDP la tomó |
-| 3 | Observada | devuelta a corrección; **no libera nada** |
-| 4 | Aprobada | validaciones conformes |
-| 8 | Enviada remuneraciones | terminal, sin acuse |
-| 10 | Rechazada | terminal; **bloquea** cupo, saldo y meses (26-10-2026) |
+| 1 | Borrador | preparación de la cuota |
+| 2 | En revisión DGDP | revisión de la cuota |
+| 3 | Devuelta para corrección | corrección de la cuota |
+| 4 | Aprobada por DGDP | disponible para Finanzas |
+| 8 | Enviada a remuneraciones | envío registrado; no acredita pago efectivo |
+| 10 | Rechazada por DGDP | cuota rechazada |
+| 11 | Devuelta de Finanzas | DGDP puede revisar y editar |
 
-Se quitan **5, 7, 9, 11, 12**. No se renumera: `sg_esol` conserva sus códigos y agrega al
-final, y `sg_ecuo` sigue el mismo criterio para que el mapa de S0-004 siga siendo válido.
+En una base existente, aplicar únicamente `07_sg_ecuo_descripciones.sql` para actualizar
+estos nombres. El frontend muestra `des_estcuo` mediante el backend; conserva los códigos
+para las acciones y colores del flujo.
 
 ### `sg_efum` — mes `sg_fume` · numeración propia contigua
 

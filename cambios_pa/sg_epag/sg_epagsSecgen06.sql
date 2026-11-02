@@ -225,6 +225,7 @@ select cla.id_funprse,
        asds.cod_asign,
        asds.valor,
        asds.num_cuenta,
+       asds.vigencia,
        asds.observac,
        case when ltrim(rtrim(isnull(asds.observac, ''))) = cla.marcador
             then 1 else 0 end as es_marcada
@@ -303,6 +304,11 @@ select cla.id_funprse,
            and a.nro_cuota = cla.nro_cuota
            and a.es_marcada = 1
            and ltrim(rtrim(a.num_cuenta)) = '2417') as cant_haber_correcto,
+       (select min(a.vigencia)
+          from #asignaciones_consulta a
+         where a.id_funprse = cla.id_funprse
+           and a.nro_cuota = cla.nro_cuota
+           and a.es_marcada = 1) as vigencia_marcada,
        (select count(*)
           from sisper_db..ss_ccas cc
           inner join #asignaciones_consulta a

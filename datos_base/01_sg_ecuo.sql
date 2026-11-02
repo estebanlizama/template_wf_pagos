@@ -100,13 +100,13 @@ CREATE TABLE #ecuo (
 )
 GO
 
-INSERT INTO #ecuo VALUES ( 1, 'Propuesta')
-INSERT INTO #ecuo VALUES ( 2, 'En visación')
-INSERT INTO #ecuo VALUES ( 3, 'Devolver')
-INSERT INTO #ecuo VALUES ( 4, 'Aprobada')
-INSERT INTO #ecuo VALUES ( 8, 'Enviada remuneraciones')
-INSERT INTO #ecuo VALUES (10, 'Rechazada')
-INSERT INTO #ecuo VALUES (11, 'Devuelta Finanzas')
+INSERT INTO #ecuo VALUES ( 1, 'Borrador')
+INSERT INTO #ecuo VALUES ( 2, 'En revisión DGDP')
+INSERT INTO #ecuo VALUES ( 3, 'Devuelta para corrección')
+INSERT INTO #ecuo VALUES ( 4, 'Aprobada por DGDP')
+INSERT INTO #ecuo VALUES ( 8, 'Enviada a remuneraciones')
+INSERT INTO #ecuo VALUES (10, 'Rechazada por DGDP')
+INSERT INTO #ecuo VALUES (11, 'Devuelta de Finanzas')
 GO
 
 UPDATE secgen_db.dbo.sg_ecuo

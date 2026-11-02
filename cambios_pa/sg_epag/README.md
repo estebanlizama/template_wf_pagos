@@ -353,6 +353,15 @@ que confirmarlo.
 
 ## Ingreso a SISPER y doble ingreso (2026/11/02)
 
+**Indicadores de integridad (02-11-2026):** recompilar `sg_epagsSecgen06` junto con backend/frontend.
+Además de los contadores previos, entrega `cant_resoluciones`, `valor_marcado`,
+`cant_haber_correcto`, `cant_cc_marcados` y `cant_cc_correctos`. Estos últimos comparan
+solo asignaciones marcadas para la cuota, su haber/monto y el CC/subítem/importe/fechas
+esperados al 100 %. El marcador por sí solo no acredita registro completo. Las nuevas
+columnas alimentan indicadores de lectura; no modifican códigos ni transiciones de cuotas.
+Si el PA instalado no las entrega, la interfaz muestra Sin consultar para su integridad.
+Ver `impacto_cambios/impacto_31_etiquetas_tramite_e_indicadores_sisper.md` del paquete.
+
 `sg_epagsSecgen06` responde, por cada cuota seleccionada, si su asignación ya existe en
 `sisper_db..ss_asds`, y entrega en la misma lectura lo que habría que ingresar si no está. El
 ingreso usa los dos PA externos en su orden —`sg_asdiSecgen01` y después `sg_ccaiSecgen01`— y la
@@ -377,8 +386,13 @@ Puntos a certificar:
 5. **Coincidir en la llave no dice que lo ingresado corresponda.** El PA devuelve `valor_sisper`
    junto al neto de la cuota y `cant_centros_costo`, y el detalle contrasta los dos: un monto
    distinto o una asignación sin centro de costo se avisan en pantalla en vez de darse por buenos.
-6. **`vigencia` se envía como `S`.** El plan de ingreso la tiene como dato sin semántica definida:
-   es el único valor que este flujo asume y hay que confirmarlo con Personal antes de certificar.
+6. **La forma de la fila está confirmada (2026/11/02).** Revisadas las filas que escribió el
+   flujo en `ss_asds` y `ss_ccas`, se dieron por correctas tal como quedaron: `vigencia = 'S'`,
+   `permanente`, `cuotas` y `unidad_med` nulos, y `observac` con solo el marcador
+   `PRESTACION <id> CUOTA <n>`. Las filas antiguas y la carga manual usan otros valores
+   (`vigencia = '0'`, esos tres campos grabados), de modo que la comparación con ellas no es
+   criterio. `SISPER_ASSIGNMENT_VALIDITY` fija el valor y `sg_epagsSecgen06` devuelve
+   `vigencia_marcada`, con lo que el detalle avisa si una asignación quedó con otra vigencia.
 7. **El subítem vigente se exige único.** Con `cant_subitem` distinto de 1 la cuota falla sin
    insertar nada, porque elegir entre varios sería escribir en SISPER un ítem que nadie decidió.
 8. **El detalle ofrece los dos registros por separado.** El de la resolución (`sg_resliSecgen01`,

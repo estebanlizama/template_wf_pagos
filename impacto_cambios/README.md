@@ -12,6 +12,8 @@ Las seis descripciones de ClickUp fueron actualizadas y releídas el 30-10-2026,
 
 ## Catálogo Consolidado de Documentos de Impacto
 
+Actualización 02-11-2026: [impacto 31 — etiquetas de trámite e indicadores SISPER](impacto_31_etiquetas_tramite_e_indicadores_sisper.md). Registra la separación entre aprobación DGDP, envío e integridad SISPER con los códigos de estado existentes.
+
 | Documento | Título / Tema Principal | Capas Afectadas | Estado |
 | :--- | :--- | :--- | :---: |
 | [`impacto_04`](impacto_04_estados_en_uso_hoy.md) | Catálogo de estados en uso hoy | Base de Datos, Catálogos | ✅ Aplicado |
@@ -42,3 +44,4 @@ Las seis descripciones de ClickUp fueron actualizadas y releídas el 30-10-2026,
 | [`impacto_28`](impacto_28_resolucion_autoridades_y_ambiguedad_organigrama.md) | Resolución de autoridades y ambigüedad en `sp_orco` | Sybase, Workflow, UI | ℹ️ Documentado |
 | [`impacto_29`](impacto_29_resumen_cuotas_dgdp_y_meses_compartidos.md) | Pestaña compartida DGDP/Finanzas, tarjetas por cuota y relaciones múltiples | Frontend, lectura existente | Implementado en fuentes |
 | [`impacto_30`](impacto_30_consolidado_vistas_datos_acciones_y_clickup.md) | Inventario de pantallas/datos/acciones y matriz de actualización ClickUp | Documentación y trazabilidad | Revisión vigente 30-10-2026 |
+| [`impacto_31`](impacto_31_etiquetas_tramite_e_indicadores_sisper.md) | Etiquetas de trámite e indicadores separados de resolución/asignación/CC | Frontend, backend y PA de lectura | Código preparado 02-11; verificar despliegue |
