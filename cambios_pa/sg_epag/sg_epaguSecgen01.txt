@@ -25,7 +25,7 @@ go
    mes que sale vuelve a propuesto y el que entra queda comprometido.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/14
+   Actualizacion: ELA 2026/11/03
 */
 create procedure Analisis2.sg_epaguSecgen01
     @id_funprse int = null,
@@ -237,6 +237,42 @@ if exists (select 1
               and dpag.nro_cuota <> @nro_cuota)
 begin
     select 'Error: Algun mes ya esta asignado a otra cuota' as msg
+    return
+end
+
+/* Un mes de ejecucion se paga una sola vez en el centro de costo, aunque
+   venga de otra prestacion del mismo funcionario (impacto 19, 11.6). Se
+   compara el mes ejecutado si esta informado y si no el propuesto. Las
+   cuotas rechazadas (10) no cuentan: sus meses no se pagan. */
+if exists (select 1
+             from #corr c,
+                  secgen_db.dbo.sg_fume fume,
+                  secgen_db.dbo.sg_fups fu,
+                  secgen_db.dbo.sg_prse prse,
+                  secgen_db.dbo.sg_fups fu2,
+                  secgen_db.dbo.sg_prse prse2,
+                  secgen_db.dbo.sg_dpag dpag2,
+                  secgen_db.dbo.sg_epag epag2,
+                  secgen_db.dbo.sg_fume fume2
+            where fume.id_funprse  = @id_funprse
+              and fume.corr_fume   = c.corr_fume
+              and fu.id_funprse    = @id_funprse
+              and prse.nro_solici  = fu.nro_solici
+              and fu2.rut          = fu.rut
+              and fu2.id_funprse  <> @id_funprse
+              and prse2.nro_solici = fu2.nro_solici
+              and prse2.cod_unifin = prse.cod_unifin
+              and prse2.cod_ccto   = prse.cod_ccto
+              and dpag2.id_funprse = fu2.id_funprse
+              and epag2.id_funprse = dpag2.id_funprse
+              and epag2.nro_cuota  = dpag2.nro_cuota
+              and epag2.cod_estcuo <> 10
+              and fume2.id_funprse = dpag2.id_funprse
+              and fume2.corr_fume  = dpag2.corr_fume
+              and isnull(fume2.ano_ejec, fume2.ano_prop) * 100 + isnull(fume2.mes_ejec, fume2.mes_prop)
+                = isnull(fume.ano_ejec, fume.ano_prop) * 100 + isnull(fume.mes_ejec, fume.mes_prop))
+begin
+    select 'Error: Algun mes ya esta en una cuota de otra prestacion del mismo centro de costo' as msg
     return
 end
 

@@ -409,6 +409,31 @@ están en `cambios_pa/`.
 
 ## 9. Plan
 
+### Estado al 03-11-2026 (aplicación sin el login)
+
+Por decisión del usuario se aplicó todo lo aprobado **salvo el login
+simulado** (T1–T4), que se retira al final, y después se prueba el conjunto.
+
+| | Estado | Detalle |
+|:-:|:--|:--|
+| A1 | **Aplicado** | T6 y T9 primero; T3 y T4 junto con el login (A2) |
+| A2 | **Aplicado** | `/access` quedó solo con el acceso a la Intranet (la ruta se conserva por si algún `LOGIN_URL` apunta a ella); `nuxt.config.js` aplica siempre `auth` y `guardian` y limita `@nuxtjs/dotenv` a `BASE_URL`, `API_URL` y `LOGIN_URL`; el backend descifra el RUT siempre con la Intranet. `pages/access/auth.vue` no se tocó. Registro para reimplementar: `login_simulado_desarrollo.md` |
+| A3 | **Aplicado** | El rechazo del envío ya no es un toast: queda como alerta persistente **junto a la barra de envío** (`submitError`), no en `installmentError`, porque ese solo se ve con el editor de cuota abierto. Cubre el 422 del backend y el bloqueo de la revalidación previa; tras el 422 se vuelve a consultar el panel |
+| A4 | **Aplicado** | Los dos `console.log` retirados |
+| A5 | **Aplicado** | 36 de 37 mensajes sin RUT. Queda el de `mapStaffToProcedureParams` (`:2024`): ese método también guarda solicitudes legacy con varios funcionarios, donde el RUT sí distingue, y lanza un `Error` genérico (500) cuyo texto no llega al cliente |
+| A6 | **Reclasificado** | El chip ya existe en el panel: «Contrato no vigente (desfase de pago)», no bloqueante, y el panel igual revisa cargo y asignaciones con los datos congelados. La brecha está solo en la compuerta del backend → B10 |
+| A7 | **No aplicado** | La alerta alimenta la evaluación del resumen del formulario de resolución, no es solo informativa como se dijo en la revisión 2. La nota del código condiciona su reactivación a la fuente final de contratos, igual que B5 → se mueve a B5 |
+| A8 | **Aplicado** | Corregidos `checklist_validaciones_y_paso_a_certificacion.md`, `datos_base/README.md`, `datos_base/orden_de_despliegue.md` e `INTERRUPTOR-DU09.md`, con nota de fecha en cada corrección |
+| A9 | **Aplicado** | Eliminados los 4 repositorios 100 % stub y sin inyección (`request-provision`, `request-service`, `request-staff`, `service-provision-request-file`) y sus exports; retirados 7 métodos stub de `service-provision-request`, `payment-type`, `request-record` y `request-recruitment-type`; quitados los 2 TODO obsoletos. Los 2 stubs de devolución de saldos quedan: no son PDS |
+
+**Verificación tras aplicar:** backend `npm run build` limpio y **288 pruebas
+unitarias en verde**; frontend con 23 archivos de prueba en verde, estándar
+visual en 55 archivos, ESLint limpio en los archivos tocados y plantillas
+compiladas. En la primera corrida del frontend falló una vez
+`servicesProvisionPaymentLoss.test.cjs`; no se reprodujo en dos corridas
+posteriores, ni ella ni el módulo que carga cambiaron, y no toca ningún
+archivo modificado. Queda anotada como intermitente.
+
 ### A. Aprobados o sin decisión pendiente
 
 | | Qué | Capa | Riesgo | Confianza |
@@ -430,7 +455,8 @@ están en `cambios_pa/`.
 | B1 | Compuerta normativa de la aprobación DGDP | Qué validaciones aplican al aprobar (no son las del envío) |
 | B2 | Escribir `00_ddl_pagos.sql` (§3.5) | La definición vigente de las siete tablas en desarrollo (`ddlgen`) y `sp_help` de certificación para compararlas |
 | B4 | Validaciones 3, 5, 7, 8, 9 y tope en PA (§4) | Fuente de «flujo de pago configurado»; alcance de «contrato cubre los meses»; tope congelado o recalculado |
-| B5 | T7 sin contrato | Confirmar la fuente de contratos vigentes en certificación |
+| B5 | T7 sin contrato y T8 alerta del contrato persistido (antes A7) | Confirmar la fuente de contratos vigentes en certificación |
+| B10 | Compuerta del envío sin perfil vigente (antes A6) | Que revise cargo y asignaciones con los datos congelados, como ya hace el panel. Antes, confirmar que el PA de inhabilidad devuelve lo mismo sin unidad ni calidad del contrato; si no, el backend bloquearía lo que la pantalla deja pasar |
 | B6 | T5 interruptor | Cargar `afec_du9` y confirmar el formato de `cod_sitm` |
 | B7 | T10 compatibilidad | Confirmar la versión instalada de los PA de funcionario |
 | B9 | Errores de lectura que se convierten en objetos vacíos (§11.2) | Revisar a los 3 llamadores de `getRequestById` antes de cambiar el `catch` |
@@ -530,3 +556,270 @@ y conviene cerrarla junto con A5.
 `cost-center-close.controller.ts:292`, `cost-center-close-request.ts:16`,
 `cost-center-opening.model.ts:38`, `permissions-const.ts:204`,
 `permissions.ts:95`. Se listan para que no se confundan con pendientes del PDS.
+
+---
+
+## 12. Qué falta para certificar con todas las validaciones funcionando
+
+Corte: 03-11-2026, después de aplicar lo de la §9. Se ordena en tres
+escalones; cada uno depende del anterior.
+
+### 12.1 Escalón 1 — que las validaciones existan en certificación
+
+Sin esto, ninguna validación de pagos corre en certificación, por bien escrita
+que esté en el código.
+
+| | Qué | Por qué es requisito |
+|:-:|:--|:--|
+| 1 | Escribir `00_ddl_pagos.sql` (§3.5, B2) | Sin `sg_epag`, `sg_dpag`, `sg_efum`, `sg_com1` y las columnas nuevas no se instala ningún PA de pagos |
+| 2 | Desplegar en el orden de §3.4: DDL → `02` → `03` → `sg_fumeuSecgen01` y `sg_fupssSecgen17` desde `cambios_pa/sg_fume/` **junto con el backend** → `DROP` → `01` → `04` → `05` → PA de pagos | Si el backend llega sin esos dos PA, falla el guardado de toda solicitud DU288 |
+| 3 | `sg_usacsSecgen01` de 168 líneas (paquete manual del usuario) | Sin `es_revisor_pago`, la bandeja DGDP queda vacía y no hay a quién aplicarle las validaciones de revisión |
+| 4 | Retirar el login simulado (T1–T4) | Con él, cualquiera entra como cualquiera y ninguna validación de permisos significa nada |
+
+### 12.2 Escalón 2 — encender lo que está escrito pero apagado
+
+| | Qué | Requisito previo |
+|:-:|:--|:--|
+| 5 | Pertenencia a DU09 (`afec_du9`) en los 3 PA de cuota y criterio de `sg_cctosSecgen05` | Correr `06_marcas_du09` en certificación y cargar `afec_du9` en los centros de costo DU09 |
+| 6 | Saldo del centro de costo, front y back a la vez | Confirmar el formato de `cod_sitm` que espera `valida_saldo_cc_cs` (3 o 5 dígitos) |
+| 7 | Retirar el aviso «Modo de prueba» y sus textos | Al encender 5 y 6 |
+
+### 12.3 Escalón 3 — completar las que faltan
+
+| | Validación | Estado | Esfuerzo | Decisión pendiente |
+|:-:|:--|:--|:-:|:--|
+| 8 | **Compuerta normativa de la aprobación DGDP** (B1) | No existe: aprobar solo verifica permiso, estado y motivo | medio | Qué se revalida al aprobar: como mínimo centro de costo vigente, `afec_du9`, saldo y evidencia |
+| 9 | Asignaciones sobre el período (n.º 7) | La compuerta evalúa a hoy; **el panel ya usa** la fecha de inicio de ejecución y el repositorio acepta `fechaEval` | **bajo** | Ninguna: es alinear la compuerta con el panel |
+| 10 | Mes ya pagado en otra prestación del mismo CC (n.º 8) | El PA solo mira la misma prestación | bajo-medio | Ninguna; probar que no bloquee meses de cuotas rechazadas |
+| 11 | Cargo o contrato modificado, advertencia (n.º 9) | No existe en pagos | bajo | Ninguna: el criterio ya existe en resolución |
+| 12 | Contrato cubre los meses de la cuota (n.º 5) | No existe | medio | Acotarlo a «no cubría el mes cuando se ejecutó», para no bloquear devengados |
+| 13 | Flujo de pago configurado (n.º 3) | No existe | medio | Cuál es la fuente del dato |
+| 14 | Tope por cuota en PA-TX (n.º 4) | Solo en la compuerta API | medio | Tope congelado o recalculado (matriz §6.1) |
+| 15 | Constancia de parentesco (RES-IN-07 / PAG-32) | Resolución la delegó al pago y el pago no la bloquea: **no se ejecuta en ninguna parte** | medio | Si bloquea al aprobar y cómo se acredita la constancia |
+| 16 | Compuerta sin perfil vigente (B10) | El panel revisa cargo y asignaciones; el backend no | bajo | Confirmar que el PA de inhabilidad responde igual sin unidad ni calidad |
+| 17 | Funcionario sin contrato en resolución (T7, T8, B5) | Pasa en pantalla y en servidor | bajo | Confirmar la fuente de contratos vigentes en certificación |
+
+### 12.4 Lo que no bloquea la certificación
+
+| Tema | Por qué |
+|:--|:--|
+| Deuda institucional | Sin fuente; queda informada como «Sin información». Obligatoria desde el **01-01-2027**: antes de esa fecha hay que tener la fuente |
+| Licencias y permisos sin goce | Decisión del 14-10: se descuentan, no bloquean. El descuento es manual hasta tener el PA de ausencias |
+| Receso universitario | Decisión del 14-10: fuera |
+| Cupo anual por centro de costo en resolución | Decisión funcional sin aplicar (§5.2); el backend es el más estricto, sin riesgo económico |
+| 56 h en el PA de horario | Brecha conocida; el backend la valida al guardar |
+
+### 12.5 Evidencia que pide la certificación
+
+Ninguna prueba automatizada ejecuta los PA: las 288 del backend y las 23 del
+frontend prueban la lógica de aplicación. La evidencia en el ambiente es la
+lista del impacto 30 §9 —cuota en borrador, enviada, devuelta, rechazada,
+aprobada y reabierta; mes repetido; descuentos e historial; PDF; Excel— más un
+caso por cada validación de 12.2 y 12.3: uno que pase y uno que bloquee.
+
+### 12.6 Resumen
+
+- **Sin decisión pendiente, se pueden hacer ya:** 4, 9, 10 y 11; el 16, tras confirmar el PA.
+  **Aplicados el 03-11-2026:**
+  - **4** login simulado retirado (A2).
+  - **9** la compuerta del envío evalúa las asignaciones con la fecha de inicio de la ejecución (`provision.executionStartDate`), igual que el panel; si la fecha no llega como `AAAA-MM-DD`, el PA evalúa a hoy como antes.
+  - **10** `sg_epagiSecgen01` y `sg_epaguSecgen01` rechazan un mes de ejecución que ya está en una cuota no rechazada de **otra prestación del mismo funcionario y centro de costo**; compara el mes ejecutado si está informado y si no el propuesto. Guarda antes de `begin tran`, `.txt` sincronizados, cabecera `Actualizacion: ELA 2026/11/03`. **Requiere redesplegar los dos PA.**
+  - **11** chip «Cargo o contrato modificado», advertencia no bloqueante, cuando el cargo del contrato vigente difiere del autorizado (`positionChangedSinceAuthorization`, 4 pruebas). Lo ven el solicitante y DGDP.
+- **Dependen de datos o del despliegue:** 1 (requiere la definición de las tablas en desarrollo), 2, 3, 5, 6 y 7.
+- **Necesitan una decisión funcional:** 8, 12, 13, 14, 15 y 17.
+
+---
+
+## 13. Núcleo: comparación de prestaciones, límites y topes
+
+Corte: 03-11-2026. Por indicación del usuario, se deja fuera la verificación
+de tablas y campos y se audita la correctitud del núcleo en frontend y backend.
+
+### 13.1 Método
+
+Las reglas del núcleo existen dos veces, una en el frontend y otra en el
+backend, y el riesgo principal es que diverjan sin que nadie lo note. Por eso
+no se auditó solo leyendo: se ejecutaron **las funciones reales de las dos
+capas** sobre los mismos casos —el frontend desde su fuente y el backend desde
+el `dist` compilado, con la base de datos reemplazada por datos de prueba— y se
+compararon los veredictos. Para el monto autorizado se generaron 20.000 casos
+aleatorios.
+
+### 13.2 Lo que está correcto (verificado ejecutando)
+
+| Regla | Resultado |
+|:--|:--|
+| Monto autorizado: techo de cuotas, factibilidad T-07 (ADR-012) y tope mensual agregado con prestaciones concurrentes | **0 discrepancias en 20.000 casos** entre frontend y backend, con historial del mismo centro de costo |
+| Conteo de meses de ejecución | Tres implementaciones (`deriveExecutionMonths`, `getExecutionYearMonths`, `calculateMonthsBetweenDates`), equivalentes para fechas válidas |
+| Contribución mensual de una prestación (ADR-010) | `monthlyContributionOf` idéntica en las dos capas |
+| Exclusión de solicitudes en borrador y rechazadas del historial (ADR-019) | Un solo punto, compartido por las dos capas |
+| Tope del cargo con marca `'N'` | El PA `sg_tocasSecgen01` devuelve `mto_tope = NULL`, así que el criterio distinto de las dos capas ante esa marca no produce resultados distintos |
+| `cod_tpps` nulo | El formulario lo normaliza a 1 antes de llamar a la regla; la divergencia que habría no llega a ocurrir |
+
+### 13.3 Hallazgos
+
+**🔴 N1 — El cupo anual cuenta meses de ejecución como meses de pago, en las dos capas.**
+
+El cupo del numeral 6 (2 meses de pago por año y centro de costo, 12 con
+extensión) se arma con las filas de `sg_fume` de las prestaciones previas. Desde
+el rediseño del impacto 05, esas filas son los **meses de ejecución** —«ni la
+cantidad de cuotas … se materializan todavía»—, no las cuotas de pago.
+
+Probado con el código real (`textSimilarityUtil.monthDistributionCheck` y
+`getCommittedInstallmentMonthsForYear`):
+
+| Caso | Front | Back |
+|:--|:-:|:-:|
+| Prestación previa de 3 meses de ejecución declarada en **1** cuota, mismo centro de costo | consume **3** del cupo de 2: la solicitud nueva queda con 0 cuotas y se bloquea | igual |
+| Una sola fila de `sg_fume` con mes ejecutado distinto del propuesto | cuenta **2** meses | igual |
+
+Las pruebas existentes muestran que es una regresión del cambio de modelo, no
+una decisión: se escribieron cuando cada fila era una cuota con su mes de pago,
+y una de ellas afirma que «un rango de ejecución largo no debe contar como
+meses de pago». Esa regla se cumple para la solicitud nueva y se viola para las
+previas.
+
+*Corrección propuesta (requiere decisión, porque cambia un límite normativo):*
+para una prestación previa, contar como meses consumidos sus cuotas
+**declaradas** (`tot_cuotas`), acotadas a sus meses de ejecución del año; cuando
+ya tenga cuotas en `sg_epag`, sus meses de pago reales. Y contar cada fila una
+sola vez. El cambio va en `installmentMonthsForYear` (front) y
+`getInstallmentYearMonthKeys` (back), con las pruebas actualizadas.
+
+**🔴 N2 — Las 56 horas semanales no se controlan en las prestaciones fuera de jornada.**
+
+La matriz define `LIMITE_SEMANAL_EXCEDIDO` como `contrato + honorarios +
+prestación ≤ 56`, y el documento 07 exige para *fuera de jornada* «horario
+semanal FUHO ≤ 56 h». En el código, las dos capas solo suman `contrato +
+honorarios + compensación`, y la compensación solo existe para el estamento 3
+dentro de jornada.
+
+Probado con contrato de 44 h y prestación fuera de jornada de 20 h semanales
+(64 h en total):
+
+| Control | Resultado |
+|:--|:--|
+| Front, `LIMITE_SEMANAL_EXCEDIDO` | sin error (no hay compensación que sumar) |
+| Front, `weeklyHoursCapCheck` | calcula 64 h y detecta el exceso, pero **solo lo reporta si hay prestaciones concurrentes** |
+| Front, formulario (`getExecutionScheduleValidationErrors`) | **bloquea**: compara el horario semanal con `56 − contrato − honorarios`, en la fila individual y en las del resumen *(corrección del 03-11: la primera prueba no ejercitó esta función)* |
+| Back, `validateStaffWorkload` | **permite** |
+
+Es decir, el hueco era solo del backend: una llamada directa a la API pasaba.
+
+*Corrección propuesta:* en las dos capas, para `dentro_jor = 'N'`, comparar por
+semana `contrato + honorarios + horas de ejecución` contra 56, y que
+`weeklyHoursCapCheck` bloquee también sin concurrentes. Puede empezar a
+bloquear solicitudes en trámite que hoy pasan, así que conviene medir antes
+cuántas hay.
+
+**🟠 N3 — El panel de pagos bloquea el pago con contrato no vigente por «Tope faltante».**
+
+Sin perfil vigente y sin tope especial del cargo, `resolveCurrentMonthlyCap`
+devuelve tope 0, el chip queda en «Tope faltante» y el envío se bloquea. El
+backend, en el mismo caso, valida contra el tope autorizado de la resolución
+(`controller.ts`, tope del cargo o, si no hay, el congelado). Y el controlador
+documenta que un contrato no vigente no debe bloquear cuotas devengadas.
+
+*Corrección propuesta (sin decisión pendiente):* usar el tope autorizado como
+respaldo del vigente en `resolveCurrentMonthlyCap`, igual que el backend.
+
+**🟠 N4 — La Regla 11 (mismo mes en el mismo centro de costo) existe solo en pantalla.**
+
+`cost_center_month_locked` bloquea en el formulario, pero
+`validateNormativeRequestStaff` no la revalida: una llamada directa a la API
+guarda la solicitud. Desde hoy, el pago la frena (§12.6, n.º 10), pero la
+resolución queda decretada.
+
+**🟠 N5 — El choque de horario y la compensación duplicada entre prestaciones existen solo en pantalla.**
+
+El backend revisa traslapes de horario y de compensación **dentro** de la misma
+solicitud; los cruces con otras prestaciones del funcionario
+(`schedule_overlap`, `compensation_date_duplicate`,
+`paid_compensation_duplicate`) solo los evalúa el frontend.
+
+**🟡 N6 — El tope por cuota se evalúa en fechas distintas.** El panel consulta el
+tope del cargo con la fecha de inicio de la ejecución; la compuerta del
+backend, a hoy. Si el tope cambió entre esas fechas, los veredictos difieren.
+Depende de la decisión «tope congelado o recalculado» (matriz §6.1).
+
+**🟡 N7 — `monthlyCapAggregateCheck` usa las cuotas declaradas, no las efectivas.**
+En la única discrepancia del muestreo, el frontend dividía el monto por 3
+cuotas declaradas cuando el cupo solo permitía 1; el backend usa la efectiva y
+acierta. En pantalla no ocurre porque un `watch` del formulario recorta
+`nroCuotas`, pero la función pura depende de ese recorte.
+
+**🟡 N8 — `getMaxDeclarableInstallments` devuelve 1 cuando la ejecución tiene 0
+meses**, aunque el cupo esté agotado. Es el piso que ADR-020 retiró, sobreviviendo
+en el caso borde de fechas inválidas, que otras validaciones ya bloquean.
+
+### 13.4 Resumen
+
+| | Hallazgo | Capas | ¿Requiere decisión? |
+|:-:|:--|:-:|:--|
+| N1 | Cupo anual cuenta meses de ejecución | front + back | sí: cambia un límite |
+| N2 | 56 h sin control fuera de jornada | front + back | sí: puede bloquear solicitudes en trámite |
+| N3 | «Tope faltante» con contrato no vigente | front | no |
+| N4 | Regla 11 solo en pantalla | back | no |
+| N5 | Cruces entre prestaciones solo en pantalla | back | no |
+| N6 | Tope por cuota en fechas distintas | back | sí: congelado o recalculado |
+| N7 | Tope agregado con cuotas declaradas | front | no |
+| N8 | Piso de 1 cuota en el caso borde | front | no |
+
+### 13.5 Estado de aplicación (03-11-2026)
+
+Aplicado en el orden recomendado, verificando después de cada paso. Sin
+cambios en PA ni en tablas.
+
+| | Estado | Qué se hizo | Dónde |
+|:-:|:--|:--|:--|
+| N1 | ✅ aplicado | Cada fila de `sg_fume` cuenta una vez (mes ejecutado si existe, si no el propuesto) y una prestación previa consume como máximo sus cuotas declaradas (`tot_cuotas`), tomando sus primeros meses del año en orden cronológico | front `installmentMonthsForYear` / `installmentMonthsByStatusForYear`; back `getInstallmentYearMonthKeys` |
+| N2 | ✅ aplicado (back) | Fuera de jornada, `contrato + honorarios + horas de ejecución de la semana ≤ 56`, por semana real y sin feriados. El front ya lo exigía (ver N2) | back `validateStaffWorkload` |
+| N3 | ✅ aplicado | El tope de referencia es el autorizado; el vigente solo cuando no hay autorizado. Desaparece el «Tope faltante» con contrato no vigente | front `resolveCurrentMonthlyCap`, `capApplies`, `buildCapTag` |
+| N4 | ✅ aplicado | Regla 11 revalidada en el servidor con el mismo mensaje, código `DU288_COST_CENTER_MONTH_LOCKED`. El historial se lee una sola vez por funcionario y lo comparten la Regla 11, los cruces (N5) y el cupo | back `validateStaffCostCenterMonthLock` |
+| N5 | ✅ aplicado | Compensación superpuesta (`DU288_COMPENSATION_DATE_DUPLICATE`), ya enviada a pago (`DU288_PAID_COMPENSATION_DUPLICATE`) y horario superpuesto (`DU288_SCHEDULE_OVERLAP`) contra las otras prestaciones del funcionario | back `validateStaffCrossProvisionConflicts` |
+| N6 | ✅ aplicado: **tope congelado** | La compuerta de envío mide la cuota contra el tope autorizado en la resolución (`sg_fups.mto_tope`); el del cargo o el del perfil solo cuando no hay autorizado | back `assertInstallmentCapCompliance` |
+| N7 | sin cambio | El formulario ya pasa las cuotas efectivas (`getDeclaredInstallments`) y el `watch` recorta `nroCuotas`; la función pura se deja como está | — |
+| N8 | ✅ aplicado | Con 0 meses de ejecución devuelve `min(1, cupo)`, así que con el cupo agotado devuelve 0 | front `getMaxDeclarableInstallments` |
+| N10 | ✅ aplicado | El cupo de 2 meses por año se cuenta solo con prestaciones del **mismo centro de costo**, como la pantalla desde el 11-09-2026 (commit `d79e8c4`). El servidor seguía contando todos los centros de costo: la pantalla ofrecía 2 cuotas y el envío se rechazaba con «máximo disponible de 0». El tope mensual ($) sigue sumando todos los centros de costo, en las dos capas | back `validateStaffAuthorizedAmount`, helper `isSameCostCenter` (compartido con la Regla 11) |
+
+**Dos cambios de criterio que hay que conocer:**
+
+1. **N1, unión acotada y no suma.** Los meses de prestaciones distintas que
+   caen en el mismo mes cuentan una vez, como ya hacía el diseño original. Al
+   acotar por `tot_cuotas` el resultado nunca es más estricto que antes: o
+   igual, o libera cupo que se estaba consumiendo de más.
+2. **N6 invierte la regla anterior.** Antes, el tope vigente del cargo
+   mandaba sobre el congelado (había una prueba que lo afirmaba). Ahora manda
+   el congelado: si el tope del cargo baja después de la resolución, la cuota
+   se paga con el autorizado; si sube, el autorizado sigue siendo el límite. Se
+   actualizaron las dos pruebas y se agregó la del caso «subió».
+
+**N5, costo de lectura.** `sg_fuhosSecgen01` no admite consulta por
+funcionario, así que el horario de cada prestación previa se lee aparte, pero
+**solo de las que se cruzan en período o ejecución** con la actual (en la
+práctica, 0 a 3). Leerlas todas en una llamada exigiría un PA nuevo: queda
+para la fase 2.
+
+**N9 (nuevo, sin aplicar, requiere decisión).** En las dos capas, el conteo
+de meses comprometidos incluye los meses con cuota rechazada, pero el detalle
+que se muestra los excluye. El número y su desglose pueden no cuadrar. No
+cambia ningún veredicto; falta decidir si un mes rechazado libera cupo.
+
+#### Verificación
+
+| Prueba | Resultado |
+|:--|:--|
+| Backend, `lb-mocha` unitarias | **300 correctas**, 0 fallidas (eran 288). Incluye el caso real de N10. Nueva: `service-provision-core-cross-checks.unit.ts` (N1, N2, N4, N5); actualizadas: tope congelado (N6) y el stub de cardinalidad |
+| Frontend, `run-pds-tests.cjs` | 23 archivos, todos correctos |
+| Frontend, `validateDu288Ui.js` | estándar visual validado en 55 archivos |
+| ESLint en las líneas tocadas | sin problemas, en las dos capas |
+| Diferencial del monto autorizado, front contra back | 0 discrepancias en 20.000 casos con historial del mismo centro de costo, y 0 en 20.000 con centros de costo mezclados (N10; la primera versión del diferencial solo usaba el mismo centro de costo y por eso no lo detectó) |
+| Diferencial de la Regla 11, front contra back | 0 discrepancias en 20.000 casos |
+| Cupo con los casos de N1 | front y back: 1 mes comprometido en los dos casos |
+| 56 h, 44 h + 20 h fuera de jornada | el backend ahora bloquea |
+
+**Para certificar falta** probar contra Sybase lo que aquí corre con datos de
+prueba: guardar una solicitud con un choque real contra otra prestación del
+mismo funcionario (N5), una con un mes tomado en el mismo centro de costo
+(N4) y una fuera de jornada sobre 56 h (N2), y comprobar que cada una
+devuelva 422 con su mensaje.

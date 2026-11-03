@@ -4,13 +4,13 @@ Un archivo por tabla, en orden de ejecución.
 
 | # | Archivo | Tabla | Qué hace |
 | :-- | :--- | :--- | :--- |
-| 0 | `00_ddl_pagos.sql` | tablas nuevas + `sg_fume` / `sg_fum2` / `sg_fuc2` | Crea `sg_efum`, `sg_epag`, `sg_dpag` y `sg_com1`, agrega las columnas que faltan y renombra las que cambiaron |
+| 0 | `00_ddl_pagos.sql` | tablas nuevas + `sg_fume` / `sg_fum2` / `sg_fuc2` | **No existe en el repositorio (verificado el 03-11-2026): hay que escribirlo.** Debe crear `sg_efum`, `sg_epag`, `sg_dpag` y `sg_com1`, agregar las columnas que faltan y renombrar las que cambiaron. Contenido mínimo en `../auditoria_validaciones_certificacion_2026_11_03.md` §3.5 |
 | 1 | `01_sg_ecuo.sql` | `sg_ecuo` | Depura el catálogo del **encabezado** de pago (`sg_epag.cod_estcuo`) y deja los 7 vigentes |
 | 2 | `02_sg_efum.sql` | `sg_efum` | Carga el catálogo del **mes** de ejecución (`sg_fume.cod_estfum`) |
 | 3 | `03_migracion_sg_fume.sql` | `sg_fume` | Convierte las filas existentes de `cod_estcuo` a `cod_estfum` |
 | 4 | `04_roles_privilegios_pagos.sql` | `bd_per1` / `bd_prvg` | Configura el rol 33 de revisor DGDP y sus privilegios |
-| 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución) y 33 (rechazo) de cuotas DGDP para trazabilidad en `sg_hist` |
-| 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | Carga marcas de afectación DU09 en centros de costo |
+| 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución), 33 (rechazo) y 34 (reapertura de una cuota aprobada) de cuotas DGDP para trazabilidad en `sg_hist` |
+| 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | **Diagnóstico**: lista los centros de costo sin `afec_du9`; el `update` va comentado y se carga caso a caso |
 | 7 | `07_sg_ecuo_descripciones.sql` | `sg_ecuo` | Actualiza solo las descripciones de los estados existentes; conserva códigos y transiciones |
 
 El DDL está en `00_ddl_pagos.sql`. Hasta el 26-10-2026 no existía como script: el modelo

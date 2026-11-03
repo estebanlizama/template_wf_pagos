@@ -2,6 +2,7 @@
 
 **Ecosistema:** SG-Solicitudes · Módulo de Prestación de Servicios (PDS DU288 / DU09)  
 **Fecha de Elaboración:** 27-10-2026  
+**Corregido:** 03-11-2026, según `auditoria_validaciones_certificacion_2026_11_03.md` §1 y §3 (líneas, scripts de base, `DISABLE_AUTH`, RUT de prueba y conteo de pruebas).  
 **Objetivo:** Consolidar en un solo documento operativo el catálogo de validaciones, interruptores temporales de desarrollo, condiciones en Procedimientos Almacenados (PAs) que deben limpiarse/activarse y la higiene de datos requerida antes del despliegue en los ambientes de **Certificación** y **Producción**.
 
 ---
@@ -18,7 +19,7 @@ Son mecanismos que se introdujeron deliberadamente en el código para permitir p
 | Punto | Capa / Archivo | Ubicación exacta | Acción requerida para Certificación / Producción |
 | :---: | :--- | :--- | :--- |
 | **1** | **Frontend (Store)** | `sg-solicitudes-frontend/store/service-provision-payment-detail.js` (L23) | Cambiar `const BALANCE_VALIDATION_BLOCKS_SUBMISSION = false` a **`true`**. |
-| **2** | **Backend (Controller)** | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` (L57) | Cambiar `const BALANCE_BLOCKS_SUBMISSION = false` a **`true`**. |
+| **2** | **Backend (Controller)** | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` (L66) | Cambiar `const BALANCE_BLOCKS_SUBMISSION = false` a **`true`**. |
 | **3** | **PA Inserción Cuota** | `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/sg_epag/sg_epagiSecgen01.sql` (L120-127) | Descomentar la guarda de `afec_du9`: borrar las líneas de comentario `/* INTERRUPTOR-DU09 ... */` para que ejecute `if @afec_du9 <> 'S' begin select 'Error: El centro de costo no pertenece al flujo DU09' as msg return end`. Recompilar en Sybase y sincronizar `sg_epagiSecgen01.txt`. |
 | **4** | **PA Edición Cuota** | `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/sg_epag/sg_epaguSecgen01.sql` (L129-136) | Descomentar la misma guarda de `afec_du9`. Recompilar en Sybase y sincronizar `sg_epaguSecgen01.txt`. |
 | **5** | **PA Envío a Visación** | `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/sg_epag/sg_epaguSecgen02.sql` (L104-111) | Descomentar la guarda de `afec_du9`. Recompilar en Sybase y sincronizar `sg_epaguSecgen02.txt`. |
@@ -37,7 +38,8 @@ Son mecanismos que se introdujeron deliberadamente en el código para permitir p
 
 ### 1.2 Rut de Prueba de Asistencia (Reloj Control)
 
-- **Ubicación:** `sg-solicitudes-backend/src/repositories/storedProcedures/service-provision-payment-procedures.repository.ts` (L84).
+- **Retirado el 03-11-2026.** Se eliminaron la constante, su getter, el campo `attendanceTestRut` de la respuesta y el aviso de la pantalla: la consulta de asistencia usa siempre el RUT del funcionario evaluado. Lo que sigue queda como antecedente.
+- **Ubicación anterior:** `sg-solicitudes-backend/src/repositories/storedProcedures/service-provision-payment-procedures.repository.ts` (L122).
 - **Constante:** `const ATTENDANCE_TEST_RUT = '';`
 - **Estado:** Actualmente vacía (`''`).
 - **Regla:** Debe auditarse que en los archivos `.env` o en el repositorio **permanezca siempre en cadena vacía**. Si se le asigna un RUT, todas las consultas de la sección de jornada y reloj consultarán las marcas biométricas de esa persona simulada en lugar de las del funcionario evaluado.
@@ -48,7 +50,8 @@ Son mecanismos que se introdujeron deliberadamente en el código para permitir p
 
 - **Ubicación:** `sg-solicitudes-frontend/nuxt.config.js` (L58-L67).
 - **Lógica:** Si `process.env.DISABLE_AUTH` es evaluado como verdadero en un entorno que no sea explícitamente `NODE_ENV === 'production'`, Nuxt deshabilita el middleware `['auth', 'guardian']`.
-- **Regla:** En el archivo `.env` de Certificación y Producción, la variable `DISABLE_AUTH` debe ser removida o fijada en `false`, asegurando que `NODE_ENV=production` esté presente.
+- **Corrección (03-11-2026):** fijarla en `false` **no protege**: la cadena `"false"` es verdadera en JS. Lo único que protege es construir y ejecutar con `NODE_ENV=production` y que la variable **no exista**. Su retiro del código está registrado en `nuevo_workflow_fase_2/login_simulado_desarrollo.md` y se aplica al final del plan.
+- **Regla original:** En el archivo `.env` de Certificación y Producción, la variable `DISABLE_AUTH` debe ser removida o fijada en `false`, asegurando que `NODE_ENV=production` esté presente.
 
 ---
 
@@ -93,11 +96,14 @@ Antes de activar los puntos 3, 4, 5 y 6 del `INTERRUPTOR-DU09`:
 
 ### 4.2 Despliegue de Datos Base y Catálogos en Sybase ASE
 Ejecutar los scripts de `nuevo_workflow_fase_2/template_wf_pagos/datos_base/` en el orden estricto indicado:
-1. `01_sg_ecuo.sql`: Depura el catálogo de estados del **encabezado de cuota** (`sg_ecuo`), dejando activos únicamente los 7 estados oficiales (1, 6, 2, 3, 4, 8, 10) y eliminando los códigos en desuso (5, 7, 9, 11, 12).
+1. `01_sg_ecuo.sql`: Depura el catálogo de estados del **encabezado de cuota** (`sg_ecuo`), dejando activos únicamente los 7 estados oficiales (1, 2, 3, 4, 8, 10, 11) y eliminando los códigos en desuso (5, 6, 7, 9, 12). *(Corregido el 03-11-2026: la versión anterior de este punto decía que conservaba el 6 y eliminaba el 11, al revés del script.)* En certificación corresponde este script, porque nunca tuvo datos de pago; va **al final** del orden (ver `auditoria_validaciones_certificacion_2026_11_03.md` §3.4).
 2. `02_sg_efum.sql`: Carga el catálogo de estados del **mes de ejecución** (`sg_efum`) con sus 4 estados: `1 Propuesta`, `2 Comprometida`, `3 Enviada a pago`, `4 Rechazada`.
 3. `03_migracion_sg_fume.sql`: Convierte las filas existentes en `sg_fume` de la columna obsoleta `cod_estcuo` a `cod_estfum`.
 4. `04_roles_privilegios_pagos.sql`: Configura el Rol 33 (`PAGO_DGDP`) y asocia los privilegios correspondientes en `sistema_db..bd_per1` y `sistema_db..bd_prvg`.
-5. `05_sg_tacc_acciones_pago.sql`: Registra en `sg_tacc` las acciones 32 (devolución) y 33 (rechazo) de cuotas para el historial de `sg_hist`.
+5. `05_sg_tacc_acciones_pago.sql`: Registra en `sg_tacc` las acciones 32 (devolución), 33 (rechazo) y 34 (reapertura de una cuota aprobada) de cuotas para el historial de `sg_hist`.
+6. `07_sg_ecuo_descripciones.sql`: actualiza solo las descripciones de `sg_ecuo`. Es la alternativa a `01` para una base que **ya tiene** cuotas de pago (desarrollo); en certificación no se usa.
+
+> **DDL (03-11-2026):** el `00_ddl_pagos.sql` que describe el README de `datos_base` **no existe** y hay que escribirlo antes de todo lo anterior: crea `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1` y las columnas nuevas de `sg_fume`, `sg_fum2` y `sg_fuc2`. Lo que debe cubrir está en `auditoria_validaciones_certificacion_2026_11_03.md` §3.5. Además, `sg_fumeuSecgen01` y `sg_fupssSecgen17` se instalan desde `cambios_pa/sg_fume/` en la misma ventana que el backend, reemplazando la versión que certificación tiene del paquete de resolución.
 
 ### 4.3 Procedimiento de Reloj Control Diario
 - **Archivo:** `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/asistencia/sp_as01sSecgen01.sql`.
@@ -140,12 +146,12 @@ flowchart TD
 1. **Paso 1 (BDD - Diagnóstico):** Correr `06_marcas_du09_centro_costo.sql` y regularizar centros sin marca.
 2. **Paso 2 (BDD - Catálogos):** Aplicar scripts de `datos_base/` del 01 al 05.
 3. **Paso 3 (PAs):** Descomentar las guardas de `afec_du9` en `sg_epagiSecgen01`, `sg_epaguSecgen01`, `sg_epaguSecgen02` y ajustar `sg_cctosSecgen05`. Sincronizar sus archivos `.txt`. Compilar en Sybase.
-4. **Paso 4 (Backend):** Conmutar `BALANCE_BLOCKS_SUBMISSION = true` en `service-provision-payment.controller.ts`. Verificar `ATTENDANCE_TEST_RUT = ''`.
+4. **Paso 4 (Backend):** Conmutar `BALANCE_BLOCKS_SUBMISSION = true` en `service-provision-payment.controller.ts`. Confirmar que `ATTENDANCE_TEST_RUT` ya no existe (retirado el 03-11-2026) = ''`.
 5. **Paso 5 (Frontend):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`. Verificar `DISABLE_AUTH = false` en `.env`.
 6. **Paso 6 (Higiene):** Borrar carpeta huérfana `d:\trabajo_ufro_2026\components`.
 7. **Paso 7 (Validación Técnica):**
    - Frontend: `npm test` (al 29-10-2026, **18** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**53** archivos del estándar visual) y `npx eslint` limpio.
-   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 29-10-2026, **245** pasando y **2 fallando**).
+   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 03-11-2026, **288** pasando y **0** fallando; al 29-10-2026 eran 245 pasando y **2 fallando**).
    - Las dos pruebas que fallan son de `sg_com1` —el motivo de la decisión DGDP— y no vienen del flujo de Finanzas: fallan igual sin los cambios de pagos. Hay que resolverlas antes de certificar: con el árbol en este estado, la suite no está verde.
    - Los conteos crecen con cada entrega: valen como piso, no como cifra exacta. Lo que no puede cambiar es que ninguno falle.
 8. **Paso 8 (Compuerta de la aprobación DGDP):** antes de certificar, cerrar la decisión de qué validaciones bloquean al aprobar y llevarlas al endpoint de decisión. Hoy esa compuerta no existe (ver la nota del §1.1): con los puntos 1 y 2 encendidos, el envío queda protegido en dos capas y la aprobación solo en la pantalla.

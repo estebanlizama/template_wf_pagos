@@ -61,7 +61,7 @@ Ese PA alimenta el **modal de prestaciones previas**, que es parte del flujo de 
 
 ## 🟡 Un cuarto riesgo: el orden entre los scripts de catálogo
 
-`01_sg_ecuo.sql` borra los códigos 5, 7, 9, 11 y 12. Mientras `sg_fume.cod_estcuo` siga
+`01_sg_ecuo.sql` borra los códigos 5, 6, 7, 9 y 12 *(corregido el 03-11-2026: antes decía 5, 7, 9, 11 y 12; el 11 se conserva)*. Mientras `sg_fume.cod_estcuo` siga
 existiendo, **también apunta a `sg_ecuo`**: si alguna fila lo usa, el `DELETE` falla por
 integridad referencial.
 
@@ -71,6 +71,8 @@ guard que lo detecta y avisa en vez de reventar con un error de FK.
 ---
 
 ## Orden correcto
+
+> **Corregido el 03-11-2026.** La tabla que sigue numeraba dos pasos 9, no incluía los scripts 04, 05 ni 07 y daba por existente `00_ddl_pagos.sql`, que no está en el repositorio. El orden vigente, con lo último desarrollado, está en `../auditoria_validaciones_certificacion_2026_11_03.md` §3.4. Se conserva la tabla original como antecedente.
 
 | Paso | Qué | ¿Resolución funciona? |
 | :--: | :--- | :---: |

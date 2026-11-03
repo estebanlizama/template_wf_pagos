@@ -58,6 +58,14 @@ Los puntos **1 y 2 se encienden juntos**: el saldo bloquea en dos capas, y
 dejar una encendida y la otra apagada deja la pantalla en verde y el envío
 fallando con un 422.
 
+**Agregado el 03-11-2026.** Al encender el punto 1, el aviso «Modo de prueba»
+de `components/services-provision/payments/Du288PaymentValidationsSection.vue`
+(el `b-alert` con `v-if="!balanceBlocks"`) desaparece solo, pero queda como
+código muerto junto con sus textos `testModeTitle` y `testModeDetail` en
+`lang/es/pds.js`. Retirarlos en el mismo pase. Y el punto 6 cambia también
+qué centros de costo ve el **formulario de resolución**, porque
+`sg_cctosSecgen05` lista los centros de costo de los dos flujos: probar ambos.
+
 Los puntos **3 a 6** exigen redesplegar esos PA, y además sincronizar el `.txt`
 con el `.sql` (son idénticos, en CRLF y ASCII de 7 bits).
 
