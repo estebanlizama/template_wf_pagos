@@ -824,3 +824,58 @@ prueba: guardar una solicitud con un choque real contra otra prestación del
 mismo funcionario (N5), una con un mes tomado en el mismo centro de costo
 (N4) y una fuera de jornada sobre 56 h (N2), y comprobar que cada una
 devuelva 422 con su mensaje.
+
+## 14. WF resolución — completitud funcional (04-11-2026)
+
+### 14.1 Método y alcance
+
+Se cruzó el inventario consolidado de funcionalidades de cada pantalla
+(`template-du09/requerimientos_wf_soli`, 13 pantallas y 277 funcionalidades)
+con el código del frontend y del backend. Los documentos de requerimientos son
+**preliminares**: varias funcionalidades fueron reemplazadas después por
+decisiones registradas, y se clasifican así y no como faltantes.
+
+Fuera de alcance, por indicación del usuario: tablas, campos y la
+configuración de etapas y acciones en base de datos. Las acciones de cada
+etapa salen de `GET /requests/service-provision/{id}/available-actions`, así
+que verificar los ocho flujos etapa por etapa exige los datos de
+certificación.
+
+### 14.2 Lo implementado
+
+| Pantallas | Bloque | Dónde |
+|:--|:--|:--|
+| P01 Solicitante | Flujo, centro de costo y su validación, prestación, período, funcionario, escaneo normativo, contrato, meses, monto, tope, jornada, SEA, compensación, resumen, edición, borrador y envío | `PdsDu288RequestForm.vue` y secciones `Du288*` |
+| P02-P07 Visadores (jefe de proyecto, jefatura, DGDP, finanzas facultad, decano, dirección de finanzas) | Identificación, estado, visaciones previas, línea de avance, resumen, historial de PDS y pagos del funcionario, validaciones; aprobar, devolver y rechazar con modal único y confirmación; trazabilidad | `_id/index.vue`, `ChangeStateRequestModal`, `Du288StaffPreviousProvisionsModal`, `sg_hist` |
+| P04 DGDP | Revalidación de cargo (`habilitado_du288`), parentesco, meses (numeral 6), tope, jornada, SEA, compensación | mismo formulario en modo revisión |
+| P05/P07 Finanzas | Ítems presupuestarios y suficiencia por ítem | validación presupuestaria del formulario |
+| P08 Decretación | Plantilla desde BDD con VISTO, CONSIDERANDO y RESUELVO editables, firmantes, distribución (destinatarios: agregar, editar y quitar), guardar, previsualizar, enviar a firma, devolver y rechazar | `resolution-format-normative.vue`, `DynamicResolutionSigners` |
+| P11-P12 Firmas | Ver PDF, descargar, subir firmado, aprobar, devolver a Decretación, rechazar | `resolution-document-normative.vue`, `NormativeResolutionActionPanel` |
+| P13-P14 Contraloría | Visar y devolver a Decretación | mismo panel, acciones genéricas |
+| P15 Archivo | Archivar con permiso `provision-request-resolution-document-archive` y rol `university_archive_head`, descargar | `resolution-document-normative.vue` |
+
+### 14.3 Reemplazadas por decisiones posteriores (no son faltantes)
+
+| Funcionalidades | Decisión que las reemplaza |
+|:--|:--|
+| P04-F28/F29/F30 excluir funcionario y avisar; P05-F05, P06-F05, P07-F05, P08-F08 ver excluidos; P05-F22/F23 resultado financiero por funcionario | **Una solicitud DU288 tiene un solo funcionario** (S0-003; el servidor lo exige con `DU288_STAFF_CARDINALITY`). Excluir al único funcionario equivale a devolver o rechazar, y la decisión es global |
+| P01-F07 y P04-F11 planificar evidencias al pedir la resolución | **Un PDF de respaldo por cuota**, que sube el jefe de proyecto en WF pagos (`decisiones_flujo_pago.md`, `integracion_pdf_justificacion.md`). El modelo por mes (`sg_tevi`/`sg_fuev`) nunca se construyó |
+| P04-F09 validación ANID/DIUFRO/DITT | El propio requerimiento la deja «pendiente de definición»; hoy rige la marca explícita de extensión de cuotas (`ext_cuotas`) |
+
+### 14.4 Faltantes
+
+| # | Qué falta | Pantallas | Severidad | Requiere |
+|:-:|:--|:--|:--|:--|
+| R1 | **Notificaciones por correo.** Los requerimientos piden correo al solicitante al devolver, rechazar y excluir, y avisos en las etapas de firma (por ejemplo, RF-PP02-TEMP_DEV1). No existe ningún mecanismo de envío ni de notificación en el backend ni en el frontend, y no hay decisión registrada que lo saque del alcance | P02 a P08, P11, P12 | 🟠 | Decidir: fuera de alcance de esta versión (y dejarlo escrito) o implementarlo con el servicio de correo institucional |
+| R2 | **Deuda institucional** (P04-F17): queda siempre «pendiente» por falta de fuente | P01, P04 | 🟠 desde el 01-01-2027, cuando pasa a inhabilitante | Fuente de Tesorería (ya en el checklist, RES-IN-08) |
+| R3 | **Licencia médica y permiso sin goce** al resolver (P04-F18): sin fuente; hoy solo se tratan al pagar, con digitación manual de DGDP | P04 | 🟡 | PA de ausencias (`sisper_db..sp_as21`, checklist PAG-33/34) |
+| R4 | **Rótulos de Contraloría.** Los requerimientos usan «Visar y enviar a Contralor/a», «Devolver con reparos», «Toma de Razón» y «Representar»; la interfaz no tiene esos textos. Las acciones podrían traer su nombre desde la configuración de la etapa | P13, P14 | 🟡 | Verificar con datos de certificación qué nombre muestra cada acción |
+
+### 14.5 Conclusión
+
+El circuito de WF resolución está completo de punta a punta: solicitud, seis
+visaciones, decretación, dos firmas, contraloría y archivo, con trazabilidad.
+Fuera de lo reemplazado por decisiones, falta **una funcionalidad transversal
+(R1, correo)** que necesita decisión, **dos validaciones que esperan fuente
+externa** (R2, R3, ya conocidas) y **un ajuste de rótulos por confirmar con
+datos** (R4).
