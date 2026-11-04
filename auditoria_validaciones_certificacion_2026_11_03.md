@@ -781,6 +781,7 @@ cambios en PA ni en tablas.
 | N7 | sin cambio | El formulario ya pasa las cuotas efectivas (`getDeclaredInstallments`) y el `watch` recorta `nroCuotas`; la función pura se deja como está | — |
 | N8 | ✅ aplicado | Con 0 meses de ejecución devuelve `min(1, cupo)`, así que con el cupo agotado devuelve 0 | front `getMaxDeclarableInstallments` |
 | N10 | ✅ aplicado | El cupo de 2 meses por año se cuenta solo con prestaciones del **mismo centro de costo**, como la pantalla desde el 11-09-2026 (commit `d79e8c4`). El servidor seguía contando todos los centros de costo: la pantalla ofrecía 2 cuotas y el envío se rechazaba con «máximo disponible de 0». El tope mensual ($) sigue sumando todos los centros de costo, en las dos capas | back `validateStaffAuthorizedAmount`, helper `isSameCostCenter` (compartido con la Regla 11) |
+| N11 | ✅ aplicado | **Tope mensual por centro de costo** (confirmación del 03-11). La Regla 3 sumaba las prestaciones concurrentes de **todos** los centros de costo contra un solo tope; ahora solo las del mismo centro de costo, como ya hacía WF pagos (tope por cuota contra el congelado y mes bloqueado por centro de costo en `sg_epagiSecgen01`). Solo deja pasar más, nunca bloquea algo que antes pasaba. Las 56 h, los choques de horario y la compensación duplicada siguen cruzando todos los centros de costo | front `monthlyCapAggregateCheck` (formulario, modal DGDP y `evaluatePdsConflictSeverity`); back `validateStaffAuthorizedAmount` |
 
 **Dos cambios de criterio que hay que conocer:**
 
@@ -809,8 +810,8 @@ cambia ningún veredicto; falta decidir si un mes rechazado libera cupo.
 
 | Prueba | Resultado |
 |:--|:--|
-| Backend, `lb-mocha` unitarias | **300 correctas**, 0 fallidas (eran 288). Incluye el caso real de N10. Nueva: `service-provision-core-cross-checks.unit.ts` (N1, N2, N4, N5); actualizadas: tope congelado (N6) y el stub de cardinalidad |
-| Frontend, `run-pds-tests.cjs` | 23 archivos, todos correctos |
+| Backend, `lb-mocha` unitarias | **351 correctas**, 0 fallidas, al 04-11 (incluye pruebas agregadas por otras sesiones). Incluye el caso real de N10 y el de N11. Nueva: `service-provision-core-cross-checks.unit.ts` (N1, N2, N4, N5); actualizadas: tope congelado (N6) y el stub de cardinalidad |
+| Frontend, `run-pds-tests.cjs` | 24 archivos, todos correctos (`textSimilarityUtil`: 75) |
 | Frontend, `validateDu288Ui.js` | estándar visual validado en 55 archivos |
 | ESLint en las líneas tocadas | sin problemas, en las dos capas |
 | Diferencial del monto autorizado, front contra back | 0 discrepancias en 20.000 casos con historial del mismo centro de costo, y 0 en 20.000 con centros de costo mezclados (N10; la primera versión del diferencial solo usaba el mismo centro de costo y por eso no lo detectó) |

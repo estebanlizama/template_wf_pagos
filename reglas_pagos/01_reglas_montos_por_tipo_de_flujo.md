@@ -223,7 +223,7 @@ Cubierto en el formulario de solicitud:
 | T-08 (reparto por resto mayor) | `getFixedMonthAmounts` (`normative/formatters.js`); visible mes a mes en `ExecutionMonthsTags` |
 | C-01 (define el solicitante) | Campo "Cuotas esperadas" |
 | C-09 (mes bloqueado para la misma actividad) | Regla 11 (`cost_center_month_locked`) |
-| Numeral 2 / T-05 (suma mensual del funcionario) | Regla 3 (`monthlyCapAggregateCheck`), entre solicitudes concurrentes |
+| Numeral 2 (tope mensual) | Regla 3 (`monthlyCapAggregateCheck`), entre solicitudes concurrentes **del mismo centro de costo** (ver §9.1) |
 | §5 fijo/variable | `worker.codTpps`, reparto visible en `ExecutionMonthsTags` |
 
 **No cubierto — son reglas de la etapa de pago, no de la solicitud** (T-01,
@@ -234,23 +234,41 @@ agregado (techo total), no el detalle por cuota.
 
 ## 9. Puntos abiertos — no asumir criterio
 
-Sin respuesta en S0-013:
+### 9.1 Resueltos el 03-11-2026 (confirmación del usuario)
 
-1. **Q-C13 / Q-C14** — qué fecha determina el tope (mes de ejecución,
-   solicitado, de autorización o de pago efectivo) y si se recalcula cuando
-   la fecha efectiva cambia de mes.
-2. **Q-C07** — si el saldo del tope mensual puede usarse en otra cuota o
-   solicitud del mismo mes. T-03 responde el caso entre cuotas consecutivas,
-   pero no el caso intra-mes.
-3. **Q-B13** — significado definitivo de `ano_prop/mes_prop`,
+**El tope es por centro de costo y se aplica por cuota.**
+
+| Pregunta | Respuesta |
+|:--|:--|
+| ¿El tope es del funcionario o de la actividad? | De la **actividad = centro de costo**. Una prestación de otro centro de costo no consume el tope de esta |
+| ¿Cómo se usa el tope? | Cada cuota es individual para su mes de pago y dispone del tope completo (T-01, T-02, T-03) |
+| Q-C07 / Q-C08 / T-05 — ¿dos cuotas el mismo mes? | En el **mismo** centro de costo no pueden: el mes queda bloqueado para esa cuota (C-09, Regla 11; en pago `sg_epagiSecgen01`). En centros de costo **distintos** sí, cada una con su propio tope, sin sumarlas |
+| Q-C13 / Q-C14 — ¿qué fecha fija el tope? | La de la **solicitud en WF resolución**: el tope queda congelado en `sg_fups.mto_tope` y el pago mide cada cuota contra ese valor, sin recalcular |
+
+Implementado así:
+
+* WF pagos ya lo aplicaba: tope por cuota contra el congelado
+  (`assertInstallmentCapCompliance`) y mes bloqueado por centro de costo
+  (`sg_epagiSecgen01`).
+* WF resolución se ajustó el 03-11-2026: la Regla 3 y el cupo de meses del
+  numeral 6 cuentan solo las prestaciones del mismo centro de costo, en la
+  pantalla (`monthlyCapAggregateCheck`, `editingWorkerCommittedInstallmentMonths`)
+  y en el servidor (`validateStaffAuthorizedAmount`).
+* Siguen cruzando **todos** los centros de costo, porque son límites de la
+  persona y no de la actividad: las 56 h semanales, el choque de horario y la
+  compensación duplicada.
+
+### 9.2 Sin respuesta en S0-013
+
+1. **Q-B13** — significado definitivo de `ano_prop/mes_prop`,
    `ano_ejec/mes_ejec`, `ano_pago/mes_pago`.
-4. **Q-B14** — si `sg_fups.tot_cuotas` es plan, total definitivo o derivado.
-5. **Q-B15** — qué hacer con las cuotas históricas del mecanismo anterior.
-6. **Q-J07 a Q-J14** — sección completa de montos/contrato/haber/tope sin
+2. **Q-B14** — si `sg_fups.tot_cuotas` es plan, total definitivo o derivado.
+3. **Q-B15** — qué hacer con las cuotas históricas del mecanismo anterior.
+4. **Q-J07 a Q-J14** — sección completa de montos/contrato/haber/tope sin
    responder: si el monto lo propone el sistema o el usuario, cálculo del
    saldo contractual, qué pasa si cambia el tope entre etapas, y cómo se
    registra el tope independiente de ANID.
-7. **Sección H completa** (licencia médica, permiso sin goce, vigencia de
+5. **Sección H completa** (licencia médica, permiso sin goce, vigencia de
    proyecto, receso) — todas las fuentes y tratamientos sin definir, pese a
    que C-10 depende de ellas para ajustar montos.
 
