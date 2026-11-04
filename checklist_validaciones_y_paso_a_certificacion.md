@@ -4,6 +4,7 @@
 **Fecha de Elaboración:** 27-10-2026  
 **Corregido:** 03-11-2026, según `auditoria_validaciones_certificacion_2026_11_03.md` §1 y §3 (líneas, scripts de base, `DISABLE_AUTH`, RUT de prueba y conteo de pruebas).  
 **Actualizado:** 04-11-2026, verificado contra el código: qué quedó implementado, qué sigue apagado y qué se agrega (saldo en WF resolución, §1.0; validaciones del centro de costo solo en pantalla, §3.1; decisión sobre licencias y receso, §3).  
+**Actualizado:** 04-11-2026 (tarde): reglas de contrato y ejecución vencida en WF resolución (§2.2), login simulado retirado otra vez (§1.3), referencias de línea y conteo de pruebas al día.  
 **Objetivo:** Consolidar en un solo documento operativo el catálogo de validaciones, interruptores temporales de desarrollo, condiciones en Procedimientos Almacenados (PAs) que deben limpiarse/activarse y la higiene de datos requerida antes del despliegue en los ambientes de **Certificación** y **Producción**.
 
 ---
@@ -16,12 +17,13 @@
 | 1.1 | `INTERRUPTOR-DU09` en **WF pagos** (6 puntos) | ⛔ **Apagado** los 6 |
 | 1.2 | RUT de prueba de asistencia | ✅ Retirado el 03-11-2026 |
 | 1.3 | `DISABLE_AUTH` y login simulado | ✅ Retirados del código el 03-11-2026 (reactivado para pruebas y retirado otra vez el 04-11-2026) |
-| 2.1 | Funcionario sin contratos vigentes | ⛔ Relajado (solo advierte) |
-| 2.2 | Cobertura de fechas del contrato y ejecución vencida | ✅ Activa en todos los puntos desde el 04-11-2026 (WF resolución); no aplica al pago |
+| 2.1 | Funcionario sin contratos vigentes | ⛔ Relajado (solo advierte; sin contrato no se puede agregar al funcionario) |
+| 2.2 | Contrato que cubre la ejecución y ejecución no vencida | ✅ Activas en pantalla y servidor desde el 04-11-2026 (WF resolución); no aplican al pago |
 | 3 | Validaciones normativas sin fuente o sin compuerta | Ver tabla §3 |
 | 3.1 | Condiciones del centro de costo en WF resolución | ⚠️ Solo en pantalla |
 | 4.3 | PA de asistencia `sp_as01sSecgen01` | ✅ Cableado en backend · ⛔ falta compilar en Sybase |
 | 5.1 | Carpeta huérfana `components` | ✅ Eliminada |
+| — | Núcleo: cupo, topes y cruces entre prestaciones (N1 a N11) | ✅ Aplicado el 03 y 04-11-2026; tope y cupo por centro de costo. Detalle en `auditoria_validaciones_certificacion_2026_11_03.md` §13.5 |
 
 ---
 
@@ -82,39 +84,41 @@ Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las l
 
 ---
 
-## 2. Validaciones Relajadas en el Formulario Solicitante (PDS DU288)
+## 2. Validaciones del Contrato y del Período en el Formulario Solicitante (PDS DU288)
 
-En el componente principal de solicitud (`components/services-provision/PdsDu288RequestForm.vue`), dos comprobaciones sobre el contrato del funcionario fueron relajadas para habilitar pruebas con perfiles históricos:
+En el componente principal de solicitud (`components/services-provision/PdsDu288RequestForm.vue`) queda **una** comprobación relajada para pruebas con perfiles históricos (§2.1). La cobertura del contrato, que figuraba como relajada, está activa, y desde el 04-11-2026 se suma la regla de ejecución vencida (§2.2).
 
 ### 2.1 Funcionario sin Contratos Vigentes (`contracts.length === 0`) — ⛔ relajado
-- **Ubicación:** `PdsDu288RequestForm.vue` (L5016-L5022).
+- **Ubicación:** `PdsDu288RequestForm.vue` (L5028-L5031).
 - **Comportamiento Actual:** Si la consulta de contratos vigentes no devuelve registros para el RUT ingresado, emite una advertencia flotante (`this.toast(NORMATIVE_MESSAGES.toast.noContractInfo, 'warning')`) y permite continuar la selección y el armado de la solicitud.
+- **Mitigación actual:** sin contratos no hay ninguno que elegir, y la pantalla exige elegir uno para agregar al funcionario (`getContractValidationErrors`, «Seleccione un contrato»). La advertencia solo deja avanzar en la búsqueda.
 - **Acción para Certificación/Producción:** Una vez que la vista/fuente final de contratos institucionales vigentes esté conectada, este bloque debe volver a interrumpir la selección (`return` / bloquear asignación de contexto) impidiendo emitir solicitudes sobre funcionarios sin contrato habilitado.
 
-### 2.2 Cobertura de Rango de Fechas del Contrato y Ejecución Vencida — ✅ activa
+### 2.2 Contrato que cubre la ejecución y ejecución no vencida — ✅ activa
 
-> **Regla confirmada el 04-11-2026.** En **WF resolución** no se puede solicitar una prestación con el **contrato vencido** ni con el **período de ejecución vencido**. En **WF pagos** sí se paga: la resolución ya está hecha y archivada, y el contrato no vigente no bloquea cuotas ya trabajadas.
+> **Regla confirmada el 04-11-2026.** En **WF resolución** no se puede solicitar una prestación con el **contrato vencido** ni con el **período de ejecución vencido**. En **WF pagos** sí se paga: la resolución ya está hecha y archivada, y un contrato no vigente no bloquea cuotas ya trabajadas.
 
-- **Regla de cobertura** (`contexto_reglas_cambios_agregados/07`, §2.1): el contrato debe estar vigente durante **todo** el período de ejecución del funcionario: inicio del contrato ≤ inicio de la ejecución y término del contrato ≥ término de la ejecución. Un contrato sin fecha de término (indefinido) cumple. Es bloqueante.
-- **Regla de ejecución vencida** (agregada el 04-11-2026): el término de la ejecución, el general y el de cada funcionario, debe ser hoy o posterior. Junto con la cobertura, impide también el contrato vencido: si el contrato cubre una ejecución que no ha terminado, sigue vigente.
+**Reglas**
 
-| Momento | Función | Qué revisa |
-| :--- | :--- | :--- |
-| Al agregar o editar el funcionario y al enviar | `getPeriodValidationErrors`, `getWorkerExecutionPeriodErrors` | Ejecución vencida → «El período de ejecución ya terminó…» / «… tiene el período de actividad ya terminado…» |
-| En el servidor, al **enviar** | `validateStaffExecutionNotExpired` (desde `validateNormativeRequestStaff`) | Ejecución vencida → 422 `DU288_EXECUTION_EXPIRED`. El borrador sí se guarda, para poder corregir las fechas |
+1. **Cobertura** (`contexto_reglas_cambios_agregados/07`, §2.1): el contrato debe estar vigente durante **todo** el período de ejecución del funcionario: inicio del contrato ≤ inicio de la ejecución y término del contrato ≥ término de la ejecución. Un contrato sin fecha de término (indefinido) cumple.
+2. **Ejecución no vencida** (agregada el 04-11-2026): el término de la ejecución, el general y el de cada funcionario, debe ser hoy o posterior. Una ejecución que empezó antes de hoy y sigue en curso sí se puede solicitar.
 
-Pruebas: `service-provision-core-cross-checks.unit.ts`, bloque «ejecucion vencida».
-- **Dónde se aplica (verificado el 04-11-2026):**
+Las dos juntas impiden el contrato vencido: si el contrato cubre una ejecución que todavía no termina, sigue vigente.
 
-| Momento | Función | Qué compara | Estado |
+**Dónde se aplican (verificado el 04-11-2026)**
+
+| Momento | Regla | Función | Mensaje o código |
 | :--- | :--- | :--- | :--- |
-| Al agregar o editar el funcionario | `validateWorkerActivityAndAmount` | Cada mes de ejecución, recortado al período, contra el contrato elegido → «El contrato seleccionado no cubre los meses de ejecución …» (`CONTRATO_NO_CUBRE_MESES`) | ✅ Activa |
-| Al enviar, por cada fila del resumen | `validateWorkerContractAndCoverage` y `validateStaffSummaryRowExecutionPeriod` | Rango completo y meses → «…: el contrato no cubre el rango / los meses de ejecución …» | ✅ Activa |
-| En el servidor, al guardar | `validateStaffContractValidity` (desde `validateStaffWorkload`) | Rango completo contra `fInicioD`/`fTerminD`, que la pantalla envía desde el contrato | ✅ Activa |
-| Al **reabrir** una solicitud guardada, contra el perfil vigente de SISPER | `buildCurrentProfileAlerts` | Que el contrato guardado siga registrado, disponible y vigente, si cambió el cargo y, desde el 04-11-2026, que siga cubriendo la ejecución → «El contrato guardado ya no cubre el período de ejecución del funcionario.» (`CONTRATO_NO_CUBRE_EJECUCION`) | ✅ Reactivada el 04-11-2026 |
+| Al agregar o editar el funcionario | Ejecución no vencida | `getPeriodValidationErrors`, `getWorkerExecutionPeriodErrors` | «El período de ejecución ya terminó…» / «… tiene el período de actividad ya terminado…» |
+| Al agregar o editar el funcionario | Cobertura | `validateWorkerActivityAndAmount` | «El contrato seleccionado no cubre los meses de ejecución …» (`CONTRATO_NO_CUBRE_MESES`) |
+| Al enviar, por cada fila del resumen | Las dos | `validateRequest`, `validateWorkerContractAndCoverage`, `validateStaffSummaryRowExecutionPeriod` | Mismos mensajes, por fila |
+| Al **reabrir** una solicitud guardada, contra el perfil vigente de SISPER | Cobertura | `buildCurrentProfileAlerts` | «El contrato guardado ya no cubre el período de ejecución del funcionario.» (`CONTRATO_NO_CUBRE_EJECUCION`, reactivada el 04-11-2026) |
+| En el servidor, al guardar | Cobertura | `validateStaffContractValidity` (desde `validateStaffWorkload`) | 422 «El contrato del funcionario no cubre el rango de ejecucion informado.» |
+| En el servidor, al **enviar** | Ejecución no vencida | `validateStaffExecutionNotExpired` (desde `validateNormativeRequestStaff`) | 422 `DU288_EXECUTION_EXPIRED`. El borrador sí se guarda, para poder corregir las fechas |
 
-- **Detalle del servidor:** si no recibe las fechas del contrato, cae a las de ejecución del propio funcionario y la comparación pasa. Eso deja pasar bien el contrato indefinido, pero también un contrato sin fechas informadas. No bloquea indebidamente.
+- **Detalle del servidor:** si no recibe las fechas del contrato, la cobertura cae a las de ejecución del propio funcionario y pasa. Eso deja pasar bien el contrato indefinido, pero también un contrato sin fechas informadas. No bloquea indebidamente.
 - **WF pagos:** no se revalida, por decisión: un contrato no vigente en SISPER no bloquea cuotas ya devengadas, por desfase administrativo de pago (`assertInstallmentNormativeCompliance`). La matriz (§4.2) deja abierta si debe exigirse que cubra el período que se paga.
+- **Pruebas:** `service-provision-core-cross-checks.unit.ts`, bloque «ejecucion vencida».
 - **Acción para Certificación/Producción:** ninguna; quedó activa en todos los puntos.
 
 ---
@@ -134,7 +138,7 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 
 ### 3.1 Condiciones del centro de costo en WF resolución: solo en pantalla (agregado el 04-11-2026)
 
-Al enviar la solicitud, la pantalla bloquea por centro de costo no vigente, responsable no vigente, financiamiento incompatible y formación continua (`PdsDu288RequestForm.vue`, L7595-L7615). `validateNormativeRequestStaff` **no revalida ninguna** de esas condiciones ni el saldo (§1.0): una llamada directa a la API guarda una solicitud que la pantalla habría rechazado. Es el mismo tipo de hueco que se cerró para la Regla 11 (N4) y los cruces entre prestaciones (N5).
+Al enviar la solicitud, la pantalla bloquea por centro de costo no vigente, responsable no vigente, financiamiento incompatible y formación continua (`PdsDu288RequestForm.vue`, L7621-L7639). `validateNormativeRequestStaff` **no revalida ninguna** de esas condiciones ni el saldo (§1.0): una llamada directa a la API guarda una solicitud que la pantalla habría rechazado. Es el mismo tipo de hueco que se cerró para la Regla 11 (N4) y los cruces entre prestaciones (N5).
 
 ---
 
@@ -208,6 +212,6 @@ flowchart TD
 8. **Paso 8 (Higiene):** Limpiar los `.env` (§5.2).
 9. **Paso 9 (Validación Técnica):**
    - Frontend: `node utils/__tests__/run-pds-tests.cjs` (al 04-11-2026, **24** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**55** archivos del estándar visual) y `npx eslint` limpio.
-   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 04-11-2026, **351** pasando y **0** fallando). Las dos pruebas de `sg_com1` que fallaban el 29-10-2026 ya pasan.
+   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 04-11-2026, **354** pasando y **0** fallando). Las dos pruebas de `sg_com1` que fallaban el 29-10-2026 ya pasan.
    - Los conteos crecen con cada entrega: valen como piso, no como cifra exacta. Lo que no puede cambiar es que ninguno falle.
 10. **Paso 10 (Compuerta de la aprobación DGDP):** antes de certificar, cerrar la decisión de qué validaciones bloquean al aprobar y llevarlas al endpoint de decisión. Hoy esa compuerta no existe (ver la nota del §1.1): con los puntos 1 y 2 encendidos, el envío queda protegido en dos capas y la aprobación solo en la pantalla.
