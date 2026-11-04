@@ -20,7 +20,7 @@ go
               para apoyar la revision normativa de una solicitud.
 
    Creacion: ELA 2026/08/19
-   Actualizacion: ELA 2026/09/25
+   Actualizacion: ELA 2026/11/04
 */
 create procedure Analisis2.sg_fupssSecgen17
     @rut_person         char(9) = null,
@@ -100,6 +100,14 @@ begin
         fume.fec_autori,
         fume.fec_envrem,
 
+        /* Cuota vigente que contiene el mes (sg_dpag -> sg_epag). Sin cuota,
+           el mes aun no se agrupa para pago. La cuota rechazada no cuenta. */
+        cuota.nro_cuota,
+        cuota.ano_pago,
+        cuota.mes_pago,
+        cuota.cod_estcuo,
+        rtrim(isnull(ecuo.des_estcuo, '')) as des_estcuo,
+
         fuc2.fec_comrea,
         fuc2.hora_ini as hora_ini_comrea,
         fuc2.hora_ter as hora_ter_comrea,
@@ -138,6 +146,24 @@ begin
         on fume.id_funprse = fu.id_funprse
     left join secgen_db.dbo.sg_efum efum
         on efum.cod_estfum = fume.cod_estfum
+    left join (
+        select
+            dpag.id_funprse,
+            dpag.corr_fume,
+            epag.nro_cuota,
+            epag.ano_pago,
+            epag.mes_pago,
+            epag.cod_estcuo
+        from secgen_db.dbo.sg_dpag dpag
+        inner join secgen_db.dbo.sg_epag epag
+            on epag.id_funprse = dpag.id_funprse
+           and epag.nro_cuota = dpag.nro_cuota
+        where epag.cod_estcuo <> 10
+    ) cuota
+        on cuota.id_funprse = fume.id_funprse
+       and cuota.corr_fume = fume.corr_fume
+    left join secgen_db.dbo.sg_ecuo ecuo
+        on ecuo.cod_estcuo = cuota.cod_estcuo
     left join secgen_db.dbo.sg_fuc2 fuc2
         on fuc2.id_funprse = fume.id_funprse
        and fuc2.corr_fume = fume.corr_fume

@@ -16,7 +16,7 @@
 | 1.0 | Saldo del centro de costo en **WF resolución** | ⛔ **Apagado** en pantalla y **sin validación** en el servidor |
 | 1.1 | `INTERRUPTOR-DU09` en **WF pagos** (6 puntos) | ⛔ **Apagado** los 6 |
 | 1.2 | RUT de prueba de asistencia | ✅ Retirado el 03-11-2026 |
-| 1.3 | `DISABLE_AUTH` y login simulado | ✅ Retirados del código el 03-11-2026 (reactivado para pruebas y retirado otra vez el 04-11-2026) |
+| 1.3 | `DISABLE_AUTH` y login simulado | ✅ Retirados del código el 03-11-2026 · ⚠️ login simulado **reactivado localmente** el 04-11-2026 para probar flujos, sin commit |
 | 2.1 | Funcionario sin contratos vigentes | ⛔ Relajado (solo advierte; sin contrato no se puede agregar al funcionario) |
 | 2.2 | Contrato que cubre la ejecución y ejecución no vencida | ✅ Activas en pantalla y servidor desde el 04-11-2026 (WF resolución); no aplican al pago |
 | 3 | Validaciones normativas sin fuente o sin compuerta | Ver tabla §3 |
@@ -46,6 +46,8 @@ No forma parte del `INTERRUPTOR-DU09`: es otro interruptor, del formulario de so
 
 > **Contexto:** Temporalmente habilitado para probar el flujo de cuotas y el envío a visación DGDP mientras los centros de costo de prueba no tenían cargada la marca `afec_du9 = 'S'`.  
 > **Comportamiento actual (verificado el 04-11-2026):** los 6 puntos siguen apagados. El saldo y la pertenencia a DU09 se evalúan e informan en pantalla (chips de advertencia/rojo), pero **no bloquean el botón ni el endpoint de envío, ni la aprobación DGDP**.
+
+> **Procedimiento completo de activación:** `INTERRUPTOR-DU09.md` (actualizado el 04-11-2026): requisitos previos, cambio exacto por archivo (incluido el aviso «Modo de prueba» y sus textos), orden de la entrega, efecto del punto 6 en WF resolución, verificación de punta a punta (V1 a V10) y vuelta atrás. La tabla de abajo es el resumen.
 
 Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las líneas son las del 04-11-2026.
 
@@ -79,7 +81,7 @@ Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las l
 ### 1.3 Válvula de Autenticación de Desarrollo (`DISABLE_AUTH`) y login simulado
 
 - **Retirados del código el 03-11-2026.** `nuxt.config.js` aplica siempre `['auth', 'guardian']` y el backend descifra el RUT siempre con la Intranet. El registro para reimplementarlo está en `nuevo_workflow_fase_2/login_simulado_desarrollo.md`.
-- **Reactivado localmente el 04-11-2026** para probar los flujos y **retirado otra vez el mismo día**: `pages/access/index.vue`, `nuxt.config.js` y `src/services/auth.service.ts` están como en el commit, sin simulador.
+- ⚠️ **Reactivado localmente el 04-11-2026** (por segunda vez) para probar los flujos, como cambio **sin commit** en `pages/access/index.vue`, `nuxt.config.js` (variables `SIMULATION_USERS*` marcadas `TEMPORAL`) y `src/services/auth.service.ts`. `DISABLE_AUTH` **no** se restauró. **Antes de certificar hay que descartar esos tres cambios**; los comandos están en `login_simulado_desarrollo.md`.
 - La protección real sigue siendo construir y ejecutar con `NODE_ENV=production`: fijar una variable en `"false"` no protege, porque la cadena es verdadera en JS.
 
 ---
@@ -175,7 +177,7 @@ Antes de generar el commit/tag para la rama de Certificación:
 1. ✅ **Directorio huérfano `d:\trabajo_ufro_2026\components`:** ya no existe (verificado el 04-11-2026).
 2. **Depuración de Variables de Entorno (`.env`):**
    - El código ya no lee `SIMULATION_USERS`, `SIMULATION_USERS_CATALOG`, `INTRANET_AUTH_FLOW` ni `DISABLE_AUTH`. Quitarlas de los `.env` de certificación y producción.
-3. ✅ **Login simulado temporal** (§1.3): ya retirado el 04-11-2026.
+3. **Descartar el login simulado temporal** (§1.3) antes del commit o tag de certificación.
 4. **Purgado de Datos Transaccionales de Prueba en Base de Datos:**
    - Si se requiere reiniciar el ambiente de pruebas antes de la entrega, ejecutar el script `limpia_datos_pds_desarrollo.sql` para limpiar cuotas de prueba en `sg_epag`, detalles en `sg_dpag` y restablecer meses en `sg_fume`.
 5. **Consulta de saldo directa (`store/enabled-cost-center.js`, L31):** `getCostCenterBalance` sigue sin uso hasta que `UsuaVrac` tenga `SELECT` sobre `wf_sol2`/`wf_tra1`; la pantalla usa `validateNormativeCostCenterBalance`. No bloquea la certificación.
@@ -196,7 +198,7 @@ flowchart TD
     G --> H["6. Conmutar BALANCE_VALIDATION_BLOCKS_SUBMISSION = true en Frontend"]
     H --> R["7. Saldo y centro de costo en WF resolución: pantalla + servidor"]
     R --> I["8. Compilar sp_as01sSecgen01 (Asistencia)"]
-    I --> J["9. Limpiar .env"]
+    I --> J["9. Descartar login simulado temporal y limpiar .env"]
     J --> K["10. Ejecutar batería de tests (Unitarios Frontend y Backend)"]
     K --> M["11. Cerrar la compuerta normativa de la aprobación DGDP"]
     M --> L["✅ Listo para Certificación"]
@@ -204,12 +206,12 @@ flowchart TD
 
 1. **Paso 1 (BDD - Diagnóstico):** Correr `06_marcas_du09_centro_costo.sql` y regularizar centros sin marca.
 2. **Paso 2 (BDD - Catálogos):** Aplicar scripts de `datos_base/` del 01 al 05.
-3. **Paso 3 (PAs):** Descomentar las guardas de `afec_du9` en `sg_epagiSecgen01`, `sg_epaguSecgen01`, `sg_epaguSecgen02` y ajustar `sg_cctosSecgen05`. Sincronizar sus archivos `.txt`. Compilar en Sybase.
+3. **Paso 3 (PAs):** Descomentar las guardas de `afec_du9` en `sg_epagiSecgen01`, `sg_epaguSecgen01`, `sg_epaguSecgen02` y ajustar `sg_cctosSecgen05`. Sincronizar sus archivos `.txt`. Actualizar la cabecera `Actualizacion: ELA AAAA/MM/DD` y compilar en Sybase. Detalle en `INTERRUPTOR-DU09.md` §3.2.
 4. **Paso 4 (Backend pagos):** Conmutar `BALANCE_BLOCKS_SUBMISSION = true` en `service-provision-payment.controller.ts`.
-5. **Paso 5 (Frontend pagos):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`.
+5. **Paso 5 (Frontend pagos):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`. Borrar el aviso «Modo de prueba» de `Du288PaymentValidationsSection.vue` y sus textos `testModeTitle`/`testModeDetail` en `lang/es/pds.js`. Los pasos 4 y 5 van en la misma entrega; verificar con `INTERRUPTOR-DU09.md` §5.
 6. **Paso 6 (WF resolución):** Encender `enableCostCenterBalanceSubmitValidation` (§1.0) cuando Finanzas confirme el PA de saldo, y agregar en el servidor la revalidación del saldo y de las condiciones del centro de costo (§3.1).
 7. **Paso 7 (Asistencia):** Compilar `sp_as01sSecgen01` en Sybase.
-8. **Paso 8 (Higiene):** Limpiar los `.env` (§5.2).
+8. **Paso 8 (Higiene):** Descartar el login simulado temporal (§1.3) y limpiar los `.env` (§5.2).
 9. **Paso 9 (Validación Técnica):**
    - Frontend: `node utils/__tests__/run-pds-tests.cjs` (al 04-11-2026, **24** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**55** archivos del estándar visual) y `npx eslint` limpio.
    - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 04-11-2026, **354** pasando y **0** fallando). Las dos pruebas de `sg_com1` que fallaban el 29-10-2026 ya pasan.
