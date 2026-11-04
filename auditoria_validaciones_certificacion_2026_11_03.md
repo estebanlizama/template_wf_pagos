@@ -861,6 +861,7 @@ certificación.
 | P04-F28/F29/F30 excluir funcionario y avisar; P05-F05, P06-F05, P07-F05, P08-F08 ver excluidos; P05-F22/F23 resultado financiero por funcionario | **Una solicitud DU288 tiene un solo funcionario** (S0-003; el servidor lo exige con `DU288_STAFF_CARDINALITY`). Excluir al único funcionario equivale a devolver o rechazar, y la decisión es global |
 | P01-F07 y P04-F11 planificar evidencias al pedir la resolución | **Un PDF de respaldo por cuota**, que sube el jefe de proyecto en WF pagos (`decisiones_flujo_pago.md`, `integracion_pdf_justificacion.md`). El modelo por mes (`sg_tevi`/`sg_fuev`) nunca se construyó |
 | P04-F09 validación ANID/DIUFRO/DITT | El propio requerimiento la deja «pendiente de definición»; hoy rige la marca explícita de extensión de cuotas (`ext_cuotas`) |
+| P04-F18 revalidar licencia médica, permiso sin goce y otras restricciones al resolver | **Se ve solo en WF pagos** (confirmación del 04-11-2026). La única fuente con información es el marcaje biométrico cuando el día viene con un tipo de licencia o permiso; la sección de asistencia de la cuota ya lo muestra (ausencia con su motivo y justificación, `Du288PaymentAttendanceSection`). Lo demás lo ajusta DGDP con documento explícito. Con esto, la acción del checklist PAG-33/34 (crear un PA de ausencias sobre `sp_as21` para calcular el descuento automático) deja de ser necesaria |
 
 ### 14.4 Faltantes
 
@@ -868,7 +869,6 @@ certificación.
 |:-:|:--|:--|:--|:--|
 | R1 | **Notificaciones por correo.** Los requerimientos piden correo al solicitante al devolver, rechazar y excluir, y avisos en las etapas de firma (por ejemplo, RF-PP02-TEMP_DEV1). No existe ningún mecanismo de envío ni de notificación en el backend ni en el frontend, y no hay decisión registrada que lo saque del alcance | P02 a P08, P11, P12 | 🟠 | Decidir: fuera de alcance de esta versión (y dejarlo escrito) o implementarlo con el servicio de correo institucional |
 | R2 | **Deuda institucional** (P04-F17): queda siempre «pendiente» por falta de fuente | P01, P04 | 🟠 desde el 01-01-2027, cuando pasa a inhabilitante | Fuente de Tesorería (ya en el checklist, RES-IN-08) |
-| R3 | **Licencia médica y permiso sin goce** al resolver (P04-F18): sin fuente; hoy solo se tratan al pagar, con digitación manual de DGDP | P04 | 🟡 | PA de ausencias (`sisper_db..sp_as21`, checklist PAG-33/34) |
 | R4 | **Rótulos de Contraloría.** Los requerimientos usan «Visar y enviar a Contralor/a», «Devolver con reparos», «Toma de Razón» y «Representar»; la interfaz no tiene esos textos. Las acciones podrían traer su nombre desde la configuración de la etapa | P13, P14 | 🟡 | Verificar con datos de certificación qué nombre muestra cada acción |
 
 ### 14.5 Conclusión
@@ -876,6 +876,6 @@ certificación.
 El circuito de WF resolución está completo de punta a punta: solicitud, seis
 visaciones, decretación, dos firmas, contraloría y archivo, con trazabilidad.
 Fuera de lo reemplazado por decisiones, falta **una funcionalidad transversal
-(R1, correo)** que necesita decisión, **dos validaciones que esperan fuente
-externa** (R2, R3, ya conocidas) y **un ajuste de rótulos por confirmar con
+(R1, correo)** que necesita decisión, **una validación que espera fuente
+externa** (R2, ya conocida) y **un ajuste de rótulos por confirmar con
 datos** (R4).
