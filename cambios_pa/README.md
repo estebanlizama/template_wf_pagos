@@ -191,6 +191,45 @@ detalle se cargan con el PA de detalle, no con este.
 
 ---
 
+## sg_fupssSecgen19 — rechazos y devoluciones del funcionario (solo informa)
+
+Alimenta la sección «Rechazos y devoluciones» del historial de prestaciones que
+ve DGDP, en WF resolución y en WF pagos. **Es nuevo y no reemplaza a ninguno.**
+
+### Por qué es un PA aparte
+
+`sg_fupssSecgen17` alimenta las validaciones del formulario, de WF pagos y del
+servidor. Si lo rechazado viajara por ahí, cada consumidor tendría que acordarse
+de ignorarlo, y el día que uno se olvide, lo rechazado empezaría a contar. Con
+un PA aparte, lo rechazado nunca llega a las reglas: se muestra y la decisión
+queda a criterio de quien revisa.
+
+### Qué devuelve
+
+Una fila por evento, del más reciente al más antiguo. La columna `tipo` dice de
+qué nivel es:
+
+| `tipo` | Origen | Qué trae |
+| :--- | :--- | :--- |
+| `SOL` | `sg_hist` con `id_tipacc` 3, 4, 8 o 9 | rechazo o devolución de la solicitud o de la resolución, con su `observaci` |
+| `SOL` | `sg_soli.cod_estsol = 4` sin evento en `sg_hist` | solicitud rechazada antes de que se registrara el evento; sin motivo |
+| `MES` | `sg_fume.cod_estfum = 4` | mes de ejecución rechazado, con las marcas de licencia, inhabilidad, sin goce y cierre de asistencia |
+| `CUO` | `sg_com1` con `id_tipacc` 32 o 33 | devolución o rechazo de una cuota, con su motivo, su mes de pago, su monto (suma de sus meses) y su estado actual |
+
+No devuelve el RUT de quien actuó: la acción y el motivo bastan.
+
+### Al instalar
+
+- Lee `sg_hist`, `sg_com1`, `sg_epag`, `sg_dpag` y `sg_fume`. Se instala
+  después de que exista la tabla `sg_com1`, igual que los PA de `sg_com1`.
+- Si el PA no está instalado, el modal dice «No se pudieron consultar los
+  rechazos y devoluciones» y la revisión sigue igual. En WF pagos el contexto
+  de la cuota devuelve `rejections: null` en vez de fallar.
+- Por verificar en el servidor de prueba: que `observaci` de `sg_hist` acepte
+  `convert(varchar(1000), ...)`. Es `text` en `sg_com1` y se usa igual.
+
+---
+
 ## sg_cctosSecgen05 — criterio DU288 del centro de costo
 
 Es un PA **compartido**, no de pagos: lo consulta el formulario de solicitud

@@ -199,6 +199,9 @@ pregunta sobre la cuota.
      con totales.
    - **Compensaciones por fecha:** las de lo que se revisa frente a las
      propuestas y realizadas de otras prestaciones.
+   - **Rechazos y devoluciones:** de la solicitud, de los meses y de las
+     cuotas, con fecha, detalle y motivo. Se informan para su criterio y no
+     cuentan para ninguna validación (ver §7).
    - **Línea de tiempo del año:** «E» donde se ejecuta y «P» donde se paga.
 
 8. **La lista de prestaciones**, ordenada por relación, con buscador,
@@ -389,14 +392,31 @@ Todo llega en **una sola lectura por funcionario**, sin consultas por prestació
 | Compensaciones realizadas | `sg_fuc2` | — |
 | Compensaciones propuestas | `sg_fuco` | — |
 | Horario semanal | `sg_fuho` | Se carga solo para las prestaciones que coinciden en el tiempo |
+| Rechazos y devoluciones (solo informa) | `sg_hist`, `sg_fume`, `sg_com1` → `sg_fupssSecgen19` | Lectura aparte: nunca llega a las validaciones |
 
 **Procedimientos que hay que desplegar:**
 
 - `cambios_pa/sg_fume/sg_fupssSecgen17`: actualizado, agrega la cuota de cada mes.
 - `cambios_pa/sg_fuco/sg_fucosSecgen02`: nuevo, trae las compensaciones propuestas.
+- `cambios_pa/sg_fups/sg_fupssSecgen19`: nuevo, trae los rechazos y devoluciones
+  de la solicitud, de los meses y de las cuotas, con su motivo. Es solo
+  informativo y va aparte, para que lo rechazado no pueda contar en ninguna
+  regla. El detalle está en `cambios_pa/README.md`.
 
-**No hace falta modificar otro procedimiento.** Con esos dos, más los que ya
-existían, está todo lo que muestran las preguntas:
+**Lo rechazado se informa, no cuenta.** Hay tres niveles:
+- **Solicitud rechazada:** el historial que alimenta las reglas la sigue
+  descartando, igual que antes.
+- **Mes rechazado** (estado 4): no consume cupo ni tope y ya **no toma el mes**
+  en «mes ya tomado». Se corrigió en el frontend (`costCenterMonthLockCheck`) y
+  en su espejo del servidor (`validateStaffCostCenterMonthLock`).
+- **Cuota rechazada:** el mes vuelve a «propuesto» y no cuenta.
+
+Los tres aparecen en la sección «Rechazos y devoluciones», junto con las
+devoluciones de solicitudes y de cuotas y su motivo. En la pregunta 3 se
+agrega lo que antes se rechazó o devolvió en la misma prestación.
+
+Para lo que muestran las preguntas **no hace falta modificar otro
+procedimiento**. Con esos tres, más los que ya existían, está todo:
 - número, mes de pago, estado y montos de cada cuota (`mto_apagar`,
   `mto_realpa`);
 - descuentos (`mto_deslic`, `mto_dessg`);
@@ -421,7 +441,7 @@ prestación.
 - Preguntas: `QUESTION_RULES` agrupa las reglas por pregunta;
   `buildMonthCommitment` arma la tabla de la pregunta 1 y
   `buildOwnInstallments` la de la pregunta 3.
-- Pruebas: `utils/services-provision/__tests__/provisionHistoryEvaluation.test.cjs`, 38 casos.
+- Pruebas: `utils/services-provision/__tests__/provisionHistoryEvaluation.test.cjs`, 40 casos.
 
 ---
 
@@ -435,11 +455,139 @@ prestación.
 | Procedimientos `sg_fupssSecgen17` y `sg_fucosSecgen02` | ⏳ Escritos, falta desplegarlos |
 | Otras formas de mostrar la información (§6) | ✅ A y B aplicadas, con «Ver respaldo»; la D completa queda por decidir |
 | Apoyo al criterio: tres estados, «Qué lo resolvería», fecha del dato, estados de meses, cuotas y pagos (§3) | ✅ Aplicado y probado; falta revisarlo en el navegador |
-| Devoluciones y rechazos anteriores del funcionario, con su motivo | ⏳ Propuesto. El historial trae el estado de cada solicitud, pero no el motivo de DGDP: requiere un PA o reutilizar los comentarios de `sg_com1` |
+| Rechazos y devoluciones del funcionario, con su motivo (§7) | ✅ Aplicado y probado. Falta desplegar `sg_fupssSecgen19` y revisarlo en el navegador |
+| «Mes ya tomado» ignora los meses rechazados | ✅ Aplicado en el frontend y en el servidor, con pruebas |
 
 ---
 
 ## 9. Historial de cambios
+
+- **05-11-2026 (indicadores de cuotas).** Las cuatro cifras de antes (Límite,
+  Usados, Disponibles, Máximo a declarar) se repetían y mostraban límites que
+  no aplicaban: un 2 o un 12 en una prestación de un mes. Ahora son tres
+  indicadores que responden la decisión y siempre dicen qué acota:
+  - **WF resolución:**
+    - **Pide** N cuotas.
+    - **Puede hasta** M, con «lo limita: …». Se nombra solo lo que acota de
+      verdad: «su único mes de ejecución», «sus 6 meses de ejecución», «el
+      cupo del centro de costo (1 libre de 2)» o «el máximo con extensión».
+    - **Después de esta**: «X de 2 libres para otras resoluciones», o «Cupo
+      propio» con extensión.
+  - **WF pagos:**
+    - **Cuota** N° x de y decretadas.
+    - **Pago en** el mes, con o sin extensión.
+    - **Cupo con esta cuota** «X de L», con «lo limita: …».
+
+  El detalle de lo usado (pagado, en trámite, por crear) pasa a la línea de
+  abajo. Si pide más de lo que puede, el recuadro se marca en rojo.
+
+- **05-11-2026 (cuatro variables).** Se quitó la insignia «WF pagos / WF
+  resolución»: la vista es la misma y lo que se revisa ya lo dice el título.
+  El subtítulo muestra igual en las dos pantallas lo que cambia la lectura de
+  todo lo demás:
+  - el tipo de monto, con el total y las cuotas;
+  - si tiene extensión;
+  - la jornada;
+  - el tope por cuota, o «exento de tope».
+
+  En WF pagos se agrega la cuota que se revisa. Cada combinación queda así:
+
+  | | **Fijo** | **Variable** |
+  | :--- | :--- | :--- |
+  | **Sin extensión** | Tope **por cuota**: la cuota más cargada agrupa ⌈meses/cuotas⌉ meses y su suma no pasa el tope. Cupo: 2 meses de pago al año, compartido en el centro de costo. | Tope por cuota: el total repartido en las cuotas no pasa el tope en ninguna. El monto de cada mes se define al pagar, así que la pregunta 1 no afirma un monto por mes. Cupo: 2, compartido. |
+  | **Con extensión** | Exento de tope. Cupo propio: hasta 12, acotado a sus meses de ejecución y, en WF pagos, a las cuotas decretadas. | Igual: exento de tope y cupo propio acotado. |
+
+  Se corrigió:
+  - **Fijo con menos cuotas que meses** pasaba aunque la cuota superara el
+    tope: el modal comparaba el promedio por mes. Ahora usa la cuota más
+    cargada, igual que el formulario (`getTopBrutoLabel`) y que el pago
+    (`sg_fumeuSecgen02`).
+  - **«1 de 12» con extensión.** El techo es el menor entre 12, los meses de
+    ejecución y las cuotas decretadas. Una prestación de un mes y una cuota
+    muestra «1 de 1», y el recuadro dice qué lo acota.
+  - **En WF pagos**, «Máximo a declarar» pasa a «Cuotas decretadas», porque
+    declarar cuotas es de la resolución.
+
+- **05-11-2026 (revisión con datos reales, N° 213 y N° 210).** Se corrigió:
+  - **«Cuotas por estado» mostraba «ninguna cuota»** aunque el funcionario
+    tenía cuotas en otros centros de costo, porque solo miraba lo relacionado.
+    Ahora lista todas sus prestaciones: primero el mismo centro de costo,
+    después lo relacionado y al final el resto.
+  - **Estados de cuota por código** en celdas, conteos y avisos, con el
+    catálogo `sg_ecuo`:
+    - 2 «en revisión DGDP»;
+    - 3 «observada», que es la devuelta por DGDP;
+    - 11 «devuelta por Finanzas»;
+    - además 5, 6, 7, 9 y 12.
+
+    Así deja de verse «revisi?n» cuando el texto del catálogo llega con
+    problemas de codificación.
+  - **El motivo de los rechazos y devoluciones de solicitud ya no muestra la
+    nota de subrogancia.** Esa nota incluye el RUT del titular. Se quita en el
+    servidor y queda solo lo que la persona escribió.
+  - **Fila del centro de costo revisado** en la tabla de centros de costo:
+    - dice «N + la revisada» prestaciones;
+    - cuando el cupo lo completa la propia solicitud, dice «No: esta solicitud
+      completa el cupo», en vez de «cupo completo».
+  - **Botón «Actualizar datos»** junto a «Datos al …». Vuelve a consultar sin
+    cerrar el modal:
+    - en WF resolución, el historial y los rechazos;
+    - en WF pagos, el contexto completo de la cuota, que antes se cargaba una
+      sola vez con la página.
+
+    Los horarios también se vuelven a pedir.
+
+- **05-11-2026 (tarde).** Se agregan dos cambios:
+  - **Cuarto estado, «A su criterio»**, para lo que el sistema no bloquea. En WF
+    pagos, el PA que crea la cuota (`sg_epagiSecgen01`) controla el total de
+    cuotas, que el mes no esté en una cuota de otra prestación del mismo centro
+    de costo y que la última cuota no se pague antes del término. No controla
+    el cupo de meses de pago del año. Por eso, en WF pagos, las dos reglas de
+    cupo (`monthDistribution` y `paymentMonthQuota`) y «¿Tiene cuotas para el
+    pago?» se muestran «A su criterio» con la nota «El sistema no lo bloquea al
+    crear la cuota», en vez de «No». El resto de las reglas sigue siendo norma.
+    En WF resolución el cupo sigue siendo norma.
+  - **Alcance del modal en la nota de apoyo.** Solo compara con las demás
+    prestaciones del funcionario. Saldo, contrato, DU09 y deudas se validan en
+    el formulario o en la pantalla de la cuota. Así, «Sin observaciones» no se
+    lee como que todo está bien.
+
+- **05-11-2026.** Revisión con el caso N° 210 (9010.8, fijo, con extensión,
+  cuota 1 de 1). Se corrigió:
+  - **De dónde sale la extensión.** En WF pagos se usa la de la resolución
+    (`ext_cuotas`, congelada); en WF resolución, la del formulario. Antes, el
+    tope mensual y el cupo leían la del centro de costo, que en pagos no venía,
+    y el modal decía «no cumple tope mensual» y «1 de 2 meses» para una
+    prestación exenta con cupo de 12. Ahora todas las reglas leen la misma.
+  - **Cupo con extensión.** Es propio de la prestación: cuenta sus demás
+    cuotas creadas. Antes decía «quedan 0 de 12 usados» sin contar la propia.
+  - **Cupo sin extensión.** En WF pagos se suman las demás cuotas creadas de
+    la misma prestación, que antes no se contaban porque el historial la
+    excluye. No se proyectan cuotas futuras, porque lo declarado ya se contó al
+    aprobar.
+  - **Tope en la pregunta 1.** Con extensión la columna dice «exento de tope
+    por extensión».
+  - **Pregunta 3 sin las cuotas de la prestación.** Ya no cuenta la propia
+    cuota como «por crear»; dice que no se pudieron cargar las demás.
+  - **56 h en WF pagos.** La pantalla ahora pasa las horas del contrato
+    vigente y si la ejecución es dentro de jornada. Antes mostraba «0 h de
+    contrato» y sumaba las horas propias aunque fuera dentro de jornada.
+
+  Criterios confirmados contra el código:
+  - **Fijo:** aporta al mes el total dividido por los meses de ejecución.
+  - **Variable:** aporta el total dividido por el menor entre las cuotas y los
+    meses.
+  - **Tope en WF pagos:** es por cuota, la suma de sus meses contra
+    `mto_tope`, igual que `sg_fumeuSecgen02`, y exento con extensión.
+
+- **04-11-2026 (cierre).** Lo rechazado se informa sin contar:
+  - PA nuevo `sg_fupssSecgen19`, aparte del historial de las reglas;
+  - endpoint de DGDP `.../staff-previous-provisions/{rut}/rejections`;
+  - `rejections` en el contexto de la cuota de WF pagos;
+  - sección «Rechazos y devoluciones» en el modal.
+
+  «Mes ya tomado» deja de contar los meses rechazados, en el frontend y en el
+  servidor.
 
 - **04-11-2026 (noche).** El modal pasa a hablar como apoyo al criterio de quien
   revisa:
