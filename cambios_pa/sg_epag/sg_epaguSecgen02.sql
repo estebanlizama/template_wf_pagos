@@ -21,7 +21,7 @@ go
    rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/27
+   Actualizacion: ELA 2026/11/06
 */
 create procedure Analisis2.sg_epaguSecgen02
     @id_funprse int = null,
@@ -101,14 +101,11 @@ begin
     return
 end
 
-/* INTERRUPTOR-DU09 : punto 5. Ver INTERRUPTOR-DU09.md
-
 if @afec_du9 <> 'S'
 begin
     select 'Error: El centro de costo no pertenece al flujo DU09' as msg
     return
 end
-*/
 
 select @cod_estcuo = cod_estcuo,
        @id_evidenc = id_evidenc

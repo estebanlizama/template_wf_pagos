@@ -275,11 +275,11 @@ instalada ya proyecta: se parte de ese cuerpo, no del de la última release.
 
 ### Al instalar en producción
 
-Es el **punto 6** de `INTERRUPTOR-DU09`, y el único fuera de `sg_epag`. Se
-enciende junto con los puntos 3 a 5: la misma columna vacía que bloquea crear
-una cuota deja sin privilegio al jefe de proyecto, así que encender un lado sin
-el otro deja el flujo a medias. Está rotulado con ese marcador dentro del PA,
-de modo que `grep -rn "INTERRUPTOR-DU09"` lo encuentra.
+Es el **punto 6** de `INTERRUPTOR-DU09`, y el único fuera de `sg_epag`. **Desde el
+06-11-2026 está encendido en el archivo**: los dos pares usan `afec_du9 = 'S'`.
+Se compila junto con los puntos 3 a 5: la misma columna vacía que bloquea crear
+una cuota deja sin privilegio al jefe de proyecto, así que compilar un lado sin
+el otro deja el flujo a medias.
 
 Si `afec_du9` ya está poblada, se invierten **los dos** pares. No uno:
 

@@ -2,64 +2,83 @@
 
 **Ecosistema:** SG-Solicitudes · Módulo de Prestación de Servicios (PDS DU288 / DU09)  
 **Fecha de Elaboración:** 27-10-2026  
-**Corregido:** 03-11-2026, según `auditoria_validaciones_certificacion_2026_11_03.md` §1 y §3 (líneas, scripts de base, `DISABLE_AUTH`, RUT de prueba y conteo de pruebas).  
-**Actualizado:** 04-11-2026, verificado contra el código: qué quedó implementado, qué sigue apagado y qué se agrega (saldo en WF resolución, §1.0; validaciones del centro de costo solo en pantalla, §3.1; decisión sobre licencias y receso, §3).  
-**Actualizado:** 04-11-2026 (tarde): reglas de contrato y ejecución vencida en WF resolución (§2.2), login simulado (§1.3), referencias de línea y conteo de pruebas al día.  
-**Actualizado:** 05-11-2026: login simulado retirado del código junto con sus menciones; se activa y desactiva con parches fuera del repositorio (§1.3).  
+**Actualizado:** 06-11-2026, contraste de código, scripts y flujo de autenticación. Los interruptores presupuestarios están activos en el código y los PA de entrega; se retiró el simulador de acceso y su bypass de autenticación. La compilación en Sybase, los datos y la evidencia del ambiente siguen pendientes.  
 **Objetivo:** Consolidar en un solo documento operativo el catálogo de validaciones, interruptores temporales de desarrollo, condiciones en Procedimientos Almacenados (PAs) que deben limpiarse/activarse y la higiene de datos requerida antes del despliegue en los ambientes de **Certificación** y **Producción**.
 
 ---
 
-## Resumen de estado al 04-11-2026
+## 0. Estado ejecutivo verificado el 06-11-2026
+
+| Qué | Dónde | Estado |
+| :--- | :--- | :--- |
+| `INTERRUPTOR-DU09`, puntos 1 y 2 | Store de pagos y controller backend | ✅ `true`; saldo bloquea envío y aprobación en la UI, y el servidor protege envío y aprobación directa. |
+| `INTERRUPTOR-DU09`, puntos 3 a 6 | Tres PA de cuota y `sg_cctosSecgen05` | ✅ Guardas activas, criterio `afec_du9` activo y pares SQL/TXT idénticos. ⛔ Instalación/compilación Sybase no verificada. |
+| Mensaje «Modo de prueba» de pagos | Componente y traducciones | ✅ Retirado |
+| Saldo en WF resolución | Formulario y repositorio backend | ✅ Bloquea envío y el servidor vuelve a consultar saldo. |
+| Condiciones de centro de costo en WF resolución | `validateRequestCostCenterConditions` | ✅ Revalida al enviar: centro vigente, responsable, financiamiento, formación continua, ítem y saldo. |
+| Login de prueba y bypass de autenticación | Frontend, backend y variables expuestas al bundle | ✅ Retirados del código versionado; desarrollo usa Intranet. Los parches antiguos quedan archivados y no deben aplicarse (`login_simulado_desarrollo.md`). |
+| Compuerta de aprobación DGDP | `assertDgdpApprovalCompliance` | ✅ Revalida respaldo de cuota, tope (salvo extensión), DU09 (incluye dato faltante), saldo y verificación de parentesco. ⛔ La presencia de constancia requerida aún no se verifica positivamente. El contrato no se revalida por desfase administrativo de pago. |
+| Deuda institucional (§3) | `messages.js`, `config.js` | ✅ Se informa como **fuera del alcance** (decisión de ClickUp del 23-10-2026), no como «pendiente» |
+| Restos de desarrollo | selector de año de pagos (desde 2026), comentario `todo` en `resolution-document.controller.ts` | ✅ Retirados |
+
+**Verificación de esta actualización:** revisión estática de rutas de compuerta, banderas y pares SQL/TXT. No se ejecutaron pruebas automáticas ni compilación Sybase en esta revisión; los conteos históricos no son evidencia de esta entrega.
+
+**Pendientes comprobables antes de certificar:**
+
+1. **Datos:**
+   - ejecutar el diagnóstico `06_marcas_du09_centro_costo.sql` y regularizar marcas `afec_du9 = 'S'` caso a caso (R1);
+   - confirmar con Finanzas la respuesta de `valida_saldo_cc_cs` y sus casos de borde (R2);
+   - revisar que las prestaciones de certificación tengan ítem presupuestario (R3).
+2. **Despliegue:**
+   - compilar los PA de los puntos 3 a 6 y los nuevos de esta entrega (`sg_fupssSecgen17`, `sg_fucosSecgen02`, `sg_fupssSecgen19`), además de `sp_as01sSecgen01`;
+   - crear y revisar `00_ddl_pagos.sql` (aún no está en `datos_base/`);
+   - usar la versión de `sg_usacsSecgen01` de `cambios_pa`.
+3. **Verificación:** V1 a V10 de `INTERRUPTOR-DU09.md` §5 en certificación.
+4. **Login institucional:** verificar credenciales/API Intranet y `LOGIN_URL`; no aplicar los parches históricos del simulador (§1.3).
+
+## Historial de estado anterior (04-11-2026; no usar para decidir el estado actual)
 
 | # | Elemento | Estado |
 |:-:|:--|:--|
-| 1.0 | Saldo del centro de costo en **WF resolución** | ⛔ **Apagado** en pantalla y **sin validación** en el servidor |
-| 1.1 | `INTERRUPTOR-DU09` en **WF pagos** (6 puntos) | ⛔ **Apagado** los 6 |
+| 1.0 | Saldo del centro de costo en **WF resolución** | ⛔ Apagado entonces; estado actual ✅ activo y revalidado por servidor |
+| 1.1 | `INTERRUPTOR-DU09` en **WF pagos** (6 puntos) | ⛔ Apagado entonces; estado actual ✅ activo en código y fuentes PA |
 | 1.2 | RUT de prueba de asistencia | ✅ Retirado el 03-11-2026 |
-| 1.3 | `DISABLE_AUTH` y login simulado | ✅ Retirados del código, incluidas sus menciones (05-11-2026). Se activa en desarrollo con parches fuera del repositorio |
+| 1.3 | `DISABLE_AUTH` y login simulado | Se documentó retirado el 05-11; el contraste encontró el bypass reintroducido y lo retira nuevamente el 06-11 |
 | 2.1 | Funcionario sin contratos vigentes | ⛔ Relajado (solo advierte; sin contrato no se puede agregar al funcionario) |
 | 2.2 | Contrato que cubre la ejecución y ejecución no vencida | ✅ Activas en pantalla y servidor desde el 04-11-2026 (WF resolución); no aplican al pago |
 | 3 | Validaciones normativas sin fuente o sin compuerta | Ver tabla §3 |
-| 3.1 | Condiciones del centro de costo en WF resolución | ⚠️ Solo en pantalla |
+| 3.1 | Condiciones del centro de costo en WF resolución | Estado documentado el 04-11; actual: revalidación de servidor activa al enviar |
 | 4.3 | PA de asistencia `sp_as01sSecgen01` | ✅ Cableado en backend · ⛔ falta compilar en Sybase |
 | 5.1 | Carpeta huérfana `components` | ✅ Eliminada |
 | — | Núcleo: cupo, topes y cruces entre prestaciones (N1 a N11) | ✅ Aplicado el 03 y 04-11-2026; tope y cupo por centro de costo. Detalle en `auditoria_validaciones_certificacion_2026_11_03.md` §13.5 |
 
 ---
 
-## 1. Interruptores y Banderas de Desarrollo a Activar
+## 1. Interruptores de Validación y Variables de Desarrollo
 
-Son mecanismos que se introdujeron deliberadamente en el código para permitir pruebas funcionales integrales sin bloquear el flujo cuando la base de datos de desarrollo carecía de ciertas marcas presupuestarias o biométricas.
+Los interruptores de validación que antes se relajaban para pruebas ya están activos. Las banderas de autenticación/prueba se retiraron del código versionado.
 
-### 1.0 Saldo del centro de costo en WF resolución (agregado el 04-11-2026)
+### 1.0 Saldo del centro de costo en WF resolución
 
-No forma parte del `INTERRUPTOR-DU09`: es otro interruptor, del formulario de solicitud.
-
-| Capa | Ubicación | Estado | Acción |
+| Capa | Ubicación | Estado verificado | Pendiente |
 | :--- | :--- | :--- | :--- |
-| Frontend | `components/services-provision/PdsDu288RequestForm.vue` (L763) | `enableCostCenterBalanceSubmitValidation: false`. El saldo se calcula y se muestra (chip «Sin saldo disponible» en rojo), pero **no impide enviar** | Cambiar a `true` cuando Finanzas confirme `fin21_db.Analisis.valida_saldo_cc_cs` y sus casos de prueba (nota del propio código) |
-| Backend | `validateNormativeRequestStaff` | **No existe** validación de saldo al guardar o enviar la solicitud: el endpoint `validateNormativeCostCenterBalance` solo responde consultas de la pantalla | Agregar la revalidación en el servidor al encender la de pantalla, como se hizo con la Regla 11 (N4) |
+| Frontend | `components/services-provision/PdsDu288RequestForm.vue`, `enableCostCenterBalanceSubmitValidation` | ✅ `true`; saldo pendiente/no disponible bloquea envío | Verificar con Finanzas los casos con saldo, sin saldo y sobregiro autorizado en certificación |
+| Backend | `validateRequestCostCenterConditions` en `service-provision-request-procedures.repository.ts` | ✅ Reconsulta saldo al enviar y rechaza respuesta no válida o no disponible | Verificar permisos y respuesta real de `valida_saldo_cc_cs` en Sybase |
 
-> Encender solo la pantalla deja el envío protegido en el navegador y abierto a una llamada directa a la API.
+El servidor recibe la verificación de condiciones del centro de costo al enviar; guardar borrador no dispara esta compuerta. No volver a agregar la advertencia antigua de que la pantalla es la única protección.
 
 ### 1.1 El Interruptor Maestro: `INTERRUPTOR-DU09` (6 Puntos) — WF pagos
 
-> **Contexto:** Temporalmente habilitado para probar el flujo de cuotas y el envío a visación DGDP mientras los centros de costo de prueba no tenían cargada la marca `afec_du9 = 'S'`.  
-> **Comportamiento actual (verificado el 04-11-2026):** los 6 puntos siguen apagados. El saldo y la pertenencia a DU09 se evalúan e informan en pantalla (chips de advertencia/rojo), pero **no bloquean el botón ni el endpoint de envío, ni la aprobación DGDP**.
+> **Estado actual:** los seis puntos están activos en fuentes de aplicación/PA. La compilación Sybase y el estado de datos por ambiente aún requieren evidencia. Las instrucciones históricas de conmutación están en `INTERRUPTOR-DU09.md`; no repetir el cambio de `false` a `true`.
 
-> **Procedimiento completo de activación:** `INTERRUPTOR-DU09.md` (actualizado el 04-11-2026): requisitos previos, cambio exacto por archivo (incluido el aviso «Modo de prueba» y sus textos), orden de la entrega, efecto del punto 6 en WF resolución, verificación de punta a punta (V1 a V10) y vuelta atrás. La tabla de abajo es el resumen.
-
-Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las líneas son las del 04-11-2026.
-
-| Punto | Capa / Archivo | Ubicación exacta | Acción requerida para Certificación / Producción |
+| Punto | Capa / Archivo | Estado en fuentes | Acción de certificación |
 | :---: | :--- | :--- | :--- |
-| **1** | **Frontend (Store)** | `sg-solicitudes-frontend/store/service-provision-payment-detail.js` (L25) | Cambiar `const BALANCE_VALIDATION_BLOCKS_SUBMISSION = false` a **`true`**. |
-| **2** | **Backend (Controller)** | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` (L66) | Cambiar `const BALANCE_BLOCKS_SUBMISSION = false` a **`true`**. |
-| **3** | **PA Inserción Cuota** | `cambios_pa/sg_epag/sg_epagiSecgen01.sql` (comentario desde L120) | Descomentar la guarda de `afec_du9`: borrar las líneas de comentario `/* INTERRUPTOR-DU09 ... */` para que ejecute `if @afec_du9 <> 'S' begin select 'Error: El centro de costo no pertenece al flujo DU09' as msg return end`. Recompilar en Sybase y sincronizar `sg_epagiSecgen01.txt`. |
-| **4** | **PA Edición Cuota** | `cambios_pa/sg_epag/sg_epaguSecgen01.sql` (comentario desde L129) | Descomentar la misma guarda de `afec_du9`. Recompilar en Sybase y sincronizar `sg_epaguSecgen01.txt`. |
-| **5** | **PA Envío a Visación** | `cambios_pa/sg_epag/sg_epaguSecgen02.sql` (comentario desde L104) | Descomentar la guarda de `afec_du9`. Recompilar en Sybase y sincronizar `sg_epaguSecgen02.txt`. |
-| **6** | **PA Criterio Centro Costo** | `cambios_pa/sg_ccto/sg_cctosSecgen05.sql` (L66-91) | Invertir los **dos** pares de `CRITERIO DU288`: cambiar `cod_tfinan in (21, 44)` por `ccto.afec_du9 = 'S'` tanto en el `CASE` indicador como en la cláusula `WHERE`. *(Requisito: que la columna esté poblada en `fin21_db..es_ccto`)*. Sincronizar `sg_cctosSecgen05.txt`. |
+| **1** | **Frontend (Store)** | `store/service-provision-payment-detail.js` | ✅ `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true`; gobierna bloqueo visual de envío y aprobación DGDP. |
+| **2** | **Backend (Controller)** | `service-provision-payment.controller.ts` | ✅ `BALANCE_BLOCKS_SUBMISSION = true`; protege envío y se reutiliza en la compuerta DGDP. |
+| **3** | **PA Inserción Cuota** | `cambios_pa/sg_epag/sg_epagiSecgen01.sql/.txt` | ✅ Guarda `afec_du9` activa; par idéntico. Compilación ASE pendiente de evidencia. |
+| **4** | **PA Edición Cuota** | `cambios_pa/sg_epag/sg_epaguSecgen01.sql/.txt` | ✅ Guarda `afec_du9` activa; par idéntico. Compilación ASE pendiente de evidencia. |
+| **5** | **PA Envío a Visación** | `cambios_pa/sg_epag/sg_epaguSecgen02.sql/.txt` | ✅ Guarda `afec_du9` activa; par idéntico. Compilación ASE pendiente de evidencia. |
+| **6** | **PA Criterio Centro Costo** | `cambios_pa/sg_ccto/sg_cctosSecgen05.sql/.txt` | ✅ CASE y filtro se basan en `afec_du9 = 'S'`; par idéntico. Compilación ASE pendiente de evidencia. |
 
 > [!WARNING]
 > **Regla de Sincronía Front/Back:** Los puntos 1 y 2 deben conmutarse estrictamente al mismo tiempo. Si se enciende el backend y no el frontend, la pantalla se mostrará habilitada pero el botón fallará con error `HTTP 422 Unprocessable Entity`. Si se enciende el frontend y no el backend, el formulario bloqueará al usuario pero la API quedará desprotegida ante llamadas directas.
@@ -67,8 +86,7 @@ Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las l
 > [!IMPORTANT]
 > **El punto 1 gobierna dos pantallas.** Desde el 28-10-2026 la aprobación DGDP lee el mismo interruptor (`balanceBlocks: this.balanceBlocksSubmission` en `pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue`). Antes lo tenía fijo en `true`, de modo que el saldo impedía aprobar aun con el interruptor apagado. Al conmutarlo vuelven a bloquear el **envío** del solicitante y la **aprobación** DGDP, y la verificación debe cubrir las dos.
 
-> [!CAUTION]
-> **El punto 2 no cubre la aprobación DGDP.** La constante vive dentro de la compuerta de `submitInstallment`. El endpoint de la decisión —`POST /requests/service-provision/payments/dgdp/provisions/{id}/installments/{n}/decision`— **no tiene compuerta normativa**: valida el permiso (`assertCanResolveDgdpPayment`) y nada más; `sg_epaguSecgen03` solo exige la asignación DGDP (`cod_organi = 696`) y el estado 2. Encender los puntos 1 y 2 deja el envío protegido en dos capas y la aprobación protegida solo en el navegador: una llamada directa aprueba una cuota sin saldo, sin tope y sin evidencia. No lo resuelve el interruptor — requiere decidir **qué validaciones aplican al aprobar**, que no son las mismas que al enviar (el propio controlador establece que un contrato no vigente en SISPER no debe bloquear el pago de cuotas ya devengadas). Es el trabajo que piden los controles PAG-36, RES-CC-05/PAG-39 y RES-IN-07/PAG-32 de la §3.
+La compuerta del servidor para aprobar existe desde el 06-11-2026 y se describe en §3. Los puntos 1 y 2 deben permanecer sincronizados en futuras modificaciones.
 
 ---
 
@@ -79,24 +97,24 @@ Buscar `INTERRUPTOR-DU09` en los tres repositorios ubica todos los puntos; las l
 
 ---
 
-### 1.3 Válvula de Autenticación de Desarrollo (`DISABLE_AUTH`) y login simulado — ✅ retirados
+### 1.3 Simulación de acceso y bypass de autenticación — retirados del código versionado
 
-- **Retirados del código el 03-11-2026** y, desde el 05-11-2026, **también sus menciones**: comentarios, el módulo `access-simulation` de `config/active-modules.js`, `INTRANET_AUTH_FLOW` del `.env.example` y la pauta de `GUIDELINES_DEVELOPMENT.md`. `nuxt.config.js` aplica siempre `['auth', 'guardian']` y el backend descifra el RUT siempre con la Intranet.
-- **Corregido el 05-11-2026:** `pages/access/index.vue` limpio no declaraba `meta.module` y el guardián de rutas lo bloqueaba con 403; ahora declara `shared` y muestra el botón a la Intranet.
-- **Para probar en desarrollo** se activa y desactiva con dos parches que viven fuera de los repositorios (`nuevo_workflow_fase_2/login_simulado/`). Procedimiento, requisitos del `.env` y verificación en `nuevo_workflow_fase_2/login_simulado_desarrollo.md`.
-- **Antes de cada commit o tag:** los dos `git grep` de ese documento (§2) deben devolver vacío.
+- El frontend `/access` solo ofrece el enlace a Intranet y ya no contiene selector de usuario simulado.
+- `SIMULATION_USERS` y `SIMULATION_USERS_CATALOG` ya no se exponen mediante `@nuxtjs/dotenv`.
+- El backend siempre valida el RUT contra Intranet; `INTRANET_AUTH_FLOW` ya no conmuta la validación.
+- No se detectó `DISABLE_AUTH` en los repositorios de aplicación durante este contraste.
+- Los parches antiguos en `nuevo_workflow_fase_2/login_simulado/` no son compatibles con el código actual y no deben aplicarse. Revisar `.env` de cada ambiente por separado sin copiar sus valores al repositorio.
 
 ---
 
 ## 2. Validaciones del Contrato y del Período en el Formulario Solicitante (PDS DU288)
 
-En el componente principal de solicitud (`components/services-provision/PdsDu288RequestForm.vue`) queda **una** comprobación relajada para pruebas con perfiles históricos (§2.1). La cobertura del contrato, que figuraba como relajada, está activa, y desde el 04-11-2026 se suma la regla de ejecución vencida (§2.2).
+En el componente principal de solicitud (`components/services-provision/PdsDu288RequestForm.vue`) la búsqueda de funcionario se interrumpe si no hay contrato vigente. La cobertura contractual y la fecha de ejecución también se validan (§2.1–2.2).
 
-### 2.1 Funcionario sin Contratos Vigentes (`contracts.length === 0`) — ⛔ relajado
-- **Ubicación:** `PdsDu288RequestForm.vue` (L5028-L5031).
-- **Comportamiento Actual:** Si la consulta de contratos vigentes no devuelve registros para el RUT ingresado, emite una advertencia flotante (`this.toast(NORMATIVE_MESSAGES.toast.noContractInfo, 'warning')`) y permite continuar la selección y el armado de la solicitud.
-- **Mitigación actual:** sin contratos no hay ninguno que elegir, y la pantalla exige elegir uno para agregar al funcionario (`getContractValidationErrors`, «Seleccione un contrato»). La advertencia solo deja avanzar en la búsqueda.
-- **Acción para Certificación/Producción:** Una vez que la vista/fuente final de contratos institucionales vigentes esté conectada, este bloque debe volver a interrumpir la selección (`return` / bloquear asignación de contexto) impidiendo emitir solicitudes sobre funcionarios sin contrato habilitado.
+### 2.1 Funcionario sin Contratos Vigentes (`contracts.length === 0`) — ✅ bloqueante
+- **Ubicación:** `PdsDu288RequestForm.vue`, `applyStaffFromSearch`.
+- **Comportamiento actual:** si la consulta no devuelve contratos, muestra `noCurrentContract` como error y retorna antes de crear/aplicar el contexto del funcionario.
+- **Acción para Certificación/Producción:** ninguna de activación. Verificar con perfil sin contrato en la batería funcional que no se pueda agregar ni enviar.
 
 ### 2.2 Contrato que cubre la ejecución y ejecución no vencida — ✅ activa
 
@@ -133,23 +151,27 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 
 | ID Control | Validación Normativa | Fuente Oficial | Estado Actual en Código (04-11-2026) | Acción Pendiente |
 | :--- | :--- | :--- | :--- | :--- |
-| **RES-IN-08 / PAG-37** | **Deuda Institucional** | Sin fuente integrada | ⛔ Queda permanentemente en `status: 'pending'` (*"No hay fuente de datos para consultar deuda institucional..."*). | Conectar al futuro servicio financiero de tesorería. Será obligatoria e inhabilitante a contar del **01-01-2027**. |
-| **PAG-36** | **Cierre del Proyecto a la fecha de ejecución** | `fin21_db` / `sg_fume.val_ciecc` | ⛔ La columna existe y solo se lee (`sg_epagsSecgen02`, `sg_epagsSecgen04`); ningún PA transaccional la escribe ni bloquea si el proyecto cerró antes de la labor. | Incorporar guarda en el PA de envío/aprobación de cuota frente a la fecha de ejecución del mes. |
-| **RES-CC-05 / PAG-39** | **Prohibición de Formación Continua** | Ficha del Centro de Costo | ⚠️ En **WF resolución** bloquea en pantalla (el centro de costo no se puede elegir y el envío da error), pero el servidor no lo revalida (§3.1). En **WF pagos** no hay bloqueo en la compuerta API ni en los PA. | Revalidarla en el servidor de resolución y en la compuerta de pago. |
+| **RES-IN-08 / PAG-37** | **Deuda Institucional** | Sin fuente integrada | ✅ **Fuera del alcance** (decisión de ClickUp del 23-10-2026, corregido el 06-11-2026): se informa como «Deuda institucional: fuera del alcance» y no se consulta. Que no se consulte no equivale a «sin deuda». | Ninguna. La versión anterior de este punto decía que sería obligatoria desde el 01-01-2027; la decisión de ClickUp lo descarta: no se activa sola. Encenderla exige una decisión nueva y una fuente de datos. |
+| **PAG-36** | **Cierre del Proyecto a la fecha de ejecución** | `fin21_db` / `sg_fume.val_ciecc` | ⛔ Se consulta en reportes; no se confirmó guarda transaccional al enviar/aprobar cuota. | Acordar regla y fecha de referencia con Finanzas/DGDP; luego implementar en PA transaccional de pago y verificar en Sybase. No inferir que valor nulo equivale a proyecto abierto. |
+| **RES-CC-05 / PAG-39** | **Prohibición de Formación Continua** | Ficha del Centro de Costo | ✅ WF resolución valida servidor al enviar. ⛔ No se encontró bloqueo equivalente en la compuerta del pago ni en los PA transaccionales de cuotas. | Confirmar la regla aplicable a cuotas ya autorizadas y agregar compuerta backend/PA de pago si corresponde; no se resuelve solo con el interruptor de saldo/DU09. |
 | **PAG-33 / PAG-34** | **Licencias Médicas y Permisos sin Goce** | Marcaje biométrico (`sp_as01sSecgen01`) | ✅ **Decidido el 04-11-2026:** se ve solo en WF pagos. La única fuente automática es el marcaje biométrico cuando el día viene con un tipo de licencia o permiso, y la sección de asistencia de la cuota ya lo muestra (ausencia con motivo y justificación). Lo demás lo ajusta DGDP con documento explícito (`mto_deslic`, `mto_dessg`). | **Ya no se crea** el PA de ausencias sobre `sisper_db..sp_as21` que pedía la versión anterior de este checklist. |
-| **RES-IN-07 / PAG-32** | **Constancia Jurada de Incompatibilidad / Parentesco** | Evidencia de resolución | ⚠️ Se difirió de la resolución al pago. En el pago bloquea **solo en la pantalla de revisión DGDP** (`requireRelationshipCertificate`); ni el envío del solicitante ni el endpoint de decisión DGDP la revalidan. | Llevarla a la compuerta de la aprobación DGDP (§1.1, nota final). |
+| **RES-IN-07 / PAG-32** | **Constancia Jurada de Incompatibilidad / Parentesco** | Evidencia y relación funcionario/jefe de proyecto | ⚠️ La aprobación DGDP consulta parentesco en servidor; si no puede verificarlo o la relación exige constancia, rechaza. No se acreditó una validación positiva de que la constancia exigida esté efectivamente adjunta y sea la correspondiente. | Definir dónde se persiste/identifica la constancia y validar su presencia al aprobar; probar llamada directa al endpoint y los casos con/sin parentesco. No describir el control como «constancia verificada» hasta entonces. |
 | **RECESO** | **Receso Universitario No Acreditado** | Calendario institucional | ✅ Mismo criterio que licencias: no es una regla automática. DGDP rechaza el mes con su causal (estado de mes «rechazado», que no consume saldo) apoyado en documento explícito. | Ninguna, salvo que se decida automatizarlo. |
 
-### 3.1 Condiciones del centro de costo en WF resolución: solo en pantalla (agregado el 04-11-2026)
+### 3.1 Compuertas de WF resolución y aprobación DGDP
 
-Al enviar la solicitud, la pantalla bloquea por centro de costo no vigente, responsable no vigente, financiamiento incompatible y formación continua (`PdsDu288RequestForm.vue`, L7621-L7639). `validateNormativeRequestStaff` **no revalida ninguna** de esas condiciones ni el saldo (§1.0): una llamada directa a la API guarda una solicitud que la pantalla habría rechazado. Es el mismo tipo de hueco que se cerró para la Regla 11 (N4) y los cruces entre prestaciones (N5).
+- WF resolución vuelve a consultar en servidor vigencia del centro, vigencia del responsable, compatibilidad DU288, Formación Continua, ítem presupuestario y saldo al enviar la solicitud. El control de cliente no es la única barrera.
+- La aprobación DGDP invoca `assertDgdpApprovalCompliance` solo al aprobar; devolver/rechazar siguen su flujo propio. La compuerta comprueba evidencia de cuota, tope salvo extensión, pertenencia DU09, saldo y parentesco.
+- En la pertenencia DU09 de aprobación, el backend ahora exige valor exactamente `S`; dato vacío también bloquea. No relajar esta condición por falta de proyección del PA.
+- El tope/contrato SISPER de una cuota devengada no se revalida en pago por desfase administrativo. Formación Continua y cierre del proyecto en el PA transaccional de pago quedan como controles a resolver antes de cerrar PAG-39/PAG-36.
+- La verificación de parentesco es fail-closed, pero el modelo de evidencia no demuestra todavía que una constancia requerida está adjunta y validada. Resolver esa brecha según la fila RES-IN-07/PAG-32.
 
 ---
 
 ## 4. Procedimientos Almacenados (PAs) y Scripts BDD: Guía de Despliegue
 
 ### 4.1 Script Previo Obligatorio (Diagnóstico de Afectación DU09)
-Antes de activar los puntos 3, 4, 5 y 6 del `INTERRUPTOR-DU09`:
+Antes de compilar/desplegar los puntos 3, 4, 5 y 6 del `INTERRUPTOR-DU09`:
 - **Ejecutar:** `nuevo_workflow_fase_2/template_wf_pagos/datos_base/06_marcas_du09_centro_costo.sql`.
 - **Propósito:** Lista los centros de costo con resoluciones DU288 vigentes que tienen `afec_du9` nulo o vacío en `fin21_db..es_ccto`.
 - **Paso correctivo:** Coordinar con Administración de Datos / Finanzas la actualización de `afec_du9 = 'S'` en dichos centros de costo. **No activar las guardas en los PAs si este paso no está subsanado**, de lo contrario los usuarios no podrán listar centros de costo ni gestionar cuotas.
@@ -178,8 +200,8 @@ Antes de generar el commit/tag para la rama de Certificación:
 
 1. ✅ **Directorio huérfano `d:\trabajo_ufro_2026\components`:** ya no existe (verificado el 04-11-2026).
 2. **Depuración de Variables de Entorno (`.env`):**
-   - El código ya no lee `SIMULATION_USERS`, `SIMULATION_USERS_CATALOG`, `INTRANET_AUTH_FLOW` ni `DISABLE_AUTH`. Quitarlas de los `.env` de certificación y producción.
-3. **Login simulado** (§1.3): confirmar que está desactivado con los dos `git grep` de `login_simulado_desarrollo.md` §2 (deben devolver vacío).
+   - El código versionado ya no lee `SIMULATION_USERS`, `SIMULATION_USERS_CATALOG` ni `INTRANET_AUTH_FLOW`; `DISABLE_AUTH` tampoco debe aparecer en configuración de certificación/producción. Limpiar esos nombres de los `.env` del ambiente sin divulgar sus valores.
+3. **Login institucional** (§1.3): confirmar que `LOGIN_URL` apunta a Intranet y que las variables de simulación/bypass no están configuradas en el ambiente.
 4. **Purgado de Datos Transaccionales de Prueba en Base de Datos:**
    - Si se requiere reiniciar el ambiente de pruebas antes de la entrega, ejecutar el script `limpia_datos_pds_desarrollo.sql` para limpiar cuotas de prueba en `sg_epag`, detalles en `sg_dpag` y restablecer meses en `sg_fume`.
 5. **Consulta de saldo directa (`store/enabled-cost-center.js`, L31):** `getCostCenterBalance` sigue sin uso hasta que `UsuaVrac` tenga `SELECT` sobre `wf_sol2`/`wf_tra1`; la pantalla usa `validateNormativeCostCenterBalance`. No bloquea la certificación.
@@ -190,32 +212,22 @@ Antes de generar el commit/tag para la rama de Certificación:
 
 ```mermaid
 flowchart TD
-    A["1. Ejecutar 06_marcas_du09_centro_costo.sql"] --> B{"¿Todos los CC tienen afec_du9='S'?"}
-    B -- No --> C["Poblar afec_du9='S' en fin21_db..es_ccto"]
-    B -- Sí --> D["2. Ejecutar datos_base (01, 02, 03, 04, 05)"]
-    C --> D
-    D --> E["3. Descomentar guardas afec_du9 en PAs sg_epag y sg_ccto"]
-    E --> F["4. Compilar PAs en Sybase y sincronizar archivos .txt"]
-    F --> G["5. Conmutar BALANCE_BLOCKS_SUBMISSION = true en Backend"]
-    G --> H["6. Conmutar BALANCE_VALIDATION_BLOCKS_SUBMISSION = true en Frontend"]
-    H --> R["7. Saldo y centro de costo en WF resolución: pantalla + servidor"]
-    R --> I["8. Compilar sp_as01sSecgen01 (Asistencia)"]
-    I --> J["9. Confirmar login simulado desactivado y limpiar .env"]
-    J --> K["10. Ejecutar batería de tests (Unitarios Frontend y Backend)"]
-    K --> M["11. Cerrar la compuerta normativa de la aprobación DGDP"]
-    M --> L["✅ Listo para Certificación"]
+    A["1. Diagnosticar marcas DU09 y regularizar datos"] --> B["2. Confirmar saldo, ítems y permisos con Finanzas"]
+    B --> C["3. Aplicar DDL y catálogos en el orden aprobado"]
+    C --> D["4. Compilar/desplegar PAs activos; mantener SQL/TXT idénticos"]
+    D --> E["5. Desplegar backend y frontend con interruptores activos"]
+    E --> F["6. Compilar asistencia y revisar versiones de release"]
+    F --> G["7. Verificar acceso Intranet y limpieza de variables de prueba"]
+    G --> H["8. Ejecutar verificación técnica y V1–V10 en certificación"]
+    H --> I["9. Cerrar PAG-36, PAG-39 y RES-IN-07 con evidencia funcional"]
 ```
 
-1. **Paso 1 (BDD - Diagnóstico):** Correr `06_marcas_du09_centro_costo.sql` y regularizar centros sin marca.
-2. **Paso 2 (BDD - Catálogos):** Aplicar scripts de `datos_base/` del 01 al 05.
-3. **Paso 3 (PAs):** Descomentar las guardas de `afec_du9` en `sg_epagiSecgen01`, `sg_epaguSecgen01`, `sg_epaguSecgen02` y ajustar `sg_cctosSecgen05`. Sincronizar sus archivos `.txt`. Actualizar la cabecera `Actualizacion: ELA AAAA/MM/DD` y compilar en Sybase. Detalle en `INTERRUPTOR-DU09.md` §3.2.
-4. **Paso 4 (Backend pagos):** Conmutar `BALANCE_BLOCKS_SUBMISSION = true` en `service-provision-payment.controller.ts`.
-5. **Paso 5 (Frontend pagos):** Conmutar `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true` en `service-provision-payment-detail.js`. Borrar el aviso «Modo de prueba» de `Du288PaymentValidationsSection.vue` y sus textos `testModeTitle`/`testModeDetail` en `lang/es/pds.js`. Los pasos 4 y 5 van en la misma entrega; verificar con `INTERRUPTOR-DU09.md` §5.
-6. **Paso 6 (WF resolución):** Encender `enableCostCenterBalanceSubmitValidation` (§1.0) cuando Finanzas confirme el PA de saldo, y agregar en el servidor la revalidación del saldo y de las condiciones del centro de costo (§3.1).
-7. **Paso 7 (Asistencia):** Compilar `sp_as01sSecgen01` en Sybase.
-8. **Paso 8 (Higiene):** Confirmar el login simulado desactivado (§1.3) y limpiar los `.env` (§5.2).
-9. **Paso 9 (Validación Técnica):**
-   - Frontend: `node utils/__tests__/run-pds-tests.cjs` (al 04-11-2026, **24** archivos de prueba, todos correctos), `node utils/validateDu288Ui.js` (**55** archivos del estándar visual) y `npx eslint` limpio.
-   - Backend: `npm run build` sin errores y `npx lb-mocha -r ./test-setup.js "dist/__tests__/unit/**/*.js"` (al 04-11-2026, **354** pasando y **0** fallando). Las dos pruebas de `sg_com1` que fallaban el 29-10-2026 ya pasan.
-   - Los conteos crecen con cada entrega: valen como piso, no como cifra exacta. Lo que no puede cambiar es que ninguno falle.
-10. **Paso 10 (Compuerta de la aprobación DGDP):** antes de certificar, cerrar la decisión de qué validaciones bloquean al aprobar y llevarlas al endpoint de decisión. Hoy esa compuerta no existe (ver la nota del §1.1): con los puntos 1 y 2 encendidos, el envío queda protegido en dos capas y la aprobación solo en la pantalla.
+1. Diagnosticar `afec_du9` con `06_marcas_du09_centro_costo.sql`; regularizar cada centro autorizado antes de desplegar las guardas.
+2. Confirmar con Finanzas el PA de saldo, permisos de `UsuaVrac`, escenarios con/sin saldo y existencia de ítem presupuestario.
+3. Crear/revisar `00_ddl_pagos.sql`; luego aplicar datos base/catálogos según `datos_base/orden_de_despliegue.md`.
+4. Compilar los PA DU09 ya activos en las fuentes y sincronizados con `.txt`; no descomentar ni reconmutar nada. Instalar también los PA indicados para esta entrega y `sp_as01sSecgen01`.
+5. Desplegar el backend y frontend que ya llevan las compuertas encendidas. Mantener ambos interruptores de saldo en `true`.
+6. Revisar que la compilación de acceso use el flujo real de Intranet; verificar que los nombres de variables de simulación/bypass no existan en `.env` de certificación/producción.
+7. Ejecutar la verificación técnica correspondiente a la rama de entrega y V1–V10 en el ambiente de certificación, guardando resultados/evidencias.
+8. Resolver PAG-36, PAG-39 y RES-IN-07 según §3; estos controles no quedan cubiertos por activar DU09/saldo.
+9. Cerrar el pase solo cuando exista evidencia de Sybase, datos, permisos y pruebas end-to-end en certificación.

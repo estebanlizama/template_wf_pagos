@@ -22,7 +22,7 @@ go
    Objetivo : Obtener lista de centros de costo disponibles para un rut
 
    Creacion: ELA 2026/08/24
-   Actualizacion: ELA 2026/10/16
+   Actualizacion: ELA 2026/11/06
 */
 create procedure Analisis2.sg_cctosSecgen05
     @rut        char(9)  = NULL,
@@ -63,9 +63,7 @@ begin
             ecct.vigente as vigente_responsable,
             ccto.afec_du9,
             ccto.con_topdu9,
-            /* INTERRUPTOR-DU09 : CRITERIO DU288 (1 de 2) -- indicador */
-            case when ccto.cod_tfinan in (21, 44) then 'S' else 'N' end as ind_financiamiento_du288,
-         /* case when isnull(ccto.afec_du9, 'N') = 'S' then 'S' else 'N' end as ind_financiamiento_du288, */
+            case when isnull(ccto.afec_du9, 'N') = 'S' then 'S' else 'N' end as ind_financiamiento_du288,
             case when isnull(ccto.con_topdu9, 'S') = 'N' then 'S' else 'N' end as ind_anid,
             case when ccto.decr_afect is null then 'N' else 'S' end as ind_decreto_afecto,
             case when ccto.decr_afect = '1' then 'S' else 'N' end as ind_formacion_continua
@@ -86,9 +84,7 @@ begin
         where ecct.rut = @rut
           and ecct.vigente = 'S'
           and ccto.vigente = '1'
-          /* INTERRUPTOR-DU09 : CRITERIO DU288 (2 de 2) -- filtro */
-          and ccto.cod_tfinan in (21, 44)
-       /* and ccto.afec_du9 = 'S' */
+          and ccto.afec_du9 = 'S'
     end
     else
     begin

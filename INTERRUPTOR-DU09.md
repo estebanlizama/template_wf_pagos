@@ -1,29 +1,40 @@
-# INTERRUPTOR-DU09 — procedimiento de activación de punta a punta
+# INTERRUPTOR-DU09 — estado y verificación de punta a punta
 
 > **Esto es temporal.** Se encendió el **14-10-2026** para poder probar el envío
 > a DGDP de punta a punta mientras los centros de costo de prueba no tienen
 > cargadas sus marcas presupuestarias. **No puede llegar a certificación así:
 > a master se entra con todas las validaciones bloqueando.**
 >
-> **Estado verificado el 04-11-2026:** los 6 puntos siguen apagados.
-> Actualizado ese día con el procedimiento completo: archivos, cambios exactos,
-> orden, verificación y vuelta atrás.
+> **Estado al 06-11-2026: los 6 puntos están encendidos en el repositorio.**
+>
+> - Puntos 1 y 2: las constantes de frontend y backend valen `true`.
+> - Puntos 3 a 5: guardas `afec_du9` descomentadas.
+> - Punto 6: criterio invertido a `afec_du9 = 'S'`.
+> - El aviso «Modo de prueba» y sus textos se retiraron.
+> - El `grep` del §3 ya no encuentra la marca en el código.
+>
+> **Antes de compilar los PA 3 a 6 en certificación**, deben cumplirse R1 a
+> R4 (§2). Si no, el flujo de pagos se apaga entero. Después se verifica con
+> V1 a V10 (§5).
+>
+> Además, desde ese día:
+> - la compuerta de envío **rechaza** una prestación sin ítem presupuestario,
+>   en vez de omitir el saldo;
+> - la aprobación DGDP tiene su propia compuerta en el servidor (§7):
+>   respaldo, tope, DU09, saldo y parentesco con constancia.
+>
+> Historial: el 04-11-2026 los 6 puntos seguían apagados.
 
 ---
 
-## 1. Qué está apagado y qué sigue bloqueando
+## 1. Estado actual: interruptores encendidos
 
-Dos validaciones **se siguen mostrando** y **dejaron de impedir el envío del
-solicitante y la aprobación DGDP**:
+Los diagnósticos continúan visibles y sus condiciones bloquean envío/aprobación:
 
-| Validación | Qué se ve | Qué hace hoy | Quién la aplica al encender |
+| Validación | Qué se ve | Qué hace hoy | Dónde se aplica |
 | :--- | :--- | :--- | :--- |
-| Saldo del centro de costo | chip *Centro de costo sin saldo*, en rojo | no bloquea | pantalla (punto 1) y compuerta del backend (punto 2) |
-| Pertenencia a DU09 (`afec_du9`) | chip *Centro de costo fuera de DU09*, advertencia | no bloquea | PA de cuotas (puntos 3 a 5) y lista de centros de costo (punto 6) |
-
-**Lo que se apagó es el bloqueo, no el diagnóstico.** Los chips quedan a la
-vista a propósito: si además se ocultaran, al volver a encenderlos aparecerían
-problemas que llevaban semanas ahí sin que nadie los viera.
+| Saldo del centro de costo | chip *Centro de costo sin saldo*, bloqueante | bloquea envío y aprobación | pantalla y compuertas backend |
+| Pertenencia a DU09 (`afec_du9`) | estado informativo/errores de validación | bloquea creación, edición, envío y aprobación; centros fuera de flujo no aparecen en la selección | backend de aprobación, PA de cuota y PA de centros de costo |
 
 **Sigue bloqueando**, sin cambios: contrato habilitado, cargo habilitado,
 asignaciones, tope de la cuota (contra el tope congelado de la resolución),
@@ -31,10 +42,9 @@ asignaciones, tope de la cuota (contra el tope congelado de la resolución),
 cuota, saldo del monto total autorizado y los meses ya tomados por otra cuota
 del mismo centro de costo.
 
-**No es parte de este interruptor**, pero se activa con la misma lógica: el
-saldo en el **formulario de WF resolución** (`enableCostCenterBalanceSubmitValidation`,
-ver `checklist_validaciones_y_paso_a_certificacion.md` §1.0). Conviene
-encenderlo en la misma entrega, porque usa el mismo PA de saldo.
+El saldo de WF resolución también está activo en pantalla y revalidado en
+servidor. La compilación y los permisos del PA de saldo siguen pendientes de
+evidencia por ambiente.
 
 ---
 
@@ -44,7 +54,7 @@ encenderlo en la misma entrega, porque usa el mismo PA de saldo.
 | :-: | :--- | :--- | :--- |
 | R1 | `afec_du9 = 'S'` cargado en los centros de costo DU288 de `fin21_db..es_ccto` | Correr `datos_base/06_marcas_du09_centro_costo.sql` (solo lectura) | Con la columna vacía, el punto 6 devuelve **cero** centros de costo para cualquier RUT —sin error— y los puntos 3 a 5 rechazan toda cuota. Se apaga el flujo completo |
 | R2 | Finanzas confirma `fin21_db.Analisis.valida_saldo_cc_cs` y sus casos de prueba | Casos con saldo, sin saldo y sobregiro autorizado, ejecutados contra certificación | El saldo bloquea con datos que nadie validó |
-| R3 | La prestación tiene **ítem presupuestario** (`sg_fups.cod_sitm`) | La bandeja muestra el ítem en el resumen de la cuota | La compuerta del backend recibe el ítem vacío y **omite** la consulta de saldo sin avisar (`assertCostCenterBalanceCompliance`) |
+| R3 | La prestación tiene **ítem presupuestario** (`sg_fups.cod_sitm`) | Revisar bandeja/resumen y registros a enviar | Sin ítem, backend rechaza con 422 porque no se puede validar saldo |
 | R4 | Ventana de despliegue de base de datos coordinada | — | Los PA y el backend deben quedar en la misma entrega (§4) |
 
 Cargar `afec_du9 = 'S'` se hace **caso a caso**: esa marca habilita pagar con
@@ -52,46 +62,37 @@ ese presupuesto.
 
 ---
 
-## 3. Archivos y cambios exactos
-
-Buscar la marca ubica todos los puntos:
-
-```bash
-grep -rn "INTERRUPTOR-DU09" sg-solicitudes-frontend sg-solicitudes-backend nuevo_workflow_fase_2/template_wf_pagos/cambios_pa
-```
+## 3. Inventario de los puntos (no reconmutar)
 
 ### 3.1 Aplicación (puntos 1 y 2, más el aviso)
 
-| Punto | Archivo | Cambio |
+| Punto | Archivo | Estado de fuente |
 | :-: | :--- | :--- |
-| **1** | `sg-solicitudes-frontend/store/service-provision-payment-detail.js` (L25) | `const BALANCE_VALIDATION_BLOCKS_SUBMISSION = false` → **`true`**. Gobierna **dos pantallas**: el envío del solicitante y la aprobación DGDP (`pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue` lee `balanceBlocks`). Los chips de saldo y de DU09 pasan de advertencia a rojo y bloquean |
-| **2** | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` (L66) | `const BALANCE_BLOCKS_SUBMISSION = false` → **`true`**. Con eso la compuerta de `submitInstallment` pasa el ítem a `assertCostCenterBalanceCompliance` y rechaza con 422 si no hay saldo |
-| aviso | `sg-solicitudes-frontend/components/services-provision/payments/Du288PaymentValidationsSection.vue` (L26-L29) | El `b-alert` «Modo de prueba» (`v-if="!balanceBlocks"`) desaparece solo con el punto 1, pero queda como código muerto: **borrarlo** |
-| aviso | `sg-solicitudes-frontend/lang/es/pds.js` (L2569-L2570) | Borrar `testModeTitle` y `testModeDetail` |
-| comentarios | Los dos archivos de los puntos 1 y 2 | Reemplazar el bloque `/* INTERRUPTOR-DU09 — apagado el 14-10-2026 … */` por un comentario que explique la regla vigente, sin la marca, para que el `grep` del §3 quede vacío al terminar |
+| **1** | `sg-solicitudes-frontend/store/service-provision-payment-detail.js` | ✅ `BALANCE_VALIDATION_BLOCKS_SUBMISSION = true`; controla UI de envío y aprobación DGDP |
+| **2** | `sg-solicitudes-backend/src/controllers/service-provision/service-provision-payment.controller.ts` | ✅ `BALANCE_BLOCKS_SUBMISSION = true`; protege envío y aprobación al llamar API |
+| aviso | `Du288PaymentValidationsSection.vue`, `lang/es/pds.js` | ✅ Aviso «Modo de prueba» y sus traducciones retirados |
+| comentario histórico | Fuentes frontend/backend | ✅ Marca del interruptor retirada de código; este documento conserva su nombre para identificar el paquete |
 
-**Los puntos 1 y 2 se encienden juntos.** Encender solo el backend deja la
+**Los puntos 1 y 2 deben mantenerse sincronizados.** Activar solo el backend deja la
 pantalla en verde y el envío fallando con 422; encender solo el frontend deja
 la API abierta a una llamada directa.
 
 ### 3.2 Procedimientos almacenados (puntos 3 a 6)
 
 Todos viven en `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/`. En cada
-uno: hacer el cambio en el `.sql`, actualizar la cabecera
-`Actualizacion: ELA AAAA/MM/DD` con la fecha del cambio y **copiar el `.sql`
-sobre el `.txt`** (deben quedar idénticos, CRLF y ASCII de 7 bits). Hoy los
-cuatro pares son idénticos.
+uno: las guardas/criterios ya están activos en las fuentes `.sql`; los cuatro
+pares `.sql/.txt` están idénticos. Confirmar cabecera, versión y compilación
+instalada en ASE durante el pase.
 
-**Puntos 3, 4 y 5 — la guarda de `afec_du9`**
+**Puntos 3, 4 y 5 — guardas de `afec_du9` activas**
 
-| Punto | Archivo | Comentario a quitar | Qué valida |
+| Punto | Archivo | Estado | Qué valida |
 | :-: | :--- | :--- | :--- |
-| **3** | `sg_epag/sg_epagiSecgen01.sql` (L120-L127) | `/* INTERRUPTOR-DU09 : punto 3 …` y su `*/` | crear la cuota |
-| **4** | `sg_epag/sg_epaguSecgen01.sql` (L129-L136) | `/* INTERRUPTOR-DU09 : punto 4 …` y su `*/` | editar la cuota |
-| **5** | `sg_epag/sg_epaguSecgen02.sql` (L104-L111) | `/* INTERRUPTOR-DU09 : punto 5 …` y su `*/` | enviar la cuota a visación |
+| **3** | `sg_epag/sg_epagiSecgen01.sql/.txt` | ✅ `if @afec_du9 <> 'S'` ejecutable; compilar en ASE | crear la cuota |
+| **4** | `sg_epag/sg_epaguSecgen01.sql/.txt` | ✅ `if @afec_du9 <> 'S'` ejecutable; compilar en ASE | editar la cuota |
+| **5** | `sg_epag/sg_epaguSecgen02.sql/.txt` | ✅ `if @afec_du9 <> 'S'` ejecutable; compilar en ASE | enviar la cuota a visación |
 
-Se borran **solo las dos líneas** del comentario (la de apertura con la marca y
-el `*/`). El bloque queda así, después de la guarda de centro de costo cerrado:
+El bloque activo, después de la guarda de centro de costo cerrado, es:
 
 ```sql
 if @afec_du9 <> 'S'
@@ -106,21 +107,16 @@ no hay que tocar nada más.
 
 **Punto 6 — `sg_ccto/sg_cctosSecgen05.sql`, el único fuera de `sg_epag`**
 
-Rama `@id_modprse = 2` (DU288). Invertir **los dos pares** rotulados
-`CRITERIO DU288`:
+Rama `@id_modprse = 2` (DU288). Los dos criterios ya usan `afec_du9`:
 
-| Par | Hoy (activo) | Después (activo) |
+| Par | Estado activo |
 | :-: | :--- | :--- |
-| 1 de 2, indicador (L66-L68) | `case when ccto.cod_tfinan in (21, 44) then 'S' else 'N' end as ind_financiamiento_du288,` | `case when isnull(ccto.afec_du9, 'N') = 'S' then 'S' else 'N' end as ind_financiamiento_du288,` |
-| 2 de 2, filtro (L89-L91) | `and ccto.cod_tfinan in (21, 44)` | `and ccto.afec_du9 = 'S'` |
+| Indicador | `case when isnull(ccto.afec_du9, 'N') = 'S' then 'S' else 'N' end as ind_financiamiento_du288` |
+| Filtro | `and ccto.afec_du9 = 'S'` |
 
-Borrar la línea vieja de cada par, no dejarla comentada, y quitar los rótulos
-`INTERRUPTOR-DU09`.
-
-**Los dos pares juntos, no uno.** Cambiar solo el filtro deja el indicador en
-`'N'` para filas que el PA sí devolvió, y la validación normativa del
-formulario las rechaza por financiamiento incompatible. Cambiar solo el
-indicador deja entrar centros que no son DU288.
+Los dos criterios están sincronizados en los archivos de entrega. Mantenerlos
+juntos si se modifica el contrato del PA; no reactivar el filtro antiguo por
+tipo de financiamiento.
 
 **El punto 6 afecta también a WF resolución.** `sg_cctosSecgen05` lista los
 centros de costo de los dos flujos y de él se deriva el privilegio
@@ -133,30 +129,26 @@ centros de costo de los dos flujos y de él se deriva el privilegio
 - un jefe de proyecto sin centros marcados pierde el menú de prestaciones por
   pagar.
 
-**Va junto con los puntos 3 a 5:** la misma columna vacía que bloquea crear una
-cuota deja sin privilegio al jefe de proyecto, así que encender uno sin el otro
-deja el flujo a medias.
+Los puntos 3 a 6 dependen de que los datos `afec_du9` estén regularizados. Sin
+esa marca, la validación activa puede rechazar pagos y excluir centros de costo.
 
 ---
 
 ## 4. Cuándo y en qué orden
 
-Todo en **una sola entrega**, en este orden:
+Las fuentes de aplicación ya tienen los interruptores encendidos. Para certificar, completar el despliegue y evidencia en este orden:
 
 | Paso | Qué | Dónde | Por qué en este orden |
 | :-: | :--- | :--- | :--- |
-| 1 | Correr `06_marcas_du09_centro_costo.sql` y cargar `afec_du9 = 'S'` caso a caso (R1) | Base de certificación | Sin la marca, los pasos 3 y 4 apagan el flujo |
-| 2 | Confirmar R2 y R3 con Finanzas | — | Sin eso el saldo bloquea con datos no validados o se omite sin aviso |
-| 3 | Editar los PA de los puntos 3 a 6, sincronizar sus `.txt`, compilarlos en Sybase | `cambios_pa/` → `secgen_db` | La guarda de `afec_du9` no depende de la aplicación: puede quedar activa antes |
-| 4 | Editar los puntos 1 y 2, retirar el aviso y sus textos | Frontend y backend | Van juntos (§3.1) |
-| 5 | Encender también el saldo de WF resolución (`checklist` §1.0), si Finanzas lo confirmó | Frontend y backend | Usa el mismo PA de saldo; activarlo después obliga a otra entrega |
-| 6 | Pruebas automáticas y verificación manual (§5) | — | — |
-| 7 | Comprobar que `grep -rn "INTERRUPTOR-DU09"` ya no devuelve nada salvo este documento | Repositorios | Es la señal de que no quedó ningún punto a medias |
+| 1 | Correr `06_marcas_du09_centro_costo.sql` y regularizar `afec_du9 = 'S'` caso a caso (R1) | Base de certificación | Evita exclusión/rechazo de centros autorizados |
+| 2 | Confirmar R2 y R3 con Finanzas | Finanzas / certificación | Saldo, permisos, ítem presupuestario y escenarios esperados |
+| 3 | Instalar DDL/catálogos y compilar los PA actuales, incluidos puntos 3 a 6 | `datos_base/`, `cambios_pa/` → Sybase | Fuentes `.sql/.txt` están listas; instalación real falta evidenciar |
+| 4 | Desplegar backend y frontend de la misma entrega | Aplicación | Conservar ambas constantes en `true` |
+| 5 | Verificar V1 a V10, pruebas técnicas y llamadas directas protegidas | Certificación | Guardar evidencia, errores y versiones instaladas |
 
-Los pasos 3 y 4 deben llegar a certificación **en la misma ventana**: un PA ya
-activo con la aplicación todavía en modo prueba no rompe nada (el PA rechaza y
-la pantalla muestra el error), pero la inversa sí deja la API sin la guarda de
-DU09.
+Aplicación y base deben quedar coordinadas en la misma ventana de despliegue.
+No volver a apagar el frontend/backend como método de corregir datos faltantes;
+regularizar la marca y corregir la causa antes del cierre.
 
 ---
 
@@ -191,24 +183,24 @@ no se detectaron en el paso 1):
 
 ---
 
-## 7. Lo que el interruptor **no** cubre: la aprobación DGDP
+## 7. Compuerta de aprobación DGDP y límites
 
-El punto 2 vive dentro de la compuerta de `submitInstallment`. El endpoint de la
-decisión DGDP —`POST …/payments/dgdp/provisions/{id}/installments/{n}/decision`—
-**no tiene compuerta normativa de ninguna clase**: valida el permiso
-(`assertCanResolveDgdpPayment`) y nada más. Lo normativo lo decide el navegador,
-con `blockingTags`, y el PA `sg_epaguSecgen03` solo exige la asignación DGDP
-(`cod_organi = 696`) y que la cuota esté en estado 2.
+> **Resuelto el 06-11-2026.** El endpoint de decisión tiene compuerta propia al
+> aprobar: `assertDgdpApprovalCompliance`, en
+> `service-provision-payment.controller.ts`. Revalida:
+>
+> - el respaldo adjunto;
+> - el tope de la cuota, salvo extensión;
+> - DU09 y el saldo del ítem;
+> - que el servicio de parentesco responda y que la relación no requiera constancia.
+>
+> No revalida el contrato vigente en SISPER, por la razón que sigue. Devolver
+> y rechazar no pasan por ella. Lo de abajo queda como antecedente.
 
-Es decir: encender los puntos 1 y 2 deja el **envío** protegido en dos capas y
-la **aprobación** protegida solo en la pantalla. Una llamada directa al endpoint
-de decisión aprueba una cuota sin saldo, sin tope y sin evidencia.
-
-Eso no lo arregla el interruptor: hace falta decidir **qué validaciones aplican
-al aprobar**, que no son las mismas que al enviar. El propio controlador deja
-dicho que un contrato no vigente en SISPER no debe bloquear el pago de cuotas ya
-devengadas —«por desfase administrativo de pago»—, así que copiar
-`assertInstallmentNormativeCompliance` tal cual bloquearía aprobaciones
-legítimas. Está anotado en el checklist de certificación, §3, en tres controles
-que piden exactamente eso (PAG-36, RES-CC-05/PAG-39 y RES-IN-07/PAG-32), y como
-paso 10 de su secuencia.
+La compuerta rechaza los datos de pertenencia DU09 faltantes o distintos de `S`;
+saldo sin ítem; saldo insuficiente; respaldo ausente; tope excedido (salvo
+extensión); parentesco no verificable o que requiere constancia. El servidor no
+revalida vigencia SISPER del contrato para no bloquear cuotas devengadas por
+desfase administrativo. Formación Continua/PAG-39, cierre del proyecto/PAG-36 y
+la comprobación positiva de constancia RES-IN-07 requieren evidencia adicional
+y se detallan en el checklist principal §3.

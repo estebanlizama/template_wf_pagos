@@ -25,7 +25,7 @@ go
    mes que sale vuelve a propuesto y el que entra queda comprometido.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/11/03
+   Actualizacion: ELA 2026/11/06
 */
 create procedure Analisis2.sg_epaguSecgen01
     @id_funprse int = null,
@@ -126,14 +126,11 @@ begin
     return
 end
 
-/* INTERRUPTOR-DU09 : punto 4. Ver INTERRUPTOR-DU09.md
-
 if @afec_du9 <> 'S'
 begin
     select 'Error: El centro de costo no pertenece al flujo DU09' as msg
     return
 end
-*/
 
 select @cod_estcuo = cod_estcuo
   from secgen_db.dbo.sg_epag
