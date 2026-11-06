@@ -2,6 +2,10 @@
 
 > Contraste 30-10-2026: checklist pendiente de evidencia por ambiente. Las cifras del catastro que siguen corresponden al informe fuente, no se recalcularon en esta revisión. Front/store y controller de pago mantienen sus constantes de bloqueo presupuestario en `false`; el detalle DGDP consume el mismo interruptor del store. `ATTENDANCE_TEST_RUT` está vacío en la fuente revisada. Comprobar el valor desplegado antes de certificar. Incluir `sg_epaguSecgen05`, acciones de catálogo 32/33/34, `sg_fumesSecgen03`, versionado completo y la corrección ASE 146 de `sg_epagsSecgen05` en la evidencia de pase (impacto 30).
 
+> **Registro histórico:** ese estado fue reemplazado el 06-11-2026. No usar los
+> valores `false` ni la lista de omisiones como estado actual; consultar el
+> checklist maestro fechado 06-11 y `INTERRUPTOR-DU09.md`.
+
 **Fecha:** 27-10-2026 (Actualizado)  
 **Módulo:** Pagos DU288 / Transversal — Despliegue, Configuración e Integridad de Procedimientos  
 **Fuentes originales:**  

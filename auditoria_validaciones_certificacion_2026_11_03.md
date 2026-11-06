@@ -1,5 +1,10 @@
 # Auditoría de validaciones y desarrollo — WF pagos y WF resolución
 
+> **Corte histórico: 03-11-2026.** Sus estados de banderas, login y compuertas
+> no describen el código actual. Para el estado al 06-11-2026 usar
+> `checklist_validaciones_y_paso_a_certificacion.md` y la adenda de
+> `../auditoria_funcional_du_2026_11_04/auditoria_cobertura_end_to_end_v1_0.md`.
+
 **Fecha:** 03-11-2026 · **Revisión 3:** misma fecha. La 2 integró los comentarios del usuario; la 3 suma el contexto de certificación, el DDL de pagos, el registro del login simulado y los TODO del PDS (§11).
 **Objetivo:** determinar, antes del pase a certificación, si las validaciones —el
 núcleo de la aplicación— se cumplen y están bien aplicadas en los dos flujos;

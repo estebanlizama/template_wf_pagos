@@ -12,23 +12,29 @@
 | Qué | Dónde | Estado |
 | :--- | :--- | :--- |
 | `INTERRUPTOR-DU09`, puntos 1 y 2 | Store de pagos y controller backend | ✅ `true`; saldo bloquea envío y aprobación en la UI, y el servidor protege envío y aprobación directa. |
-| `INTERRUPTOR-DU09`, puntos 3 a 6 | Tres PA de cuota y `sg_cctosSecgen05` | ✅ Guardas activas, criterio `afec_du9` activo y pares SQL/TXT idénticos. ⛔ Instalación/compilación Sybase no verificada. |
+| `INTERRUPTOR-DU09`, puntos 3 a 6 | Tres PA de cuota y `sg_cctosSecgen05` | ✅ Guardas activas, criterio `afec_du9` activo y pares SQL/TXT idénticos en la entrega. ⛔ Instalación de esta versión y permisos pendientes en certificación. |
 | Mensaje «Modo de prueba» de pagos | Componente y traducciones | ✅ Retirado |
 | Saldo en WF resolución | Formulario y repositorio backend | ✅ Bloquea envío y el servidor vuelve a consultar saldo. |
-| Condiciones de centro de costo en WF resolución | `validateRequestCostCenterConditions` | ✅ Revalida al enviar: centro vigente, responsable, financiamiento, formación continua, ítem y saldo. |
+| Fechas y contrato en WF resolución | Formulario y repositorio backend | ✅ El envío exige fechas válidas y ejecución no vencida. El servidor comprueba el contrato seleccionado y la cobertura del período contra SISPER. |
+| Ítem presupuestario en WF resolución | Perfil SISPER, formulario y compuerta de envío | ✅ Se usa el ítem de contrato informado o la equivalencia por estamento conocido (1 → 300, 2 → 303, 3 → 306). El servidor rechaza un ítem faltante o distinto del derivado. |
+| Datos y presentación de desarrollo | Backend y bandejas de resolución | ✅ Se retiraron los catálogos emulados sin referencias. Las fechas ausentes se muestran como «—». |
+| Condiciones de centro de costo en WF resolución | `validateRequestCostCenterConditions` | ✅ Revalida al enviar: centro vigente, responsable, marca DU288/DU09, financiamiento, tope de cuotas informado, formación continua, ítem y saldo. |
+| Aprobación por etapa en WF resolución | Acciones disponibles y compuerta del servidor | ✅ Aprobar, enviar a firma y archivar muestran el motivo de bloqueo. El servidor vuelve a consultar el centro y FIN21 antes de registrar la decisión y avanzar. |
 | Login de prueba y bypass de autenticación | Frontend, backend y variables expuestas al bundle | ✅ Retirados del código versionado; desarrollo usa Intranet. Los parches antiguos quedan archivados y no deben aplicarse (`login_simulado_desarrollo.md`). |
 | Compuerta de aprobación DGDP | `assertDgdpApprovalCompliance` | ✅ Revalida respaldo de cuota, tope (salvo extensión), DU09 (incluye dato faltante), saldo y verificación de parentesco. ⛔ La presencia de constancia requerida aún no se verifica positivamente. El contrato no se revalida por desfase administrativo de pago. |
 | Deuda institucional (§3) | `messages.js`, `config.js` | ✅ Se informa como **fuera del alcance** (decisión de ClickUp del 23-10-2026), no como «pendiente» |
 | Restos de desarrollo | selector de año de pagos (desde 2026), comentario `todo` en `resolution-document.controller.ts` | ✅ Retirados |
 
-**Verificación de esta actualización:** revisión estática de rutas de compuerta, banderas y pares SQL/TXT. No se ejecutaron pruebas automáticas ni compilación Sybase en esta revisión; los conteos históricos no son evidencia de esta entrega.
+**Verificación del 06-11-2026:** se revisaron las compuertas en fuente y se hicieron consultas de lectura en la base de desarrollo conectada. La asignación FIN21 del centro 9010.36, folio `90103601`, tiene una línea `30600` por $200.000. `valida_saldo_cc_cs` devolvió `Saldo = 200000` y `Estatus = 1` al evaluar $111.111 con el código `306` que envía la pantalla. Esto acredita el caso positivo del PA en desarrollo. Falta el recorrido de pantalla/API y la evidencia del ambiente de certificación.
+
+En la misma base se encontraron `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1`, los cuatro PA del interruptor y `sp_as01sSecgen01`. La presencia de los objetos solo acredita su existencia en desarrollo. Sigue pendiente contrastar el contenido y los permisos en certificación, y el paquete local aún carece de `00_ddl_pagos.sql`.
 
 **Pendientes comprobables antes de certificar:**
 
 1. **Datos:**
    - ejecutar el diagnóstico `06_marcas_du09_centro_costo.sql` y regularizar marcas `afec_du9 = 'S'` caso a caso (R1);
-   - confirmar con Finanzas la respuesta de `valida_saldo_cc_cs` y sus casos de borde (R2);
-   - revisar que las prestaciones de certificación tengan ítem presupuestario (R3).
+   - confirmar con Finanzas la versión y los casos de borde de `valida_saldo_cc_cs` (R2). El PA instalado en desarrollo devuelve `Mensaje`, `Estatus` y `Saldo` y difiere del paquete local que agrega remanente y una excepción para ciertos subítems de Fondos Propios;
+   - revisar que las prestaciones de certificación tengan ítem presupuestario (R3) y contrastar la equivalencia de estamento para los tres tipos de funcionario.
 2. **Despliegue:**
    - compilar los PA de los puntos 3 a 6 y los nuevos de esta entrega (`sg_fupssSecgen17`, `sg_fucosSecgen02`, `sg_fupssSecgen19`), además de `sp_as01sSecgen01`;
    - crear y revisar `00_ddl_pagos.sql` (aún no está en `datos_base/`);
@@ -62,7 +68,7 @@ Los interruptores de validación que antes se relajaban para pruebas ya están a
 
 | Capa | Ubicación | Estado verificado | Pendiente |
 | :--- | :--- | :--- | :--- |
-| Frontend | `components/services-provision/PdsDu288RequestForm.vue`, `enableCostCenterBalanceSubmitValidation` | ✅ `true`; saldo pendiente/no disponible bloquea envío | Verificar con Finanzas los casos con saldo, sin saldo y sobregiro autorizado en certificación |
+| Frontend | `components/services-provision/PdsDu288RequestForm.vue` | ✅ El saldo pendiente o no disponible bloquea el envío. Se retiraron los interruptores locales de saldo y la consulta informativa alterna. | Verificar con Finanzas los casos con saldo, sin saldo y sobregiro autorizado en certificación |
 | Backend | `validateRequestCostCenterConditions` en `service-provision-request-procedures.repository.ts` | ✅ Reconsulta saldo al enviar y rechaza respuesta no válida o no disponible | Verificar permisos y respuesta real de `valida_saldo_cc_cs` en Sybase |
 
 El servidor recibe la verificación de condiciones del centro de costo al enviar; guardar borrador no dispara esta compuerta. No volver a agregar la advertencia antigua de que la pantalla es la única protección.
@@ -87,6 +93,8 @@ El servidor recibe la verificación de condiciones del centro de costo al enviar
 > **El punto 1 gobierna dos pantallas.** Desde el 28-10-2026 la aprobación DGDP lee el mismo interruptor (`balanceBlocks: this.balanceBlocksSubmission` en `pages/services-provision/payments/review/_staffProvisionId/_installmentNumber.vue`). Antes lo tenía fijo en `true`, de modo que el saldo impedía aprobar aun con el interruptor apagado. Al conmutarlo vuelven a bloquear el **envío** del solicitante y la **aprobación** DGDP, y la verificación debe cubrir las dos.
 
 La compuerta del servidor para aprobar existe desde el 06-11-2026 y se describe en §3. Los puntos 1 y 2 deben permanecer sincronizados en futuras modificaciones.
+
+La pantalla de envío y la revisión DGDP bloquean si la marca DU09 falta o difiere de `S`. La API confirma la marca al enviar y al aprobar a partir de los procedimientos que proyectan `afec_du9`.
 
 ---
 
@@ -114,7 +122,7 @@ En el componente principal de solicitud (`components/services-provision/PdsDu288
 ### 2.1 Funcionario sin Contratos Vigentes (`contracts.length === 0`) — ✅ bloqueante
 - **Ubicación:** `PdsDu288RequestForm.vue`, `applyStaffFromSearch`.
 - **Comportamiento actual:** si la consulta no devuelve contratos, muestra `noCurrentContract` como error y retorna antes de crear/aplicar el contexto del funcionario.
-- **Acción para Certificación/Producción:** ninguna de activación. Verificar con perfil sin contrato en la batería funcional que no se pueda agregar ni enviar.
+- **Servidor al enviar:** el contrato seleccionado debe existir entre los contratos que devuelve `sg_fupssSecgen13` para ese funcionario. Verificar que un perfil sin contrato no se pueda agregar ni enviar, incluso por llamada directa.
 
 ### 2.2 Contrato que cubre la ejecución y ejecución no vencida — ✅ activa
 
@@ -135,13 +143,13 @@ Las dos juntas impiden el contrato vencido: si el contrato cubre una ejecución 
 | Al agregar o editar el funcionario | Cobertura | `validateWorkerActivityAndAmount` | «El contrato seleccionado no cubre los meses de ejecución …» (`CONTRATO_NO_CUBRE_MESES`) |
 | Al enviar, por cada fila del resumen | Las dos | `validateRequest`, `validateWorkerContractAndCoverage`, `validateStaffSummaryRowExecutionPeriod` | Mismos mensajes, por fila |
 | Al **reabrir** una solicitud guardada, contra el perfil vigente de SISPER | Cobertura | `buildCurrentProfileAlerts` | «El contrato guardado ya no cubre el período de ejecución del funcionario.» (`CONTRATO_NO_CUBRE_EJECUCION`, reactivada el 04-11-2026) |
-| En el servidor, al guardar | Cobertura | `validateStaffContractValidity` (desde `validateStaffWorkload`) | 422 «El contrato del funcionario no cubre el rango de ejecucion informado.» |
-| En el servidor, al **enviar** | Ejecución no vencida | `validateStaffExecutionNotExpired` (desde `validateNormativeRequestStaff`) | 422 `DU288_EXECUTION_EXPIRED`. El borrador sí se guarda, para poder corregir las fechas |
+| En el servidor, al guardar borrador | Cobertura de las fechas contractuales informadas | `validateStaffContractValidity` | 422 si las fechas informadas demuestran que el contrato no cubre el rango de ejecución. |
+| En el servidor, al **enviar** | Fechas válidas, ejecución no vencida y cobertura oficial | `validateNormativeRequestStaff` y `validateCurrentStaffContract` | 422 por fechas ausentes o inválidas, ejecución vencida, contrato no acreditado o falta de cobertura. El borrador permite corregir fechas de ejecución vencidas. |
 
-- **Detalle del servidor:** si no recibe las fechas del contrato, la cobertura cae a las de ejecución del propio funcionario y pasa. Eso deja pasar bien el contrato indefinido, pero también un contrato sin fechas informadas. No bloquea indebidamente.
+- **Detalle del servidor:** al enviar se exige fecha de inicio acreditada en SISPER. Un contrato sin término informado se admite como indefinido. Se comprueba que el contrato cubra las fechas de ejecución del funcionario con los datos devueltos por el procedimiento.
 - **WF pagos:** no se revalida, por decisión: un contrato no vigente en SISPER no bloquea cuotas ya devengadas, por desfase administrativo de pago (`assertInstallmentNormativeCompliance`). La matriz (§4.2) deja abierta si debe exigirse que cubra el período que se paga.
 - **Pruebas:** `service-provision-core-cross-checks.unit.ts`, bloque «ejecucion vencida».
-- **Acción para Certificación/Producción:** ninguna; quedó activa en todos los puntos.
+- **Acción para Certificación/Producción:** verificar el procedimiento instalado y probar envío con contrato indefinido, contrato vencido, contrato ajeno, fechas inválidas y ejecución que termina hoy.
 
 ---
 
@@ -149,13 +157,14 @@ Las dos juntas impiden el contrato vencido: si el contrato cubre una ejecución 
 
 Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Matriz de Pagos) que en la actualidad operan en modo diagnóstico o están a la espera de servicios externos:
 
-| ID Control | Validación Normativa | Fuente Oficial | Estado Actual en Código (04-11-2026) | Acción Pendiente |
+| ID Control | Validación Normativa | Fuente Oficial | Estado actual | Acción pendiente |
 | :--- | :--- | :--- | :--- | :--- |
 | **RES-IN-08 / PAG-37** | **Deuda Institucional** | Sin fuente integrada | ✅ **Fuera del alcance** (decisión de ClickUp del 23-10-2026, corregido el 06-11-2026): se informa como «Deuda institucional: fuera del alcance» y no se consulta. Que no se consulte no equivale a «sin deuda». | Ninguna. La versión anterior de este punto decía que sería obligatoria desde el 01-01-2027; la decisión de ClickUp lo descarta: no se activa sola. Encenderla exige una decisión nueva y una fuente de datos. |
 | **PAG-36** | **Cierre del Proyecto a la fecha de ejecución** | `fin21_db` / `sg_fume.val_ciecc` | ⛔ Se consulta en reportes; no se confirmó guarda transaccional al enviar/aprobar cuota. | Acordar regla y fecha de referencia con Finanzas/DGDP; luego implementar en PA transaccional de pago y verificar en Sybase. No inferir que valor nulo equivale a proyecto abierto. |
 | **RES-CC-05 / PAG-39** | **Prohibición de Formación Continua** | Ficha del Centro de Costo | ✅ WF resolución valida servidor al enviar. ⛔ No se encontró bloqueo equivalente en la compuerta del pago ni en los PA transaccionales de cuotas. | Confirmar la regla aplicable a cuotas ya autorizadas y agregar compuerta backend/PA de pago si corresponde; no se resuelve solo con el interruptor de saldo/DU09. |
 | **PAG-33 / PAG-34** | **Licencias Médicas y Permisos sin Goce** | Marcaje biométrico (`sp_as01sSecgen01`) | ✅ **Decidido el 04-11-2026:** se ve solo en WF pagos. La única fuente automática es el marcaje biométrico cuando el día viene con un tipo de licencia o permiso, y la sección de asistencia de la cuota ya lo muestra (ausencia con motivo y justificación). Lo demás lo ajusta DGDP con documento explícito (`mto_deslic`, `mto_dessg`). | **Ya no se crea** el PA de ausencias sobre `sisper_db..sp_as21` que pedía la versión anterior de este checklist. |
 | **RES-IN-07 / PAG-32** | **Constancia Jurada de Incompatibilidad / Parentesco** | Evidencia y relación funcionario/jefe de proyecto | ⚠️ La aprobación DGDP consulta parentesco en servidor; si no puede verificarlo o la relación exige constancia, rechaza. No se acreditó una validación positiva de que la constancia exigida esté efectivamente adjunta y sea la correspondiente. | Definir dónde se persiste/identifica la constancia y validar su presencia al aprobar; probar llamada directa al endpoint y los casos con/sin parentesco. No describir el control como «constancia verificada» hasta entonces. |
+| **PAG-38** | **Cobertura de la compensación comprometida por la realizada** | `sg_fuco` / `sg_fuc2` | ⚠️ El detalle DGDP documenta bloqueo al enviar. En la página del solicitante de pagos, el indicador de compensación faltante se genera como advertencia con `blocking: false`. No se encontró esa guarda en la ruta de envío revisada ni en `sg_epaguSecgen02`. | Confirmar la regla de bloqueo y, si corresponde, aplicar la guarda para los meses de la cuota en servidor. La fuente para esta regla es el contraste declarativo, de acuerdo con la decisión de asistencia. |
 | **RECESO** | **Receso Universitario No Acreditado** | Calendario institucional | ✅ Mismo criterio que licencias: no es una regla automática. DGDP rechaza el mes con su causal (estado de mes «rechazado», que no consume saldo) apoyado en documento explícito. | Ninguna, salvo que se decida automatizarlo. |
 
 ### 3.1 Compuertas de WF resolución y aprobación DGDP
@@ -165,6 +174,24 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 - En la pertenencia DU09 de aprobación, el backend ahora exige valor exactamente `S`; dato vacío también bloquea. No relajar esta condición por falta de proyección del PA.
 - El tope/contrato SISPER de una cuota devengada no se revalida en pago por desfase administrativo. Formación Continua y cierre del proyecto en el PA transaccional de pago quedan como controles a resolver antes de cerrar PAG-39/PAG-36.
 - La verificación de parentesco es fail-closed, pero el modelo de evidencia no demuestra todavía que una constancia requerida está adjunta y validada. Resolver esa brecha según la fila RES-IN-07/PAG-32.
+
+### 3.2 Hallazgos técnicos de auditoría que siguen abiertos
+
+- **D-02 · Mes de pago DGDP.** El cambio actual filtra por prestación y cuota. Falta limitarlo al estado editable y confirmar una fila modificada.
+- **D-05 · Equivalencia de ítems en conciliación.** El indicador `item_coincide` compara los códigos de SG y SISPER directamente. Aún puede mostrar una diferencia para la pareja válida `306` / `30600`.
+- **D-07 · Historial de prestaciones.** Las acciones del store devuelven una lista vacía cuando falla la consulta. Falta conservar y comunicar el error.
+- **D-12 · Entrega del resumen de pagos.** `sg_fupssSecgen18.sql` y su TXT siguen siendo distintos. Se debe resolver la copia canónica antes de usar el paquete.
+- **D-13 · Inhabilidades por contrato y asignación.** La pantalla puede impedir seleccionar un contrato habilitado si otro contrato consultado está inhabilitado. La API de resolución valida el seleccionado. En el envío de pagos, las asignaciones bloquean ante `N` explícito. Queda por alinear el tratamiento de un valor vacío y el alcance por contrato.
+- **D-03, D-08, D-09, D-10 y D-11.** Recontrastar editor/historial, persistencia parcial en SISPER, concurrencia, presentación de la extensión y descarga financiera. La auditoría original describe las diferencias y sus pruebas pendientes. **D-04** corrigió el criterio documental de meses del cupo anual. Queda la evidencia funcional de ese criterio en certificación.
+
+### 3.3 Condiciones del centro y datos sin informar en WF resolución
+
+- **Bloqueos al enviar.** RES-CC-01/02/03/04/06/07 requieren centro asociado y vigente, responsable vigente, financiamiento compatible, flujo configurado y saldo suficiente. La pertenencia a DU09 exige `afec_du9 = 'S'` en el catálogo institucional. El resultado de saldo se puede consultar por separado de la elegibilidad.
+- **Aprobación por etapa.** La pantalla consulta la elegibilidad vigente para habilitar las acciones de aprobación. Al ejecutar una aprobación el servidor repite la validación con el centro, ítem y monto persistidos, antes de cambiar la tarea, escribir el historial o avanzar la etapa. La consulta a FIN21 ocurre antes de abrir la transacción del workflow porque el PA crea tablas temporales. Devolver a corrección y rechazar conservan su ruta. Falta verificar el recorrido completo y sigue pendiente la historización del saldo por etapa.
+- **Decreto afecto y régimen de cuotas.** El decreto se muestra cuando está informado. La pertenencia se confirma con `afec_du9 = 'S'`. La pantalla y el servidor bloquean el envío si `con_topdu9` falta o tiene un valor distinto de `S` o `N`. La autorización de extensión es el dato `ext_cuotas` de la resolución.
+- **Formación Continua.** RES-CC-05 bloquea si la fuente identifica que aplica. RF-P01-013D exige mostrar «No determinada» y dejar trazabilidad si no se puede determinar. El código revisado solo bloquea ante `S`. Además, el PA del catálogo hoy devuelve `N` para cualquier decreto distinto de `1`, incluso nulo. Queda pendiente confirmar con Finanzas/DGDP si esa equivalencia está formalmente validada y cómo se resuelve un dato desconocido.
+- **Fuente del formulario DU288.** Al elegir el responsable o reabrir un borrador se consulta su catálogo DU288. La selección guardada se cruza por unidad y código para recuperar las marcas vigentes. En desarrollo, `sg_cctosSecgen05` devolvió para 9010.36 decreto `2` (No Afecto), DU09 `S`, con tope `S` y Formación Continua `N`. El PA de saldo devolvió $200.000 y `Estatus = 1` para $111.111. Falta confirmar el recorrido desde la pantalla.
+- **Centros excluidos del catálogo.** La ficha de una solicitud existente consulta las marcas del maestro FIN21 y la asociación con el responsable guardado aunque el catálogo DU288 excluya el centro. La vista distingue las condiciones conocidas de los datos sin informar. El envío y la aprobación siguen exigiendo vigencia y pertenencia al catálogo.
 
 ---
 
@@ -204,7 +231,7 @@ Antes de generar el commit/tag para la rama de Certificación:
 3. **Login institucional** (§1.3): confirmar que `LOGIN_URL` apunta a Intranet y que las variables de simulación/bypass no están configuradas en el ambiente.
 4. **Purgado de Datos Transaccionales de Prueba en Base de Datos:**
    - Si se requiere reiniciar el ambiente de pruebas antes de la entrega, ejecutar el script `limpia_datos_pds_desarrollo.sql` para limpiar cuotas de prueba en `sg_epag`, detalles en `sg_dpag` y restablecer meses en `sg_fume`.
-5. **Consulta de saldo directa (`store/enabled-cost-center.js`, L31):** `getCostCenterBalance` sigue sin uso hasta que `UsuaVrac` tenga `SELECT` sobre `wf_sol2`/`wf_tra1`; la pantalla usa `validateNormativeCostCenterBalance`. No bloquea la certificación.
+5. **Consulta de saldo directa:** se retiró la acción frontend `getCostCenterBalance` y su rama informativa. El formulario usa `validateNormativeCostCenterBalance` y el servidor vuelve a verificar el saldo al enviar.
 
 ---
 

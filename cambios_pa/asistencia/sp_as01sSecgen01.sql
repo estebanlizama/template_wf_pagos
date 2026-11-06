@@ -138,7 +138,7 @@ begin
     declare @motivo  varchar(60)
     declare @acum    varchar(255)
     declare @tipgru  tinyint
-    declare @codgru  tinyint
+    declare @codgru  varchar(2)
     declare @licmed  char(1)
     declare @singoce char(1)
 
@@ -175,7 +175,7 @@ begin
             if @tipgru = 2
                 select @licmed = 'S'
 
-            if @tipgru = 1 and @codgru = 2
+            if @tipgru = 1 and @codgru = '2'
                 select @singoce = 'S'
 
             fetch cur_ausen into @c_asist, @motivo, @tipgru, @codgru

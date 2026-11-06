@@ -313,6 +313,12 @@ Alimenta la validación de DGDP (Dependencia D3 / Sección H / PAG-33) para veri
 funcionario presenta licencias médicas, permisos sin goce o ausencias durante el periodo
 de ejecución de una cuota de prestación DU288.
 
+El cursor de ausencias lee `sisper_db..sp_as21.cod_agraus` como `varchar(2)`.
+Esto evita que una ausencia registrada interrumpa la consulta de asistencia completa.
+Al instalar el PA en Sybase, comprobar con una cuota que incluya una licencia y un
+marcaje en días distintos. El PA debe devolver ambos días, con `tie_licmed = 'S'`
+para la licencia y con las horas de entrada y salida para el día marcado.
+
 ### Entradas
 - `@rut char(9)`: RUT del funcionario a consultar.
 - `@cod_periodo smallint`: Código de período de evaluación en `sisper_db..sp_prdo`.

@@ -2,7 +2,13 @@
 
 Este directorio consolida el registro histórico y la evolución técnica de todas las decisiones, cambios de base de datos, procedimientos almacenados, backend y componentes de interfaz aplicados en el ecosistema de **SG-Solicitudes / Pagos DU288**.
 
-**Revisión vigente: 30-10-2026.** Comenzar por [impacto 30 — consolidado de vistas, datos, acciones y ClickUp](impacto_30_consolidado_vistas_datos_acciones_y_clickup.md). Distingue implementado en fuentes, script preparado, decisión pendiente y evidencia de ambiente. Las marcas «Aplicado» de los documentos históricos no certifican despliegue ni aprobación de todas sus propuestas.
+**Índice histórico hasta el 30-10-2026.** Para el estado actual al 06-11-2026,
+comenzar por el [checklist maestro de certificación](../checklist_validaciones_y_paso_a_certificacion.md),
+la [guía del interruptor DU09](../INTERRUPTOR-DU09.md) y la [adenda funcional
+resolución/pagos](../../auditoria_funcional_du_2026_11_04/auditoria_cobertura_end_to_end_v1_0.md).
+El [impacto 30 — consolidado](impacto_30_consolidado_vistas_datos_acciones_y_clickup.md)
+conserva el estado histórico de ClickUp. Las marcas «Aplicado» de documentos
+históricos no certifican despliegue ni aprobación de propuestas.
 
 Cambios recientes: [impacto 29 — resumen por cuota y meses compartidos](impacto_29_resumen_cuotas_dgdp_y_meses_compartidos.md), estados corregidos en 23, archivo real y frontera SISPER en 24/26, filtros actuales en 25. La lectura de ClickUp incluye los sprints PP01, PP02, PP03, certificación y las tareas de despliegue/saldo.
 
