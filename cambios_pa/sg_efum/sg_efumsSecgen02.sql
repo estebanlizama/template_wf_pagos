@@ -2,18 +2,17 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_efumsSecgen02')
-   drop procedure Analisis2.sg_efumsSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_efumsSecgen02')
+    drop procedure Analisis2.sg_efumsSecgen02
 go
 
 /* Procedimiento : sg_efumsSecgen02
 
    Entrada :
-   @cod_estfum          -> Codigo del estado del mes de ejecucion. (Obligatorio)
+   @cod_estfum           -> Codigo del estado del mes de ejecucion. (Obligatorio)
 
    Objetivo : Obtener un estado del mes de ejecucion por su codigo.
 
@@ -23,6 +22,7 @@ go
 create procedure Analisis2.sg_efumsSecgen02
     @cod_estfum tinyint = null
 as
+
 begin
     if @cod_estfum is null
     begin

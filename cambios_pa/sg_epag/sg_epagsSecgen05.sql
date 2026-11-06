@@ -12,17 +12,16 @@ go
 /* Procedimiento : sg_epagsSecgen05
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @cod_estcuo          -> Estado de cuota 4 o 8. (Obligatorio)
-   @installments_csv    -> Claves id_funprse-nro_cuota separadas por coma.
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @cod_estcuo           -> Estado de cuota 4 o 8. (Obligatorio)
+   @installments_csv     -> Claves id_funprse-nro_cuota separadas por coma.
                            (Obligatorio)
 
-   Objetivo : Entregar en una lectura las cuotas seleccionadas para el archivo
-   de Finanzas, con un registro por mes de pago/asignacion SISPER y centro de
-   costo. El neto aprobado de la cuota se distribuye segun el porcentaje CC.
+   Objetivo : Entregar en una lectura las cuotas seleccionadas para el archivo de Finanzas, con
+   un registro por mes de pago/asignacion SISPER y centro de costo. El neto aprobado de la cuota se distribuye segun el porcentaje CC.
 
    Creacion: ELA 2026/10/28
-   Actualizacion: 2026/10/29 - Agregados con columnas locales para ASE.
+   Actualizacion: 2026/10/29
 */
 create procedure Analisis2.sg_epagsSecgen05
     @rut_person char(9) = null,

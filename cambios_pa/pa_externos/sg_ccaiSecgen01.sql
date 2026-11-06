@@ -1,8 +1,7 @@
 use sisper_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
+if exists (select 1 from sysobjects a, sysusers b
             where a.uid = b.uid
               and a.type = 'P'
               and b.name = 'Analisis2'
@@ -13,18 +12,17 @@ go
 /* Procedimiento : sg_ccaiSecgen01
 
    Entrada :
-   @codigo_ficha      -> Codigo de ficha de la persona. (Obligatorio)
-   @codigo_asignac    -> Codigo de asignacion registrado en SISPER. (Obligatorio)
-   @unid_finan        -> Codigo de unidad financiera. (Opcional)
-   @financiamiento    -> Codigo de financiamiento. (Opcional)
-   @valor_asignado    -> Monto positivo asignado al centro de costo. (Opcional)
-   @cod_sitm          -> Codigo de item presupuestario. (Opcional)
-   @centro_costo      -> Codigo del centro de costo. (Opcional)
-   @f_inicio          -> Fecha de inicio, formato dd/mm/aaaa. (Opcional)
-   @f_termino         -> Fecha de termino, formato dd/mm/aaaa. (Opcional)
+   @codigo_ficha         -> Codigo de ficha de la persona. (Obligatorio)
+   @codigo_asignac       -> Codigo de asignacion registrado en SISPER. (Obligatorio)
+   @unid_finan           -> Codigo de unidad financiera. (Opcional)
+   @financiamiento       -> Codigo de financiamiento. (Opcional)
+   @valor_asignado       -> Monto positivo asignado al centro de costo. (Opcional)
+   @cod_sitm             -> Codigo de item presupuestario. (Opcional)
+   @centro_costo         -> Codigo del centro de costo. (Opcional)
+   @f_inicio             -> Fecha de inicio, formato dd/mm/aaaa. (Opcional)
+   @f_termino            -> Fecha de termino, formato dd/mm/aaaa. (Opcional)
 
-   Objetivo : Registrar el centro de costo asociado a una asignacion y
-   devolver su codigo.
+   Objetivo : Registrar el centro de costo asociado a una asignacion y devolver su codigo.
 
    Creacion: No registrada en el procedimiento original
    Actualizacion: Sin registro

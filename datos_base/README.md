@@ -1,142 +1,53 @@
-# Datos base — WF de Pagos DU288/DU09
+# Datos fijos para certificación de pagos DU288 / DU09
 
-Un archivo por tabla, en orden de ejecución.
+Esta carpeta contiene únicamente la carga de catálogos, acciones y permisos del
+flujo. Cada SQL tiene un TXT idéntico: se ejecuta una sola extensión.
 
-| # | Archivo | Tabla | Qué hace |
-| :-- | :--- | :--- | :--- |
-| 0 | `00_ddl_pagos.sql` | tablas nuevas + `sg_fume` / `sg_fum2` / `sg_fuc2` | **No existe en el repositorio (verificado el 03-11-2026): hay que escribirlo.** Debe crear `sg_efum`, `sg_epag`, `sg_dpag` y `sg_com1`, agregar las columnas que faltan y renombrar las que cambiaron. Contenido mínimo en `../auditoria_validaciones_certificacion_2026_11_03.md` §3.5 |
-| 1 | `01_sg_ecuo.sql` | `sg_ecuo` | Depura el catálogo del **encabezado** de pago (`sg_epag.cod_estcuo`) y deja los 7 vigentes |
-| 2 | `02_sg_efum.sql` | `sg_efum` | Carga el catálogo del **mes** de ejecución (`sg_fume.cod_estfum`) |
-| 3 | `03_migracion_sg_fume.sql` | `sg_fume` | Convierte las filas existentes de `cod_estcuo` a `cod_estfum` |
-| 4 | `04_roles_privilegios_pagos.sql` | `bd_per1` / `bd_prvg` | Configura el rol 33 de revisor DGDP y sus privilegios |
-| 5 | `05_sg_tacc_acciones_pago.sql` | `sg_tacc` | Registra los tipos de acción 32 (devolución), 33 (rechazo) y 34 (reapertura de una cuota aprobada) de cuotas DGDP para trazabilidad en `sg_hist` |
-| 6 | `06_marcas_du09_centro_costo.sql` | `sg_ccto` | **Diagnóstico**: lista los centros de costo sin `afec_du9`; el `update` va comentado y se carga caso a caso |
-| 7 | `07_sg_ecuo_descripciones.sql` | `sg_ecuo` | Actualiza solo las descripciones de los estados existentes; conserva códigos y transiciones |
+| Orden | Script | Tabla | Datos que deja disponibles |
+| :-- | :-- | :-- | :-- |
+| 1 | [01_sg_ecuo.sql](01_sg_ecuo.sql) | `secgen_db.dbo.sg_ecuo` | Estados de la cuota: 1, 2, 3, 4, 8, 10 y 11 |
+| 2 | [02_sg_efum.sql](02_sg_efum.sql) | `secgen_db.dbo.sg_efum` | Estados del mes: 1, 2, 3 y 4 |
+| 3 | [05_sg_tacc_acciones_pago.sql](05_sg_tacc_acciones_pago.sql) | `secgen_db.dbo.sg_tacc` | Acciones 32, 33 y 34 de DGDP, consumidas por el historial de cuota `sg_com1` |
+| 4 | [04_roles_privilegios_pagos.sql](04_roles_privilegios_pagos.sql) | `sistema_db.dbo.bd_per1`, `bd_prvg`, `bd_pepr` | Perfil 33, privilegios 92–99 y 12 asociaciones con los perfiles 6 y 33 |
 
-El DDL está en `00_ddl_pagos.sql`. Hasta el 26-10-2026 no existía como script: el modelo
-describía el destino y `orden_de_despliegue.md` lo narraba en pasos, pero nada lo aplicaba, así
-que ningún PA del flujo de pagos se podía instalar. El script es idempotente y **no borra nada**:
-los `DROP` siguen siendo el paso 9 del orden de despliegue.
+Ejecutar en una sesión sin transacción externa. Detener la carga si un script
+reporta error. Los catálogos 01 y 02 insertan filas faltantes y actualizan
+descripciones; los scripts 04 y 05 verifican los códigos antes de insertar. Los
+textos con tildes de 01 se conservan en UTF-8: configurar la codificación del
+cliente al cargar y verificar en la base las dos etiquetas con tildes.
 
----
+| Código | Estado de cuota (`sg_ecuo`) | Estado del mes (`sg_efum`) |
+| :-- | :-- | :-- |
+| 1 | Borrador | Propuesta |
+| 2 | En revisión DGDP | Comprometida |
+| 3 | Devuelta para corrección | Enviada a pago |
+| 4 | Aprobada por DGDP | Rechazada |
+| 8 | Enviada a remuneraciones | |
+| 10 | Rechazada por DGDP | |
+| 11 | Devuelta de Finanzas | |
 
-## Los dos catálogos
+Los estados 5, 6, 7, 9 y 12 de `sg_ecuo` se conservan si existen por historia;
+el listado de estados vigentes del flujo los excluye.
 
-### `sg_ecuo` — encabezado `sg_epag` · conserva sus códigos
+| Código | Acción de DGDP (`sg_tacc`) |
+| :-- | :-- |
+| 32 | Devolver la cuota a corrección |
+| 33 | Rechazar la cuota |
+| 34 | Devolver una cuota aprobada a visación |
 
-| cod | Estado | |
-| :---: | :--- | :--- |
-| 1 | Borrador | preparación de la cuota |
-| 2 | En revisión DGDP | revisión de la cuota |
-| 3 | Devuelta para corrección | corrección de la cuota |
-| 4 | Aprobada por DGDP | disponible para Finanzas |
-| 8 | Enviada a remuneraciones | envío registrado; no acredita pago efectivo |
-| 10 | Rechazada por DGDP | cuota rechazada |
-| 11 | Devuelta de Finanzas | DGDP puede revisar y editar |
+El perfil 6 recibe `create`, `read`, `history-read` y `document-read`. El perfil
+33 (`payment_validator`) recibe esos cuatro más `read-waiting`, `approve`,
+`adjust` y `submit`. El script no asigna el perfil a personas. La pertenencia
+dinámica del validador se resuelve en `sg_usacsSecgen01`.
 
-En una base existente, aplicar únicamente `07_sg_ecuo_descripciones.sql` para actualizar
-estos nombres. El frontend muestra `des_estcuo` mediante el backend; conserva los códigos
-para las acciones y colores del flujo.
+Antes de cargar, confirmar en certificación que estén las tablas de catálogo y
+permisos. Antes de instalar los [PA del inventario](../cambios_pa/inventario_certificacion.md),
+confirmar también `sg_epag`, `sg_dpag`, `sg_com1`, el correlativo `corr_fume` en
+`sg_fume`, `sg_fum2` y `sg_fuc2`, y el estado `cod_estfum` del esquema vigente.
+La adaptación de un esquema anterior y de sus filas históricas se gestiona por
+separado con el equipo de base de datos. Los PA compartidos con resolución y el
+backend que los invoca deben desplegarse en la misma ventana.
 
-### `sg_efum` — mes `sg_fume` · numeración propia contigua
-
-| cod | Estado | Tipo | Flujo que lo escribe |
-| :---: | :--- | :--- | :--- |
-| 1 | Propuesta | hecho | **solo resolución** · pagos ya no devuelve meses al 1 |
-| 2 | Comprometida | hecho | pagos |
-| 3 | Enviada a pago | hecho | pagos |
-| 4 | Rechazada | decisión | pagos |
-
-**Resolución escribe solo el 1 y lee los 4.** Todo el movimiento ocurre en pagos.
-
-> **Principio: el estado guarda hechos y decisiones, nunca resultados de validación.**
-> Las validaciones (licencia, sin goce, inhabilidad, contrato, saldo) son dinámicas y se
-> recalculan en cada transición, sin caché. Un estado tipo *Validada* sería cachear un resultado
-> que caduca: el mes quedaría marcado como aprobado y nadie lo volvería a evaluar.
->
-> Por eso `val_licmed`, `val_singoce`, `val_inabili`, `val_ciecc`, `fec_valida`, `rut_autori` y
-> `fec_autori` se conservan como **registro de auditoría** — lo que DGDP vio y decidió ese día —
-> y no como permiso vigente.
-
-Mientras DGDP visa, observa o aprueba la cuota, el mes **no cambia**: sigue en 2. El avance del
-trámite vive en `sg_epag`.
-
-> Los códigos de `sg_efum` **no** coinciden con los de `sg_ecuo`. Un reporte que muestre los dos
-> niveles juntos necesita traducir.
-
----
-
-## Los dos rechazos no son el mismo
-
-| Rechazo | Efecto sobre los meses |
-| :--- | :--- |
-| **Del encabezado** (`sg_epag` → 10) | Los meses quedan en **4 Rechazada** y conservan su fila en `sg_dpag`: la cuota mantiene lo que solicitó, el monto se descuenta del total y el cupo se consume |
-| **Del mes** (`sg_fume` → 4) | DGDP descarta un mes puntual mientras el resto de la cuota sigue. No vuelve a ofrecerse |
-
-Los dos llegan al mismo estado del mes, pero por caminos distintos: uno arrastra la cuota
-completa y el otro descarta un mes dentro de una cuota que sigue viva. Ninguno devuelve el mes
-al 1.
-
----
-
-## Cómo los lee el comparador
-
-```sql
-consume cupo, reversible     cod_estfum = 2
-consume cupo, irreversible   cod_estfum = 3
-no consume cupo              cod_estfum in (1, 4)
-disponible para una cuota    cod_estfum = 1
-                             AND ((ano_prop*100 + mes_prop) < @mes_actual
-                                  OR f_termino < getdate())
-```
-
-Reemplaza el matching por texto que usa hoy el backend
-(`includes('PAGO')`, `includes('REMUN')`), que clasifica mal *Disponible pago* y *Aprobada*.
-
----
-
-## Lo que no se persiste
-
-| Concepto | Cómo se obtiene |
-| :--- | :--- |
-| Mes **validado** | `fec_valida` + los `val_*`. Y de todos modos se recalcula en cada transición |
-| Mes disponible | `cod_estfum = 1` + la ejecución ya pasó — depende de la fecha actual |
-| Mes ejecutado | columnas `ano_ejec` / `mes_ejec` |
-| Pago parcial de la prestación | se deriva mirando sus cuotas (S0-004) |
-
----
-
-## Reglas de escritura
-
-- Los valores **2** y **3** los escribe únicamente el PA que mueve el encabezado.
-- El valor **4** lo escribe el PA de validación de DGDP mes a mes, y también el PA que rechaza
-  la cuota completa: arrastra todos sus meses.
-- **Nadie devuelve un mes al 1.** Pagos ya no escribe ese valor; es solo de resolución.
-- La aplicación **nunca** escribe `cod_estfum` directamente.
-
-Es lo que impide que el mes se desincronice de su cuota.
-
----
-
-## Cambios que arrastra en el código
-
-| Punto | Cambio |
-| :--- | :--- |
-| `sg_fumeuSecgen01:30` | `@cod_estcuo int = 1` → `@cod_estfum int = 1` — el valor no cambia |
-| `sg_fumeuSecgen01:68` | `cod_estcuo not in (1, 3)` → `cod_estfum not in (1, 4)` |
-| `sg_fumeuSecgen01:258` | columna `cod_estcuo` → `cod_estfum` en el `INSERT` |
-| `repository.ts:3561` | `cod_estcuo: 1` → `cod_estfum: 1` |
-| `service-provision-request.ts:162` | `@cod_estcuo` → `@cod_estfum` |
-| `sg_fupssSecgen17` | join a `sg_efum`, salida `des_estfum` |
-| `sg_fupssSecgen18` | reescritura completa: hoy cuenta meses y los reporta como cuotas |
-
----
-
-## Decidido el 26-10-2026 — el cupo se pierde
-
-Quedaba pendiente qué pasa con el cupo cuando DGDP descarta: **se pierde**. El rechazo bloquea
-los meses en `sg_efum = 4`, conserva las filas de `sg_dpag` y descuenta el monto del total
-decretado. La cuota consume su cupo igual que una aprobada.
-
-Con dos cuotas autorizadas, dos rechazos agotan la prestación. Es deliberado: el criterio
-anterior permitía reintentar sin límite sobre una resolución que autoriza dos.
+La [consulta de marcas DU09](../soporte_certificacion/06_marcas_du09_centro_costo.sql)
+es de solo lectura. Las marcas por centro de costo, los saldos presupuestarios,
+las solicitudes y los registros de personas se gestionan fuera de esta carga.

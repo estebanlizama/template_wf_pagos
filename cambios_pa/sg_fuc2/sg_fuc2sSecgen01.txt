@@ -2,27 +2,26 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fuc2sSecgen01')
-   drop procedure Analisis2.sg_fuc2sSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fuc2sSecgen01')
+    drop procedure Analisis2.sg_fuc2sSecgen01
 go
 
 /* Procedimiento : sg_fuc2sSecgen01
 
    Entrada :
-   @nro_solici          -> Numero de solicitud. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @id_funprse          -> Identificador del funcionario. (Opcional)
-   @corr_fume           -> Correlativo del mes de ejecucion. (Opcional)
+   @nro_solici           -> Numero de solicitud. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Identificador del funcionario. (Opcional)
+   @corr_fume            -> Correlativo del mes de ejecucion. (Opcional)
 
-   Objetivo : Listar las compensaciones realizadas por los funcionarios de una
-   solicitud, por mes de ejecucion.
+   Objetivo : Listar las compensaciones realizadas por los funcionarios de una solicitud, por
+   mes de ejecucion.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/26 (Se agrega fc.rut_regist a la proyeccion)
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fuc2sSecgen01
     @nro_solici int = null,

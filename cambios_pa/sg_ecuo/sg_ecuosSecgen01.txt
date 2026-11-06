@@ -2,29 +2,29 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_ecuosSecgen01')
-   drop procedure Analisis2.sg_ecuosSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_ecuosSecgen01')
+    drop procedure Analisis2.sg_ecuosSecgen01
 go
 
 /* Procedimiento : sg_ecuosSecgen01
 
-   Objetivo : Listar los estados del encabezado de la cuota de pago.
-   Catalogo de sg_epag.cod_estcuo, distinto del catalogo del mes (sg_efum).
+   Objetivo : Listar los estados vigentes del encabezado de la cuota de pago.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_ecuosSecgen01
 as
+
 begin
     select
         cod_estcuo,
         des_estcuo
     from secgen_db.dbo.sg_ecuo
+    where cod_estcuo in (1, 2, 3, 4, 8, 10, 11)
     order by cod_estcuo
 end
 go

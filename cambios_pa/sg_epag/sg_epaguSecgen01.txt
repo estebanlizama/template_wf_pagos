@@ -12,17 +12,16 @@ go
 /* Procedimiento : sg_epaguSecgen01
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Numero de cuota a modificar. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @meses_csv           -> Correlativos de sg_fume separados por punto y coma. (Obligatorio)
-   @ano_pago            -> Ano en que se paga la cuota. (Obligatorio)
-   @mes_pago            -> Mes en que se paga la cuota. (Obligatorio)
-   @id_evidenc          -> Identificador del respaldo adjunto. (Opcional)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Numero de cuota a modificar. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @meses_csv            -> Correlativos de sg_fume separados por punto y coma. (Obligatorio)
+   @ano_pago             -> Ano en que se paga la cuota. (Obligatorio)
+   @mes_pago             -> Mes en que se paga la cuota. (Obligatorio)
+   @id_evidenc           -> Identificador del respaldo adjunto. (Opcional)
 
-   Objetivo : Modificar el mes de pago, el respaldo y los meses que abarca
-   una cuota todavia editable. En una cuota observada ajusta cod_estfum: el
-   mes que sale vuelve a propuesto y el que entra queda comprometido.
+   Objetivo : Modificar el mes de pago, el respaldo y los meses que abarca una cuota todavia
+   editable. En una cuota observada ajusta cod_estfum: el mes que sale vuelve a propuesto y el que entra queda comprometido.
 
    Creacion: ELA 2026/10/01
    Actualizacion: ELA 2026/11/06

@@ -2,30 +2,28 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fumeuSecgen03')
-   drop procedure Analisis2.sg_fumeuSecgen03
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fumeuSecgen03')
+    drop procedure Analisis2.sg_fumeuSecgen03
 go
 
 /* Procedimiento : sg_fumeuSecgen03
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @corr_fume           -> Correlativo del mes. (Obligatorio)
-   @mto_deslic          -> Descuento por licencia medica. (Obligatorio)
-   @mto_dessg           -> Descuento por permiso sin goce. (Obligatorio)
-   @mto_apagar          -> Aporte a la cuota a pagar. (Opcional, si DGDP lo ajusta)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @corr_fume            -> Correlativo del mes. (Obligatorio)
+   @mto_deslic           -> Descuento por licencia medica. (Obligatorio)
+   @mto_dessg            -> Descuento por permiso sin goce. (Obligatorio)
+   @mto_apagar           -> Aporte a la cuota a pagar. (Opcional, si DGDP lo ajusta)
 
-   Objetivo : Registrar los descuentos de un mes y opcionalmente ajustar el aporte
-   a pagar durante la visacion DGDP, versionando en sg_fum2 si el monto cambia,
-   y dejando el valor neto resultante en mto_realpa.
+   Objetivo : Registrar los descuentos de un mes y opcionalmente ajustar el aporte a pagar
+   durante la visacion DGDP, versionando en sg_fum2 si el monto cambia, y dejando el valor neto resultante en mto_realpa.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: ELA 2026/10/16 - Soporte mto_apagar y versionamiento sg_fum2
+   Actualizacion: ELA 2026/10/16
 */
 create procedure Analisis2.sg_fumeuSecgen03
     @rut_person char(9) = null,

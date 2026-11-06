@@ -2,24 +2,23 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fuc2dSecgen02')
-   drop procedure Analisis2.sg_fuc2dSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fuc2dSecgen02')
+    drop procedure Analisis2.sg_fuc2dSecgen02
 go
 
 /* Procedimiento : sg_fuc2dSecgen02
 
    Entrada :
-   @id_funprse          -> Identificador del funcionario. (Obligatorio)
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @corr_fume           -> Correlativo del mes de ejecucion. (Obligatorio)
-   @fec_comrea          -> Fecha del tramo a eliminar. (Opcional)
+   @id_funprse           -> Identificador del funcionario. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @corr_fume            -> Correlativo del mes de ejecucion. (Obligatorio)
+   @fec_comrea           -> Fecha del tramo a eliminar. (Opcional)
 
-   Objetivo : Eliminar las compensaciones realizadas de un mes de ejecucion, o
-   un tramo puntual si se indica su fecha.
+   Objetivo : Eliminar las compensaciones realizadas de un mes de ejecucion, o un tramo puntual
+   si se indica su fecha.
 
    Creacion: ELA 2026/10/19
    Actualizacion: Sin registro

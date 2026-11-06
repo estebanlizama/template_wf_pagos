@@ -12,12 +12,12 @@ go
 /* Procedimiento : sg_epagsSecgen01
 
    Entrada :
-   @nro_solici          -> Numero de la solicitud de prestacion. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @id_funprse          -> Limita a un funcionario de la solicitud. (Opcional)
+   @nro_solici           -> Numero de la solicitud de prestacion. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Limita a un funcionario de la solicitud. (Opcional)
 
-   Objetivo : Listar las cuotas de pago de una resolucion con sus montos y
-   el periodo de ejecucion que cubren.
+   Objetivo : Listar las cuotas de pago de una resolucion con sus montos y el periodo de
+   ejecucion que cubren.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro

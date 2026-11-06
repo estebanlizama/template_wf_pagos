@@ -12,11 +12,11 @@ go
 /* Procedimiento : sg_com1sSecgen02
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @rut_person          -> RUT del jefe de proyecto. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @rut_person           -> RUT del jefe de proyecto. (Obligatorio)
 
-   Objetivo : Entregar el comentario vigente de cada cuota de una prestacion
-   para el jefe de proyecto responsable del centro de costo.
+   Objetivo : Entregar el comentario vigente de cada cuota de una prestacion para el jefe de
+   proyecto responsable del centro de costo.
 
    Creacion: ELA 2026/10/26
    Actualizacion: Sin registro

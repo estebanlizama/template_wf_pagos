@@ -2,22 +2,20 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_efumuSecgen01')
-   drop procedure Analisis2.sg_efumuSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_efumuSecgen01')
+    drop procedure Analisis2.sg_efumuSecgen01
 go
 
 /* Procedimiento : sg_efumuSecgen01
 
    Entrada :
-   @cod_estfum          -> Codigo del estado del mes de ejecucion. (Obligatorio)
-   @des_estfum          -> Nueva descripcion del estado. (Obligatorio)
+   @cod_estfum           -> Codigo del estado del mes de ejecucion. (Obligatorio)
+   @des_estfum           -> Nueva descripcion del estado. (Obligatorio)
 
    Objetivo : Actualizar la descripcion de un estado del mes de ejecucion.
-   El codigo no se modifica: es la llave que referencia sg_fume.
 
    Creacion: ELA 2026/09/25
    Actualizacion: Sin registro
@@ -61,7 +59,7 @@ end
 
 commit tran
 
-select 'Estado actualizado correctamente' as msg
+select 1 as status, 'OK' as code, 'Estado actualizado correctamente' as msg
 go
 
 grant execute on Analisis2.sg_efumuSecgen01 to UsuaVrac

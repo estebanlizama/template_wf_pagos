@@ -12,18 +12,16 @@ go
 /* Procedimiento : sg_epaguSecgen05
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota aprobada. (Obligatorio)
-   @observacion         -> Motivo para reabrir la cuota. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota aprobada. (Obligatorio)
+   @observacion          -> Motivo para reabrir la cuota. (Obligatorio)
 
-   Objetivo : Devolver una cuota aprobada (4) a visacion DGDP (2), para que el
-   equipo DGDP pueda revisar y ajustar nuevamente sus montos y antecedentes.
-   Los meses permanecen comprometidos (sg_fume.cod_estfum = 2). El motivo queda
-   en sg_com1 dentro de la misma transaccion.
+   Objetivo : Devolver una cuota aprobada (4) a visacion DGDP (2), para que el equipo DGDP
+   pueda revisar y ajustar nuevamente sus montos y antecedentes. Los meses permanecen comprometidos (sg_fume.cod_estfum = 2). El motivo queda en sg_com1 dentro de la misma transaccion.
 
    Creacion: ELA 2026/10/28
-   Actualizacion: 2026/10/29 - Validar accion 34 antes de modificar la cuota.
+   Actualizacion: 2026/10/29
 */
 create procedure Analisis2.sg_epaguSecgen05
     @rut_person char(9) = null,
@@ -76,7 +74,7 @@ end
 
 if not exists (select 1 from dbo.sg_tacc where id_tipacc = 34)
 begin
-    select 'Falta configurar la accion 34 de devolucion de cuota aprobada en sg_tacc.' as msg
+    select 'No esta configurada la accion de reapertura de la cuota.' as msg
     return
 end
 

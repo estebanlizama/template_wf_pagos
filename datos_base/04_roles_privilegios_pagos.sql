@@ -1,270 +1,100 @@
-/*
-===============================================================================
-WF PAGOS DU288/DU09 - ROL Y PRIVILEGIOS
-Motor  : Sybase ASE 12.5
-Modulo : SG / SISSOLIC
+/* Perfil 33 y privilegios de pagos SG/SISSOLIC. Reutiliza el perfil 6.
+   No asigna perfiles a personas; la pertenencia se resuelve por vigencia. */
+use sistema_db
+go
 
-Alcance:
-  - el perfil de validador de pagos;
-  - los privilegios del flujo de pago;
-  - la matriz perfil/privilegio.
+set nocount on
+go
 
-NO crea usuarios ni inscribe a nadie en bd_pri2. La pertenencia al rol se
-resuelve de forma DINAMICA:
+create table #privilegios_pago (codigo smallint not null, nombre varchar(100) not null)
+create table #perfil_privilegio_pago (perfil smallint not null, privilegio smallint not null)
 
-    Solicitante  -> perfil 6, otorgado por CONTRATO vigente (fuente existente
-                    de sg_usacsSecgen01). Que sea el jefe de proyecto de ESA
-                    prestacion se valida aparte, contra sg_prse.rut_jefpro.
+insert into #privilegios_pago values (92, 'provision-payment-create')
+insert into #privilegios_pago values (93, 'provision-payment-read')
+insert into #privilegios_pago values (94, 'provision-payment-read-waiting')
+insert into #privilegios_pago values (95, 'provision-payment-approve')
+insert into #privilegios_pago values (96, 'provision-payment-adjust')
+insert into #privilegios_pago values (97, 'provision-payment-submit')
+insert into #privilegios_pago values (98, 'provision-payment-history-read')
+insert into #privilegios_pago values (99, 'provision-payment-document-read')
 
-    Validador    -> perfil nuevo, otorgado por organizacion vigente en
-                    sp_orde.cod_organi = 696. Requiere contrato activo y
-                    RUT autenticado coincidente; no consulta sp_desg ni eta/apso.
-                    sg_usacsSecgen01 (ver seccion 5).
+insert into #perfil_privilegio_pago values (6, 92)
+insert into #perfil_privilegio_pago values (6, 93)
+insert into #perfil_privilegio_pago values (6, 98)
+insert into #perfil_privilegio_pago values (6, 99)
+insert into #perfil_privilegio_pago values (33, 92)
+insert into #perfil_privilegio_pago values (33, 93)
+insert into #perfil_privilegio_pago values (33, 94)
+insert into #perfil_privilegio_pago values (33, 95)
+insert into #perfil_privilegio_pago values (33, 96)
+insert into #perfil_privilegio_pago values (33, 97)
+insert into #perfil_privilegio_pago values (33, 98)
+insert into #perfil_privilegio_pago values (33, 99)
+go
 
-Sigue el patron de certificacion_03_09_2026/cargar_datos_base/
-01_roles_permisos_du288.sql. Los IDs se conservan sin recalcular.
+if not exists (select 1 from dbo.bd_per1
+                where cod_sistem = 'SG' and cod_modulo = 'SISSOLIC' and cod_perfil = 6)
+   or exists (
+        select 1 from dbo.bd_per1
+         where cod_sistem = 'SG' and cod_modulo = 'SISSOLIC'
+           and ((cod_perfil = 33 and (des_perfil is null or des_perfil <> 'payment_validator'))
+                or (des_perfil = 'payment_validator' and cod_perfil <> 33))
+   )
+   or exists (
+        select 1 from dbo.bd_prvg p, #privilegios_pago n
+         where p.cod_sistem = 'SG' and p.cod_modulo = 'SISSOLIC'
+           and ((p.cod_privil = n.codigo and (p.nom_privil is null or p.nom_privil <> n.nombre))
+                or (p.nom_privil = n.nombre and p.cod_privil <> n.codigo))
+   )
+begin
+    raiserror 20000 'Falta el perfil solicitante o hay codigos de pagos ocupados.'
+    return
+end
 
-REQUISITO: confirmar contra el ambiente que los codigos elegidos esten libres
-(ver seccion 0).
-===============================================================================
-*/
+begin tran
 
-USE sistema_db
-GO
+if not exists (select 1 from dbo.bd_per1
+                where cod_sistem = 'SG' and cod_modulo = 'SISSOLIC' and cod_perfil = 33)
+begin
+    insert into dbo.bd_per1 (cod_sistem, cod_modulo, cod_perfil, des_perfil, des_perext)
+    values ('SG', 'SISSOLIC', 33, 'payment_validator', 'Validador de pagos DGDP')
+    if @@error <> 0 goto error_carga
+end
 
-SET NOCOUNT ON
-GO
+insert into dbo.bd_prvg (cod_sistem, cod_modulo, cod_privil, des_privil, nom_privil)
+select 'SG', 'SISSOLIC', n.codigo, n.nombre, n.nombre
+  from #privilegios_pago n
+ where not exists (select 1 from dbo.bd_prvg p
+                    where p.cod_sistem = 'SG' and p.cod_modulo = 'SISSOLIC'
+                      and p.cod_privil = n.codigo)
+if @@error <> 0 goto error_carga
 
-/* -------------------------------------------------------------------------
-   0. VERIFICAR CODIGOS LIBRES -- correr ANTES del resto
-   ------------------------------------------------------------------------- */
+insert into dbo.bd_pepr (cod_sistem, cod_modulo, cod_perfil, cod_privil)
+select 'SG', 'SISSOLIC', m.perfil, m.privilegio
+  from #perfil_privilegio_pago m
+ where not exists (select 1 from dbo.bd_pepr p
+                    where p.cod_sistem = 'SG' and p.cod_modulo = 'SISSOLIC'
+                      and p.cod_perfil = m.perfil and p.cod_privil = m.privilegio)
+if @@error <> 0 goto error_carga
 
-SELECT 'perfiles ocupados' AS control, cod_perfil, des_perfil
-FROM sistema_db.dbo.bd_per1
-WHERE cod_sistem = 'SG' AND cod_modulo = 'SISSOLIC'
-  AND cod_perfil BETWEEN 30 AND 40
-ORDER BY cod_perfil
-GO
+commit tran
+select 'Perfiles y privilegios de pagos verificados.' as msg
+return
 
-SELECT 'privilegios ocupados' AS control, cod_privil, nom_privil
-FROM sistema_db.dbo.bd_prvg
-WHERE cod_sistem = 'SG' AND cod_modulo = 'SISSOLIC'
-  AND cod_privil BETWEEN 88 AND 105
-ORDER BY cod_privil
-GO
+error_carga:
+if @@trancount > 0 rollback tran
+raiserror 20000 'No fue posible completar la carga de datos base.'
+go
 
-/* -------------------------------------------------------------------------
-   1. PERFIL DEL VALIDADOR
-   -------------------------------------------------------------------------
-   Solo se agrega UNO. El solicitante de pago reutiliza el perfil 6, que ya
-   existe y se otorga por contrato vigente.
-   ------------------------------------------------------------------------- */
+drop table #perfil_privilegio_pago
+drop table #privilegios_pago
+go
 
-CREATE TABLE #roles_pago (
-    cod_perfil smallint     NOT NULL,
-    des_perfil varchar(60)  NOT NULL,
-    des_perext varchar(100) NOT NULL
-)
-
-INSERT INTO #roles_pago VALUES (33, 'payment_validator', 'Validador de pagos DGDP')
-GO
-
-UPDATE sistema_db.dbo.bd_per1
-SET des_perfil = r.des_perfil,
-    des_perext = r.des_perext
-FROM sistema_db.dbo.bd_per1 p, #roles_pago r
-WHERE p.cod_sistem = 'SG'
-  AND p.cod_modulo = 'SISSOLIC'
-  AND p.cod_perfil = r.cod_perfil
-GO
-
-INSERT INTO sistema_db.dbo.bd_per1
-    (cod_sistem, cod_modulo, cod_perfil, des_perfil, des_perext)
-SELECT 'SG', 'SISSOLIC', r.cod_perfil, r.des_perfil, r.des_perext
-FROM #roles_pago r
-WHERE NOT EXISTS (
-    SELECT 1 FROM sistema_db.dbo.bd_per1 p
-    WHERE p.cod_sistem = 'SG' AND p.cod_modulo = 'SISSOLIC'
-      AND p.cod_perfil = r.cod_perfil
-)
-GO
-
-/* -------------------------------------------------------------------------
-   2. PRIVILEGIOS DEL FLUJO DE PAGO
-   -------------------------------------------------------------------------
-   Derivados de las acciones del diagrama. Cada uno corresponde a un acto con
-   consecuencia distinta, para poder separarlos despues sin migrar datos.
-
-     92 create          armar, editar y enviar una cuota de pago
-                        (A1..A11 + ENVIAR). Incluye el envio, igual que
-                        provision-request-create en resolucion.
-
-     93 read            ver cuotas de pago y su detalle
-
-     94 read-waiting    ver la bandeja de cuotas esperando validacion (B1)
-
-     95 approve         resolver la revision: aprobar, devolver o rechazar (B7)
-
-     96 adjust          ajustar montos, aplicar descuentos y excluir meses
-                        (B5, B6). SEPARADO de approve a proposito: cambia lo
-                        que se va a pagar, no solo el resultado del tramite.
-
-     97 submit          registrar la peticion de pago en Finanzas (C1..C3).
-                        SEPARADO de approve: es el acto terminal que
-                        compromete el dinero y no tiene vuelta atras.
-
-     98 history-read    ver la bitacora de la cuota
-
-     99 document-read   ver el respaldo documental de la cuota. Propio, no
-                        reutiliza el de resolucion: quien ve un respaldo de
-                        pago no necesariamente debe ver la resolucion.
-   ------------------------------------------------------------------------- */
-
-CREATE TABLE #privilegios_pago (
-    cod_privil smallint     NOT NULL,
-    nom_privil varchar(100) NOT NULL
-)
-
-INSERT INTO #privilegios_pago VALUES (92, 'provision-payment-create')
-INSERT INTO #privilegios_pago VALUES (93, 'provision-payment-read')
-INSERT INTO #privilegios_pago VALUES (94, 'provision-payment-read-waiting')
-INSERT INTO #privilegios_pago VALUES (95, 'provision-payment-approve')
-INSERT INTO #privilegios_pago VALUES (96, 'provision-payment-adjust')
-INSERT INTO #privilegios_pago VALUES (97, 'provision-payment-submit')
-INSERT INTO #privilegios_pago VALUES (98, 'provision-payment-history-read')
-INSERT INTO #privilegios_pago VALUES (99, 'provision-payment-document-read')
-GO
-
-UPDATE sistema_db.dbo.bd_prvg
-SET des_privil = v.nom_privil,
-    nom_privil = v.nom_privil
-FROM sistema_db.dbo.bd_prvg p, #privilegios_pago v
-WHERE p.cod_sistem = 'SG'
-  AND p.cod_modulo = 'SISSOLIC'
-  AND p.cod_privil = v.cod_privil
-GO
-
-INSERT INTO sistema_db.dbo.bd_prvg
-    (cod_sistem, cod_modulo, cod_privil, des_privil, nom_privil)
-SELECT 'SG', 'SISSOLIC', v.cod_privil, v.nom_privil, v.nom_privil
-FROM #privilegios_pago v
-WHERE NOT EXISTS (
-    SELECT 1 FROM sistema_db.dbo.bd_prvg p
-    WHERE p.cod_sistem = 'SG' AND p.cod_modulo = 'SISSOLIC'
-      AND p.cod_privil = v.cod_privil
-)
-GO
-
-/* -------------------------------------------------------------------------
-   3. MATRIZ PERFIL / PRIVILEGIO
-   -------------------------------------------------------------------------
-   Perfil 6  Solicitante PDS -- arma y envia la cuota, ve la suya
-   Perfil 33 Validador DGDP  -- revisa, ajusta, resuelve y registra
-
-   El validador tiene acceso de gestion/CRUD sobre cuotas y acciones de
-   revision; la bandeja es adicional y se limita al estado 2.
-   El solicitante NO tiene 'read-waiting': la bandeja de revision no es suya.
-   ------------------------------------------------------------------------- */
-
-CREATE TABLE #perfil_privilegio_pago (
-    cod_perfil smallint NOT NULL,
-    cod_privil smallint NOT NULL
-)
-
-/* Solicitante de pago -- jefe de proyecto. */
-INSERT INTO #perfil_privilegio_pago VALUES (6, 92)   /* create */
-INSERT INTO #perfil_privilegio_pago VALUES (6, 93)   /* read */
-INSERT INTO #perfil_privilegio_pago VALUES (6, 98)   /* history-read */
-INSERT INTO #perfil_privilegio_pago VALUES (6, 99)   /* document-read */
-
-/* Validador de pagos DGDP. */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 92)  /* create/manage */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 93)  /* read */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 94)  /* read-waiting */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 95)  /* approve */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 96)  /* adjust */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 97)  /* submit */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 98)  /* history-read */
-INSERT INTO #perfil_privilegio_pago VALUES (33, 99)  /* document-read */
-GO
-
-INSERT INTO sistema_db.dbo.bd_pepr
-    (cod_sistem, cod_modulo, cod_perfil, cod_privil)
-SELECT 'SG', 'SISSOLIC', m.cod_perfil, m.cod_privil
-FROM #perfil_privilegio_pago m
-WHERE NOT EXISTS (
-    SELECT 1 FROM sistema_db.dbo.bd_pepr p
-    WHERE p.cod_sistem = 'SG' AND p.cod_modulo = 'SISSOLIC'
-      AND p.cod_perfil = m.cod_perfil
-      AND p.cod_privil = m.cod_privil
-)
-GO
-
-DROP TABLE #roles_pago
-DROP TABLE #privilegios_pago
-DROP TABLE #perfil_privilegio_pago
-GO
-
-/* -------------------------------------------------------------------------
-   4. LO QUE ESTE SCRIPT NO HACE
-   -------------------------------------------------------------------------
-   - NO inscribe a nadie en bd_pri2. Ninguna persona queda asignada al perfil
-     33 por este script.
-   - NO crea flujo ni etapas: el pago no usa el motor de transiciones.
-   - NO toca los privilegios de resolucion (65..91).
-   ------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------
-   5. LO QUE FALTA PARA QUE ALGUIEN TENGA EL PERFIL 33
-   -------------------------------------------------------------------------
-   El perfil se entrega dinamicamente desde sg_usacsSecgen01 al usuario que
-   tenga contrato activo y una asignacion vigente en sp_orde para la
-   organizacion 696, coincidente con su RUT de sesion:
-
-       insert into #perfiles (cod_perfil, origen)
-       select distinct 33, 'PAGO_DGDP'
-       from sisper_db.dbo.sp_orde orde
-       where orde.rut_person = @rut
-         and orde.cod_organi = 696
-         and orde.vigente = 'S'
-         and not exists (select 1 from #perfiles p where p.cod_perfil = 33)
-
-   Confirmar las asignaciones de organizacion 696:
-
-       SELECT orde.cod_organi, orde.cod_design, orde.rut_person,
-              orde.vigente, orde.ausente
-       FROM sisper_db.dbo.sp_orde orde
-       WHERE orde.cod_organi = 696 AND orde.vigente = 'S'
-
-   El criterio aprobado por el usuario es cod_organi 696 + RUT autenticado +
-   vigente S y contrato activo. cod_design 3408 es un dato de la fila, no la
-   llave de autorizacion.
-   ------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------
-   6. GUARD DEL BACKEND
-   -------------------------------------------------------------------------
-   El backend agrega guardas independientes para
-   'provision-payment-read-waiting' y 'provision-payment-approve'. Las rutas
-   DGDP no llaman assertIsDgdpRole (Director DGDP) ni exigen una etapa eta/apso.
-   ------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------
-   7. VERIFICACION
-   ------------------------------------------------------------------------- */
-
-SELECT per.cod_perfil, per.des_perfil, pri.cod_privil, pri.nom_privil
-FROM sistema_db.dbo.bd_per1 per
-INNER JOIN sistema_db.dbo.bd_pepr pep
-    ON pep.cod_sistem = per.cod_sistem
-   AND pep.cod_modulo = per.cod_modulo
-   AND pep.cod_perfil = per.cod_perfil
-INNER JOIN sistema_db.dbo.bd_prvg pri
-    ON pri.cod_sistem = pep.cod_sistem
-   AND pri.cod_modulo = pep.cod_modulo
-   AND pri.cod_privil = pep.cod_privil
-WHERE per.cod_sistem = 'SG'
-  AND per.cod_modulo = 'SISSOLIC'
-  AND pri.nom_privil LIKE 'provision-payment-%'
-ORDER BY per.cod_perfil, pri.cod_privil
-GO
+select p.cod_perfil, p.cod_privil, v.nom_privil
+  from dbo.bd_pepr p, dbo.bd_prvg v
+ where p.cod_sistem = 'SG' and p.cod_modulo = 'SISSOLIC'
+   and v.cod_sistem = p.cod_sistem and v.cod_modulo = p.cod_modulo
+   and v.cod_privil = p.cod_privil
+   and p.cod_perfil in (6, 33) and p.cod_privil between 92 and 99
+ order by p.cod_perfil, p.cod_privil
+go

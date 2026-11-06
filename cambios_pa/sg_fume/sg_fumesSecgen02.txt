@@ -2,24 +2,23 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fumesSecgen02')
-   drop procedure Analisis2.sg_fumesSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fumesSecgen02')
+    drop procedure Analisis2.sg_fumesSecgen02
 go
 
 /* Procedimiento : sg_fumesSecgen02
 
    Entrada :
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @nro_solici          -> Numero de solicitud. (Opcional si viene id_funprse)
-   @id_funprse          -> Identificador del funcionario. (Opcional)
-   @nro_cuota           -> Limita a los meses de una cuota. (Opcional)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @nro_solici           -> Numero de solicitud. (Opcional si viene id_funprse)
+   @id_funprse           -> Identificador del funcionario. (Opcional)
+   @nro_cuota            -> Limita a los meses de una cuota. (Opcional)
 
-   Objetivo : Listar los meses de ejecucion para el flujo de pagos, con su
-   estado, montos, descuentos y la cuota que los contiene.
+   Objetivo : Listar los meses de ejecucion para el flujo de pagos, con su estado, montos,
+   descuentos y la cuota que los contiene.
 
    Creacion: ELA 2026/10/02
    Actualizacion: Sin registro

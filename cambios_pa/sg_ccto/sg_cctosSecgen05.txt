@@ -1,23 +1,19 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
+if exists (select 1 from sysobjects a, sysusers b
             where a.uid = b.uid
               and a.type = 'P'
               and b.name = 'Analisis2'
               and a.name = 'sg_cctosSecgen05')
-begin
     drop procedure Analisis2.sg_cctosSecgen05
-end
 go
 
 /* Procedimiento : sg_cctosSecgen05
 
    Entrada :
-   @rut                 -> RUT del usuario. (Opcional)
-   @id_modprse          -> Modalidad de prestacion de servicios: 1 legacy,
-                           2 DU288. (Opcional)
+   @rut                  -> RUT del usuario. (Obligatorio)
+   @id_modprse           -> Modalidad de la prestacion: 1 anterior, 2 DU288. (Opcional)
 
    Objetivo : Obtener lista de centros de costo disponibles para un rut
 
@@ -25,9 +21,10 @@ go
    Actualizacion: ELA 2026/11/06
 */
 create procedure Analisis2.sg_cctosSecgen05
-    @rut        char(9)  = NULL,
+    @rut        char(9)  = null,
     @id_modprse tinyint  = 1
 as
+
 begin
     if @rut is null
     begin

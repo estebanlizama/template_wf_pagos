@@ -289,7 +289,7 @@ El interruptor temporal que permitía enviar cuotas a visación sin verificar sa
 2. **Backend:** `service-provision-payment.controller.ts` → `BALANCE_BLOCKS_SUBMISSION = true`.
 3. **PAs de Pago (`sg_epag`):** Descomentar la guarda de `afec_du9` en `sg_epagiSecgen01.sql`, `sg_epaguSecgen01.sql` y `sg_epaguSecgen02.sql`. Sincronizar sus respectivos archivos `.txt`.
 4. **PA de Centros de Costo (`sg_ccto`):** En `sg_cctosSecgen05.sql` invertir los pares rotulados `CRITERIO DU288` para filtrar y clasificar por `ccto.afec_du9 = 'S'` en lugar de `cod_tfinan in (21, 44)`.
-5. **Requisito previo en BDD:** Correr `datos_base/06_marcas_du09_centro_costo.sql` para asegurar que los centros de costo con resoluciones vigentes tengan poblado `afec_du9 = 'S'` en `fin21_db..es_ccto` antes de activar las guardas.
+5. **Requisito previo en BDD:** Correr `soporte_certificacion/06_marcas_du09_centro_costo.sql` para asegurar que los centros de costo con resoluciones vigentes tengan poblado `afec_du9 = 'S'` en `fin21_db..es_ccto` antes de activar las guardas.
 
 ### 16.2 Transición de Validaciones Relajadas a Bloqueo
 En el formulario solicitante (`PdsDu288RequestForm.vue`):
@@ -298,7 +298,7 @@ En el formulario solicitante (`PdsDu288RequestForm.vue`):
 
 ### 16.3 Despliegue de Asistencia y Catálogos Base
 - **Asistencia:** Compilar y desplegar en Sybase el procedimiento `sp_as01sSecgen01.sql` (`cambios_pa/asistencia/`) y verificar que `ATTENDANCE_TEST_RUT` permanezca en `''` en el repositorio del backend.
-- **Catálogos:** Aplicar en Sybase los scripts `01_sg_ecuo.sql`, `02_sg_efum.sql`, `03_migracion_sg_fume.sql` y `05_sg_tacc_acciones_pago.sql`.
+- **Catálogos:** Aplicar en Sybase la [carga de datos fijos](datos_base/README.md) una vez confirmado el esquema.
 
 ### 16.4 Higiene de Código y Entorno
 - **Componentes Huérfanos:** Eliminar del repositorio la carpeta fuera de proyecto `d:\trabajo_ufro_2026\components`.

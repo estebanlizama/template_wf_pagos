@@ -1,8 +1,7 @@
 use sisper_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
+if exists (select 1 from sysobjects a, sysusers b
             where a.uid = b.uid
               and a.type = 'P'
               and b.name = 'Analisis2'
@@ -13,24 +12,22 @@ go
 /* Procedimiento : sg_resliSecgen01
 
    Entrada :
-   @num_resoluc       -> Numero de la resolucion. (Obligatorio)
-   @cod_tipo_rs       -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
-   @codigo_unid       -> Unidad SISPER fija 05000000. (Obligatorio)
-   @ano               -> Ano de la resolucion. (Obligatorio)
-   @fec_resol         -> Fecha de la resolucion en formato dd/mm/aaaa. (Obligatorio)
-   @motivo            -> Motivo de la resolucion, maximo 100 caracteres. (Obligatorio)
-   @vistos            -> Texto de vistos, maximo 100 caracteres. (Opcional)
-   @considera         -> Texto de considerandos, maximo 100 caracteres. (Opcional)
-   @resuelvo          -> Texto resolutivo, maximo 100 caracteres. (Opcional)
-   @num_doc_ant       -> Numero del documento antecedente. (Opcional)
+   @num_resoluc          -> Numero de la resolucion. (Obligatorio)
+   @cod_tipo_rs          -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
+   @codigo_unid          -> Unidad SISPER fija 05000000. (Obligatorio)
+   @ano                  -> Ano de la resolucion. (Obligatorio)
+   @fec_resol            -> Fecha de la resolucion en formato dd/mm/aaaa. (Obligatorio)
+   @motivo               -> Motivo de la resolucion, maximo 100 caracteres. (Obligatorio)
+   @vistos               -> Texto de vistos, maximo 100 caracteres. (Opcional)
+   @considera            -> Texto de considerandos, maximo 100 caracteres. (Opcional)
+   @resuelvo             -> Texto resolutivo, maximo 100 caracteres. (Opcional)
+   @num_doc_ant          -> Numero del documento antecedente. (Opcional)
 
-   Objetivo : Registrar en SISPER la resolucion que respalda las asignaciones
-   de prestaciones de servicios del workflow. Si ya esta registrada responde
-   exito con el codigo EXISTS. No abre transaccion: la gobierna el llamador.
+   Objetivo : Registrar en SISPER la resolucion que respalda las asignaciones de prestaciones
+   de servicios del workflow. Si ya esta registrada responde exito con el codigo EXISTS. No abre transaccion: la gobierna el llamador.
 
    Creacion: No registrada en el procedimiento original
-   Actualizacion: ELA 2026/10/30 - Sin transaccion propia y reconoce la
-   resolucion ya registrada.
+   Actualizacion: ELA 2026/10/30
 */
 create procedure Analisis2.sg_resliSecgen01
     @num_resoluc varchar(10),

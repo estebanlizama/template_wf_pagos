@@ -220,7 +220,7 @@ sincronizaron sus `.txt`.
 
 > [!WARNING]
 > **Antes de compilarlos en una base**, la marca tiene que estar poblada.
-> `datos_base/06_marcas_du09_centro_costo.sql` lista los centros con
+> `soporte_certificacion/06_marcas_du09_centro_costo.sql` lista los centros con
 > prestaciones DU288 archivadas y cuenta cuántos quedarían sin poder pagar.
 > Compilarlos con la columna vacía rechaza **toda** cuota. Los requisitos
 > completos están en `INTERRUPTOR-DU09.md` §2.

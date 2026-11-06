@@ -2,7 +2,6 @@
 
 | Archivo | Qué es |
 | :--- | :--- |
-| `00_ddl_prerequisitos.sql` | Estructuras que los PA necesitan para compilar |
 | `sg_fumeuSecgen01.sql` | **Escritura.** Sincroniza los meses de ejecución |
 | `sg_fupssSecgen17.sql` | **Lectura.** Historial de prestaciones previas del funcionario |
 
@@ -17,7 +16,7 @@
 | `#cuotas_salen (nro_cuota)` | `#meses_salen (corr_fume)` |
 | `max(nro_cuota)` | `max(corr_fume)` |
 | columnas del `INSERT` | `corr_fume`, `cod_estfum` |
-| guarda de `sg_fuc2` por `nro_cuota` | **reemplazada** por la guarda contra `sg_dpag` |
+| guarda de `sg_fuc2` por `nro_cuota` | por `corr_fume`; se conserva la guarda de compensación registrada |
 | guarda de `sg_fum2` por `nro_cuota` | por `corr_fume` |
 
 ### La guarda cambia de significado
@@ -65,19 +64,11 @@ correlativo 4. El modal mostraba enero después de mayo.
 
 ## Orden de ejecución
 
-```
-1. 00_ddl_prerequisitos.sql
-2. datos_base/02_sg_efum.sql            cargar los 4 estados
-3. datos_base/03_migracion_sg_fume.sql  poblar cod_estfum
-4. NOT NULL + PK nueva + FK             (ver §8 del DDL — ventana de mantención)
-5. DROP de las columnas viejas
-6. sg_fumeuSecgen01.sql  +  sg_fupssSecgen17.sql
-7. Desplegar backend                    ← MISMA ventana que el paso 6
-8. datos_base/01_sg_ecuo.sql            depurar el catálogo de cuota
-```
-
-**Los pasos 6 y 7 son un solo despliegue.** El backend ya espera `@cod_estfum`; si se separan,
-guardar una solicitud falla con *"Procedure expects parameter"*.
+Confirmar que certificación tenga el esquema vigente de meses y completar, por separado,
+la conversión de filas históricas si parte del esquema anterior. Aplicar el [catálogo
+de meses](../../datos_base/README.md). Instalar `sg_fumeuSecgen01.sql` y
+`sg_fupssSecgen17.sql` en la misma ventana que el backend: el backend ya envía
+`@cod_estfum`.
 
 ---
 
@@ -94,12 +85,8 @@ eso hace que el cupo del numeral 6 cuente cero.
 
 ---
 
-## Decisiones que el DDL deja anotadas
+## Estructura observada en desarrollo
 
-1. **`sg_fuc2`** se repunta a `corr_fume` ahora. En el WF la compensación efectiva quedó definida
-   **por cuota** (Q-G04), así que a futuro debería colgar del encabezado de pago. Se hace así
-   porque la tabla está vacía y la migración posterior no arrastra datos.
-2. **Los montos pasan a `decimal(19,2)`.** Estaban en `int` mientras `sg_fups.mto_total` es
-   decimal, y el descuento por licencia es proporcional a los días trabajados.
-3. **La FK del puente estaba mal formada** en el modelo: traía dos FK de una columna hacia una PK
-   de dos. El DDL la corrige como una sola FK compuesta.
+- `sg_fuc2` se relaciona con el mes por `(id_funprse, corr_fume)`.
+- Los montos de `sg_fume` y `sg_fum2` son `int`.
+- `sg_dpag` tiene claves foráneas compuestas hacia la cuota y hacia el mes.

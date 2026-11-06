@@ -48,7 +48,10 @@ de esquema, y **tiene que salir antes o con** lo de pagos — no después.
 Pagos **no modifica** un PA de resolución para sus propias necesidades: crea uno nuevo.
 El detalle de cada cambio está en [QUE_CAMBIO_Y_POR_QUE.md](QUE_CAMBIO_Y_POR_QUE.md).
 
-Formato según `reglas_bdd_pa/reglas_estandarizacion_pa.md`.
+Formato según [las reglas de PA](../../reglas_bdd_pa/reglas_estandarizacion_pa.md).
+La lista de instalación y el consumidor de cada archivo están en el
+[inventario de certificación](inventario_certificacion.md). Cargar primero los
+[datos fijos](../datos_base/README.md).
 
 ## sg_fupssSecgen18 — listado de prestaciones pagables
 

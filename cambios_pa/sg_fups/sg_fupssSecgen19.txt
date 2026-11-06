@@ -12,10 +12,10 @@ go
 /* Procedimiento : sg_fupssSecgen19
 
    Entrada :
-   @rut_person          -> RUT del funcionario. (Obligatorio)
+   @rut_person           -> RUT del funcionario. (Obligatorio)
 
-   Objetivo : Listar los rechazos y devoluciones de las prestaciones de un
-   funcionario, de la solicitud, de sus meses y de sus cuotas, solo para informar.
+   Objetivo : Listar los rechazos y devoluciones de las prestaciones de un funcionario, de la
+   solicitud, de sus meses y de sus cuotas, solo para informar.
 
    Creacion: ELA 2026/11/04
    Actualizacion: Sin registro

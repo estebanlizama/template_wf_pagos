@@ -2,27 +2,26 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fuc2sSecgen02')
-   drop procedure Analisis2.sg_fuc2sSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fuc2sSecgen02')
+    drop procedure Analisis2.sg_fuc2sSecgen02
 go
 
 /* Procedimiento : sg_fuc2sSecgen02
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. Nulo entrega toda la
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota. Nulo entrega toda la
                            prestacion. (Opcional)
 
-   Objetivo : Listar las compensaciones realizadas por el funcionario, para la
-   revision DGDP: las de una cuota, o las de toda la prestacion.
+   Objetivo : Listar las compensaciones realizadas por el funcionario, para la revision DGDP:
+   las de una cuota, o las de toda la prestacion.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: ELA 2026/11/02 (El correlativo de cuota pasa a ser opcional)
+   Actualizacion: ELA 2026/11/02
 */
 create procedure Analisis2.sg_fuc2sSecgen02
     @rut_person char(9) = null,

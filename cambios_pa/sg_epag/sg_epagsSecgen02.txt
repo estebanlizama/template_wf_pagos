@@ -12,12 +12,12 @@ go
 /* Procedimiento : sg_epagsSecgen02
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Numero de cuota. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Numero de cuota. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
-   Objetivo : Obtener los meses de ejecucion que abarca una cuota, con el monto
-   y los descuentos de cada uno.
+   Objetivo : Obtener los meses de ejecucion que abarca una cuota, con el monto y los
+   descuentos de cada uno.
 
    Creacion: ELA 2026/10/02
    Actualizacion: Sin registro

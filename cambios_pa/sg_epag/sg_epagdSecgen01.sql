@@ -12,12 +12,12 @@ go
 /* Procedimiento : sg_epagdSecgen01
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Numero de cuota a eliminar. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Numero de cuota a eliminar. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
-   Objetivo : Eliminar una cuota en borrador y liberar los meses de
-   ejecucion que tenia asociados.
+   Objetivo : Eliminar una cuota en borrador y liberar los meses de ejecucion que tenia
+   asociados.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro

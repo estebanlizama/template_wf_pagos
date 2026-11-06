@@ -2,27 +2,21 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fumesSecgen03')
-   drop procedure Analisis2.sg_fumesSecgen03
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fumesSecgen03')
+    drop procedure Analisis2.sg_fumesSecgen03
 go
 
 /* Procedimiento : sg_fumesSecgen03
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Cuota en revision, para validar el acceso. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Cuota en revision, para validar el acceso. (Obligatorio)
 
-   Objetivo : Listar TODOS los meses de ejecucion de la prestacion para la
-   revision DGDP, con su estado, montos, descuentos y la cuota que los
-   contiene. Existe aparte de sg_fumesSecgen02 porque aquel acota por el
-   responsable del centro de costo y el revisor no lo es. La revision
-   necesita los meses que quedaron fuera de la cuota para saber si lo no
-   pagado tiene donde ir.
+   Objetivo : Listar todos los meses de ejecucion de una prestacion y sus antecedentes para pagos.
 
    Creacion: ELA 2026/10/15
    Actualizacion: Sin registro

@@ -2,19 +2,18 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_efumiSecgen01')
-   drop procedure Analisis2.sg_efumiSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_efumiSecgen01')
+    drop procedure Analisis2.sg_efumiSecgen01
 go
 
 /* Procedimiento : sg_efumiSecgen01
 
    Entrada :
-   @cod_estfum          -> Codigo del estado del mes de ejecucion. (Obligatorio)
-   @des_estfum          -> Descripcion del estado. (Obligatorio)
+   @cod_estfum           -> Codigo del estado del mes de ejecucion. (Obligatorio)
+   @des_estfum           -> Descripcion del estado. (Obligatorio)
 
    Objetivo : Insertar un estado del mes de ejecucion en el catalogo.
 
@@ -59,7 +58,7 @@ end
 
 commit tran
 
-select 'Estado registrado correctamente' as msg
+select 1 as status, 'OK' as code, 'Estado registrado correctamente' as msg
 go
 
 grant execute on Analisis2.sg_efumiSecgen01 to UsuaVrac

@@ -2,24 +2,21 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fumeuSecgen01')
-   drop procedure Analisis2.sg_fumeuSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fumeuSecgen01')
+    drop procedure Analisis2.sg_fumeuSecgen01
 go
 
 /* Procedimiento : sg_fumeuSecgen01
 
    Entrada :
-   @id_funprse          -> Identificador de la funcion/prestacion. (Opcional)
-   @meses_csv           -> Lista de meses propuestos, formato ano:mes separados por punto y coma. (Opcional)
-   @cod_estfum          -> Estado inicial del mes; usa 1 (Propuesta) si no se envia. (Opcional)
+   @id_funprse           -> Identificador de la funcion/prestacion. (Obligatorio)
+   @meses_csv            -> Lista de meses propuestos, formato ano:mes separados por punto y coma. (Opcional)
+   @cod_estfum           -> Estado inicial del mes; usa 1 (Propuesta) si no se envia. (Opcional)
 
-   Objetivo : Sincronizar de forma diferencial los meses de ejecucion de un funcionario: borra
-   solo los que salen de la propuesta, inserta solo los que entran y conserva el corr_fume de
-   los que siguen.
+   Objetivo : Sincronizar los meses de ejecucion y conservar el correlativo de los meses que permanecen.
 
    Creacion: ELA 2026/08/24
    Actualizacion: ELA 2026/09/25
@@ -29,6 +26,7 @@ create procedure Analisis2.sg_fumeuSecgen01
     @meses_csv varchar(500) = null,
     @cod_estfum int = 1
 as
+
 begin
     set nocount on
 
@@ -273,7 +271,7 @@ begin
     end
 
     commit tran
-    select 'Meses de ejecucion actualizados correctamente' as msg
+    select 1 as status, 'OK' as code, 'Meses de ejecucion actualizados correctamente' as msg
 end
 go
 

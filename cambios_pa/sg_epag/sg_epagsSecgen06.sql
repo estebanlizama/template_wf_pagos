@@ -12,16 +12,15 @@ go
 /* Procedimiento : sg_epagsSecgen06
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @installments_csv    -> Claves id_funprse-nro_cuota separadas por coma.
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @installments_csv     -> Claves id_funprse-nro_cuota separadas por coma.
                            (Obligatorio)
 
-   Objetivo : Entregar, por cada cuota, si su asignacion ya existe en
-   sisper_db..ss_asds y los datos con que ingresarla. Una fila por cuota,
-   este o no registrada.
+   Objetivo : Entregar, por cada cuota, si su asignacion ya existe en sisper_db..ss_asds y los
+   datos con que ingresarla. Una fila por cuota, este o no registrada.
 
    Creacion: ELA 2026/11/02
-   Actualizacion: 2026/11/02 - Indicadores de integridad de asignacion y CC.
+   Actualizacion: 2026/11/02
 */
 create procedure Analisis2.sg_epagsSecgen06
     @rut_person char(9) = null,

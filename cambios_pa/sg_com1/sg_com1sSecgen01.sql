@@ -12,12 +12,12 @@ go
 /* Procedimiento : sg_com1sSecgen01
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. (Opcional)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota. (Opcional)
 
-   Objetivo : Consultar los comentarios registrados sobre una cuota, o sobre
-   todas las cuotas de la prestacion si no se indica una.
+   Objetivo : Consultar los comentarios registrados sobre una cuota, o sobre todas las cuotas
+   de la prestacion si no se indica una.
 
    Creacion: ELA 2026/10/26
    Actualizacion: Sin registro

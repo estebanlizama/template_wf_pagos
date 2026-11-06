@@ -27,7 +27,7 @@
 
 **Verificación del 06-11-2026:** se revisaron las compuertas en fuente y se hicieron consultas de lectura en la base de desarrollo conectada. La asignación FIN21 del centro 9010.36, folio `90103601`, tiene una línea `30600` por $200.000. `valida_saldo_cc_cs` devolvió `Saldo = 200000` y `Estatus = 1` al evaluar $111.111 con el código `306` que envía la pantalla. Esto acredita el caso positivo del PA en desarrollo. Falta el recorrido de pantalla/API y la evidencia del ambiente de certificación.
 
-En la misma base se encontraron `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1`, los cuatro PA del interruptor y `sp_as01sSecgen01`. La presencia de los objetos solo acredita su existencia en desarrollo. Sigue pendiente contrastar el contenido y los permisos en certificación, y el paquete local aún carece de `00_ddl_pagos.sql`.
+En la misma base se encontraron `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1`, los cuatro PA del interruptor y `sp_as01sSecgen01`. La presencia de los objetos solo acredita su existencia en desarrollo. Sigue pendiente contrastar la estructura, los procedimientos y los permisos en certificación. La entrega de datos fijos no incluye DDL ni migraciones históricas.
 
 **Pendientes comprobables antes de certificar:**
 
@@ -37,7 +37,7 @@ En la misma base se encontraron `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1`, los 
    - revisar que las prestaciones de certificación tengan ítem presupuestario (R3) y contrastar la equivalencia de estamento para los tres tipos de funcionario.
 2. **Despliegue:**
    - compilar los PA de los puntos 3 a 6 y los nuevos de esta entrega (`sg_fupssSecgen17`, `sg_fucosSecgen02`, `sg_fupssSecgen19`), además de `sp_as01sSecgen01`;
-   - crear y revisar `00_ddl_pagos.sql` (aún no está en `datos_base/`);
+   - confirmar con el equipo de base de datos que certificación tenga el esquema vigente de pagos;
    - usar la versión de `sg_usacsSecgen01` de `cambios_pa`.
 3. **Verificación:** V1 a V10 de `INTERRUPTOR-DU09.md` §5 en certificación.
 4. **Login institucional:** verificar credenciales/API Intranet y `LOGIN_URL`; no aplicar los parches históricos del simulador (§1.3).
@@ -180,7 +180,7 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 - **D-02 · Mes de pago DGDP.** El cambio actual filtra por prestación y cuota. Falta limitarlo al estado editable y confirmar una fila modificada.
 - **D-05 · Equivalencia de ítems en conciliación.** El indicador `item_coincide` compara los códigos de SG y SISPER directamente. Aún puede mostrar una diferencia para la pareja válida `306` / `30600`.
 - **D-07 · Historial de prestaciones.** Las acciones del store devuelven una lista vacía cuando falla la consulta. Falta conservar y comunicar el error.
-- **D-12 · Entrega del resumen de pagos.** `sg_fupssSecgen18.sql` y su TXT siguen siendo distintos. Se debe resolver la copia canónica antes de usar el paquete.
+- **D-12 · Entrega del resumen de pagos. Corregido en archivos.** El SQL y TXT de `sg_fupssSecgen18` son idénticos e incluyen el resumen de cuotas devueltas. Falta confirmar la versión instalada en certificación.
 - **D-13 · Inhabilidades por contrato y asignación.** La pantalla puede impedir seleccionar un contrato habilitado si otro contrato consultado está inhabilitado. La API de resolución valida el seleccionado. En el envío de pagos, las asignaciones bloquean ante `N` explícito. Queda por alinear el tratamiento de un valor vacío y el alcance por contrato.
 - **D-03, D-08, D-09, D-10 y D-11.** Recontrastar editor/historial, persistencia parcial en SISPER, concurrencia, presentación de la extensión y descarga financiera. La auditoría original describe las diferencias y sus pruebas pendientes. **D-04** corrigió el criterio documental de meses del cupo anual. Queda la evidencia funcional de ese criterio en certificación.
 
@@ -199,20 +199,13 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 
 ### 4.1 Script Previo Obligatorio (Diagnóstico de Afectación DU09)
 Antes de compilar/desplegar los puntos 3, 4, 5 y 6 del `INTERRUPTOR-DU09`:
-- **Ejecutar:** `nuevo_workflow_fase_2/template_wf_pagos/datos_base/06_marcas_du09_centro_costo.sql`.
+- **Ejecutar:** `nuevo_workflow_fase_2/template_wf_pagos/soporte_certificacion/06_marcas_du09_centro_costo.sql`.
 - **Propósito:** Lista los centros de costo con resoluciones DU288 vigentes que tienen `afec_du9` nulo o vacío en `fin21_db..es_ccto`.
 - **Paso correctivo:** Coordinar con Administración de Datos / Finanzas la actualización de `afec_du9 = 'S'` en dichos centros de costo. **No activar las guardas en los PAs si este paso no está subsanado**, de lo contrario los usuarios no podrán listar centros de costo ni gestionar cuotas.
 
 ### 4.2 Despliegue de Datos Base y Catálogos en Sybase ASE
-Ejecutar los scripts de `nuevo_workflow_fase_2/template_wf_pagos/datos_base/` en el orden estricto indicado:
-1. `01_sg_ecuo.sql`: Depura el catálogo de estados del **encabezado de cuota** (`sg_ecuo`), dejando activos únicamente los 7 estados oficiales (1, 2, 3, 4, 8, 10, 11) y eliminando los códigos en desuso (5, 6, 7, 9, 12). *(Corregido el 03-11-2026: la versión anterior de este punto decía que conservaba el 6 y eliminaba el 11, al revés del script.)* En certificación corresponde este script, porque nunca tuvo datos de pago; va **al final** del orden (ver `auditoria_validaciones_certificacion_2026_11_03.md` §3.4).
-2. `02_sg_efum.sql`: Carga el catálogo de estados del **mes de ejecución** (`sg_efum`) con sus 4 estados: `1 Propuesta`, `2 Comprometida`, `3 Enviada a pago`, `4 Rechazada`.
-3. `03_migracion_sg_fume.sql`: Convierte las filas existentes en `sg_fume` de la columna obsoleta `cod_estcuo` a `cod_estfum`.
-4. `04_roles_privilegios_pagos.sql`: Configura el Rol 33 (`PAGO_DGDP`) y asocia los privilegios correspondientes en `sistema_db..bd_per1` y `sistema_db..bd_prvg`.
-5. `05_sg_tacc_acciones_pago.sql`: Registra en `sg_tacc` las acciones 32 (devolución), 33 (rechazo) y 34 (reapertura de una cuota aprobada) de cuotas para el historial de `sg_hist`.
-6. `07_sg_ecuo_descripciones.sql`: actualiza solo las descripciones de `sg_ecuo`. Es la alternativa a `01` para una base que **ya tiene** cuotas de pago (desarrollo); en certificación no se usa.
 
-> **DDL (03-11-2026):** el `00_ddl_pagos.sql` que describe el README de `datos_base` **no existe** y hay que escribirlo antes de todo lo anterior: crea `sg_efum`, `sg_epag`, `sg_dpag`, `sg_com1` y las columnas nuevas de `sg_fume`, `sg_fum2` y `sg_fuc2`. Lo que debe cubrir está en `auditoria_validaciones_certificacion_2026_11_03.md` §3.5. Además, `sg_fumeuSecgen01` y `sg_fupssSecgen17` se instalan desde `cambios_pa/sg_fume/` en la misma ventana que el backend, reemplazando la versión que certificación tiene del paquete de resolución.
+Confirmar primero el esquema vigente. Aplicar la [carga de datos fijos](datos_base/README.md) en el orden indicado: estados de cuota y mes, acciones DGDP, perfil y privilegios. La estructura y las filas históricas se gestionan por separado. Instalar los procedimientos del [inventario](cambios_pa/inventario_certificacion.md) con sus permisos; los compartidos con resolución deben salir en la misma ventana que el backend.
 
 ### 4.3 Procedimiento de Reloj Control Diario
 - **Archivo:** `nuevo_workflow_fase_2/template_wf_pagos/cambios_pa/asistencia/sp_as01sSecgen01.sql`.
@@ -251,7 +244,7 @@ flowchart TD
 
 1. Diagnosticar `afec_du9` con `06_marcas_du09_centro_costo.sql`; regularizar cada centro autorizado antes de desplegar las guardas.
 2. Confirmar con Finanzas el PA de saldo, permisos de `UsuaVrac`, escenarios con/sin saldo y existencia de ítem presupuestario.
-3. Crear/revisar `00_ddl_pagos.sql`; luego aplicar datos base/catálogos según `datos_base/orden_de_despliegue.md`.
+3. Confirmar el esquema con el equipo de base de datos y aplicar [los datos fijos de pagos](datos_base/README.md).
 4. Compilar los PA DU09 ya activos en las fuentes y sincronizados con `.txt`; no descomentar ni reconmutar nada. Instalar también los PA indicados para esta entrega y `sp_as01sSecgen01`.
 5. Desplegar el backend y frontend que ya llevan las compuertas encendidas. Mantener ambos interruptores de saldo en `true`.
 6. Revisar que la compilación de acceso use el flujo real de Intranet; verificar que los nombres de variables de simulación/bypass no existan en `.env` de certificación/producción.

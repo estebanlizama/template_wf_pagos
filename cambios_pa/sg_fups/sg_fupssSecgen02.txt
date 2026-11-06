@@ -2,21 +2,20 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fupssSecgen02')
-   drop procedure Analisis2.sg_fupssSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fupssSecgen02')
+    drop procedure Analisis2.sg_fupssSecgen02
 go
 
 /* Procedimiento : sg_fupssSecgen02
 
    Entrada :
-   @nro_solici          -> Numero de solicitud. (Opcional)
+   @nro_solici           -> Numero de solicitud. (Obligatorio)
 
-   Objetivo : Listar los funcionarios asociados a una solicitud, incluyendo la
-              informacion requerida por DU288 y el flujo legado.
+   Objetivo : Listar los funcionarios asociados a una solicitud, incluyendo la informacion
+   requerida por DU288 y el flujo legado.
 
    Creacion: ELA 2026/08/24
    Actualizacion: ELA 2026/09/28
@@ -24,10 +23,11 @@ go
 create procedure Analisis2.sg_fupssSecgen02
     @nro_solici int = null
 as
+
 begin
     if @nro_solici is null
     begin
-        select 'Falta campo Id Funcionarios prestacion de servicios' as msg
+        select 'Falta el numero de solicitud' as msg
         return
     end
 

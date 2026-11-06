@@ -2,28 +2,25 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fumeuSecgen02')
-   drop procedure Analisis2.sg_fumeuSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fumeuSecgen02')
+    drop procedure Analisis2.sg_fumeuSecgen02
 go
 
 /* Procedimiento : sg_fumeuSecgen02
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @corr_fume           -> Correlativo del mes. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @mto_apagar          -> Monto que la cuota pagara por este mes. (Obligatorio)
-   @ano_ejec            -> Ano de ejecucion real. (Opcional)
-   @mes_ejec            -> Mes de ejecucion real. (Opcional)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @corr_fume            -> Correlativo del mes. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @mto_apagar           -> Monto que la cuota pagara por este mes. (Obligatorio)
+   @ano_ejec             -> Ano de ejecucion real. (Opcional)
+   @mes_ejec             -> Mes de ejecucion real. (Opcional)
 
-   Objetivo : Fijar el monto a pagar y la ejecucion real de un mes de
-   ejecucion. Valida que la cuota no quede sobre el tope y versiona en
-   sg_fum2 el estado anterior del mes cuando el monto cambia. Deja en
-   fec_valida la fecha de esta gestion.
+   Objetivo : Fijar el monto a pagar y la ejecucion real de un mes de ejecucion. Valida que la
+   cuota no quede sobre el tope y versiona en sg_fum2 el estado anterior del mes cuando el monto cambia. Deja en fec_valida la fecha de esta gestion.
 
    Creacion: ELA 2026/10/01
    Actualizacion: Sin registro
@@ -36,6 +33,7 @@ create procedure Analisis2.sg_fumeuSecgen02
     @ano_ejec smallint = null,
     @mes_ejec tinyint = null
 as
+
 if @id_funprse is null or @id_funprse <= 0
 begin
     select 'Falta la prestacion. Se aborta el procedimiento' msg return

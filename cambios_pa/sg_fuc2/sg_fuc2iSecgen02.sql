@@ -2,31 +2,28 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fuc2iSecgen02')
-   drop procedure Analisis2.sg_fuc2iSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fuc2iSecgen02')
+    drop procedure Analisis2.sg_fuc2iSecgen02
 go
 
 /* Procedimiento : sg_fuc2iSecgen02
 
    Entrada :
-   @id_funprse          -> Identificador del funcionario. (Obligatorio)
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @corr_fume           -> Correlativo del mes de ejecucion. (Obligatorio)
-   @fec_comrea          -> Fecha de la compensacion realizada. (Obligatorio)
-   @hora_ini            -> Hora de inicio del tramo. (Obligatorio)
-   @hora_ter            -> Hora de termino del tramo. (Obligatorio)
+   @id_funprse           -> Identificador del funcionario. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @corr_fume            -> Correlativo del mes de ejecucion. (Obligatorio)
+   @fec_comrea           -> Fecha de la compensacion realizada. (Obligatorio)
+   @hora_ini             -> Hora de inicio del tramo. (Obligatorio)
+   @hora_ter             -> Hora de termino del tramo. (Obligatorio)
 
-   Objetivo : Registrar un tramo de compensacion efectivamente realizado por un
-   funcionario, sin superar el total comprometido para ese mes. Una hora ya
-   compensada ocupa su horario aunque su cuota haya sido rechazada: el rechazo
-   no deshace el trabajo realizado.
+   Objetivo : Registrar un tramo de compensacion efectivamente realizado por un funcionario,
+   sin superar el total comprometido para ese mes. Una hora ya compensada ocupa su horario aunque su cuota haya sido rechazada: el rechazo no deshace el trabajo realizado.
 
    Creacion: ELA 2026/10/19
-   Actualizacion: ELA 2026/10/26 (El rechazo ya no libera el horario)
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fuc2iSecgen02
     @id_funprse int = null,

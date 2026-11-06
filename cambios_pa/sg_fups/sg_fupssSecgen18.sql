@@ -1,40 +1,34 @@
 use secgen_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
+if exists (select 1 from sysobjects a, sysusers b
             where a.uid = b.uid
               and a.type = 'P'
               and b.name = 'Analisis2'
               and a.name = 'sg_fupssSecgen18')
-begin
     drop procedure Analisis2.sg_fupssSecgen18
-end
 go
 
 /* Procedimiento : sg_fupssSecgen18
 
    Entrada :
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Opcional)
-   @ano                 -> Ano de ejecucion. Usa el actual si no se envia; 0 trae todos
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Opcional)
+   @ano                  -> Ano de ejecucion. Usa el actual si no se envia; 0 trae todos
                            los anos, para comprobar permisos sin acotar por fecha. (Opcional)
-   @mes                 -> Mes de corte, trae las cuotas hasta @ano/@mes inclusive. (Opcional)
+   @mes                  -> Mes de corte, trae las cuotas hasta @ano/@mes inclusive. (Opcional)
 
-   Objetivo : Prestaciones DU288 con resolucion archivada de los centros de
-   costo que la persona tiene a cargo, con el avance de pago de sus cuotas
-   y los datos presupuestarios del centro de costo. Una cuota rechazada
-   consume su cupo y su monto queda descontado del saldo. mto_rechazado
-   entrega ese monto aparte, para que la bandeja pueda decir por que el
-   saldo bajo sin que haya habido un pago.
+   Objetivo : Listar las prestaciones archivadas de los centros a cargo del responsable vigente
+   y resumir sus cuotas de pago.
 
    Creacion: ELA 2026/09/22
    Actualizacion: ELA 2026/10/27
 */
 create procedure Analisis2.sg_fupssSecgen18
-    @rut_person char(9)  = NULL,
-    @ano        smallint = NULL,
-    @mes        tinyint  = NULL
+    @rut_person char(9)  = null,
+    @ano        smallint = null,
+    @mes        tinyint  = null
 as
+
 if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
 begin
     select 'Falta el rut del jefe de proyecto. Se aborta el procedimiento' msg return

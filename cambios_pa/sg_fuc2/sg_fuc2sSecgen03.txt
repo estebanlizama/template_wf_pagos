@@ -2,35 +2,25 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fuc2sSecgen03')
-   drop procedure Analisis2.sg_fuc2sSecgen03
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fuc2sSecgen03')
+    drop procedure Analisis2.sg_fuc2sSecgen03
 go
 
 /* Procedimiento : sg_fuc2sSecgen03
 
    Entrada :
-   @id_funprse          -> Prestacion que se esta compensando. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @fec_desde           -> Fecha inicial del rango a listar. (Obligatorio)
-   @fec_hasta           -> Fecha final del rango a listar. (Obligatorio)
+   @id_funprse           -> Prestacion que se esta compensando. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @fec_desde            -> Fecha inicial del rango a listar. (Obligatorio)
+   @fec_hasta            -> Fecha final del rango a listar. (Obligatorio)
 
-   Objetivo : Listar las compensaciones ya realizadas por el MISMO funcionario
-   en OTRAS prestaciones, dentro del rango indicado, de modo de poder
-   impedir que las mismas horas justifiquen dos prestaciones distintas.
-
-   Incluye los tramos de cuotas rechazadas: la hora quedo trabajada igual,
-   y el mes rechazado no vuelve a estar disponible.
-
-   Aplica los mismos filtros que el control de escritura de sg_fuc2iSecgen01
-   y sg_fuc2iSecgen02. Si filtraran distinto, se mostrarian menos dias
-   ocupados de los que el registro rechaza, que es peor que no mostrarlos.
+   Objetivo : Consultar los tramos realizados por el mismo funcionario para verificar cruces de horario.
 
    Creacion: ELA 2026/10/21
-   Actualizacion: ELA 2026/10/26 (El rechazo ya no libera el horario)
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fuc2sSecgen03
     @id_funprse int = null,

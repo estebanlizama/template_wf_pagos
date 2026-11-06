@@ -12,13 +12,12 @@ go
 /* Procedimiento : sg_epaguSecgen02
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Numero de cuota a enviar. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Numero de cuota a enviar. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
 
-   Objetivo : Enviar una cuota a visacion de DGDP, comprometiendo sus meses
-   de ejecucion en la misma transaccion. El monto usado incluye los meses
-   rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
+   Objetivo : Enviar una cuota a visacion de DGDP, comprometiendo sus meses de ejecucion en la
+   misma transaccion. El monto usado incluye los meses rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
 
    Creacion: ELA 2026/10/01
    Actualizacion: ELA 2026/11/06

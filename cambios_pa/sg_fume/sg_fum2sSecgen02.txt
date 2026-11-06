@@ -2,28 +2,25 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fum2sSecgen02')
-   drop procedure Analisis2.sg_fum2sSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fum2sSecgen02')
+    drop procedure Analisis2.sg_fum2sSecgen02
 go
 
 /* Procedimiento : sg_fum2sSecgen02
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota. (Obligatorio)
 
-   Objetivo : Listar las versiones guardadas de los meses que abarca una cuota
-   enviada, para la revision DGDP. Existe aparte de sg_fum2sSecgen01 porque
-   aquel acota por el responsable del centro de costo y el revisor no lo es.
-   fec_valida es la fecha de la ultima gestion de cada version.
+   Objetivo : Listar las versiones guardadas de los meses que abarca una cuota enviada, para la
+   revision DGDP. Existe aparte de sg_fum2sSecgen01 porque aquel acota por el responsable del centro de costo y el revisor no lo es. fec_valida es la fecha de la ultima gestion de cada version.
 
    Creacion: ELA 2026/10/13
-   Actualizacion: ELA 2026/10/26 - Proyeccion de mto_realpa, mto_deslic, mto_dessg, rut_regist, f_regist y vigentes
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fum2sSecgen02
     @rut_person char(9) = null,

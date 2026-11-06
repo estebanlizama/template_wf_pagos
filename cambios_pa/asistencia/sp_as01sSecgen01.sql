@@ -2,24 +2,23 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sp_as01sSecgen01')
-   drop procedure Analisis2.sp_as01sSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sp_as01sSecgen01')
+    drop procedure Analisis2.sp_as01sSecgen01
 go
 
 /* Procedimiento : sp_as01sSecgen01
 
    Entrada :
-   @rut                 -> RUT del funcionario. (Obligatorio)
-   @cod_periodo         -> Periodo de evaluacion que define el rango. (Opcional)
-   @f_inicio            -> Fecha inicial del rango, formato YYYYMMDD. (Opcional)
-   @f_termino           -> Fecha final del rango, formato YYYYMMDD. (Opcional)
+   @rut                  -> RUT del funcionario. (Obligatorio)
+   @cod_periodo          -> Periodo de evaluacion que define el rango. (Opcional)
+   @f_inicio             -> Fecha inicial del rango, formato YYYYMMDD. (Opcional)
+   @f_termino            -> Fecha final del rango, formato YYYYMMDD. (Opcional)
 
-   Objetivo : Entregar el registro de asistencia diario de un funcionario, con
-   marca real, horario de turno, estado, ausencias, justificaciones y feriados.
+   Objetivo : Entregar el registro de asistencia diario de un funcionario, con marca real,
+   horario de turno, estado, ausencias, justificaciones y feriados.
 
    Creacion: ELA 2026/09/29
    Actualizacion: Sin registro

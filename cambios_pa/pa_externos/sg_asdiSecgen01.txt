@@ -1,8 +1,7 @@
 use sisper_db
 go
 
-if exists (select 1
-             from sysobjects a, sysusers b
+if exists (select 1 from sysobjects a, sysusers b
             where a.uid = b.uid
               and a.type = 'P'
               and b.name = 'Analisis2'
@@ -13,33 +12,31 @@ go
 /* Procedimiento : sg_asdiSecgen01
 
    Entrada :
-   @numero_resol      -> Numero de la resolucion. (Obligatorio)
-   @codigo_decres     -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
-   @codigo_unidad     -> Unidad SISPER fija 05000000. (Obligatorio)
-   @ano               -> Ano de la resolucion, con el que se la identifica en
+   @numero_resol         -> Numero de la resolucion. (Obligatorio)
+   @codigo_decres        -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
+   @codigo_unidad        -> Unidad SISPER fija 05000000. (Obligatorio)
+   @ano                  -> Ano de la resolucion, con el que se la identifica en
                          sp_resl. No es el ano del periodo que se paga: una
                          cuota de una resolucion de un ano puede pagarse en el
                          siguiente. (Obligatorio)
-   @codigo_ficha      -> Codigo de ficha registrado en personal. (Obligatorio)
-   @numero_cuenta     -> Codigo de haber de sp_para.num_cuenta. (Opcional)
-   @vigencia          -> Indicador de vigencia de la asignacion. (Obligatorio)
-   @fec_inicio        -> Primer dia del mes que se paga, formato dd/mm/aaaa.
+   @codigo_ficha         -> Codigo de ficha registrado en personal. (Obligatorio)
+   @numero_cuenta        -> Codigo de haber de sp_para.num_cuenta. (Opcional)
+   @vigencia             -> Indicador de vigencia de la asignacion. (Obligatorio)
+   @fec_inicio           -> Primer dia del mes que se paga, formato dd/mm/aaaa.
                          (Obligatorio)
-   @fec_termino       -> Ultimo dia de ese mismo mes, formato dd/mm/aaaa.
+   @fec_termino          -> Ultimo dia de ese mismo mes, formato dd/mm/aaaa.
                          (Obligatorio)
-   @observacion       -> Observacion de la asignacion, maximo 100 caracteres. (Opcional)
-   @valor             -> Monto de la asignacion, mayor que cero. (Obligatorio)
-   @permanente        -> Indicador de permanencia. (Opcional)
-   @cuotas            -> Cantidad de cuotas autorizadas. (Opcional)
-   @unidad_medida     -> Codigo de unidad de medida. (Opcional)
+   @observacion          -> Observacion de la asignacion, maximo 100 caracteres. (Opcional)
+   @valor                -> Monto de la asignacion, mayor que cero. (Obligatorio)
+   @permanente           -> Indicador de permanencia. (Opcional)
+   @cuotas               -> Cantidad de cuotas autorizadas. (Opcional)
+   @unidad_medida        -> Codigo de unidad de medida. (Opcional)
 
-   Objetivo : Registrar una asignacion mensual para una persona y devolver
-   su codigo de asignacion.
+   Objetivo : Registrar una asignacion mensual para una persona y devolver su codigo de
+   asignacion.
 
    Creacion: No registrada en el procedimiento original
-   Actualizacion: ELA 2026/10/29
-   Actualizacion: 2026/10/29 - El periodo no se exige dentro del ano.
-   Actualizacion: 2026/10/30 - Se retira el rechazo por periodo repetido.
+   Actualizacion: 2026/10/30
 */
 create procedure Analisis2.sg_asdiSecgen01
     @numero_resol varchar(10),

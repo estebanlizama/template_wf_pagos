@@ -592,7 +592,7 @@ correctos, estándar visual validado en 39 archivos, y los cuatro `.txt`
 sincronizados con sus `.sql` en CRLF.
 
 **Datos.** Falta saber en cuántos centros de costo está sin cargar `afec_du9`.
-Para eso está `datos_base/06_marcas_du09_centro_costo.sql`, que **no modifica
+Para eso está `soporte_certificacion/06_marcas_du09_centro_costo.sql`, que **no modifica
 nada**: lista los centros con prestaciones DU288 archivadas junto a sus marcas,
 cuenta los que quedarían sin poder pagar, y deja el `update` comentado.
 
@@ -659,6 +659,6 @@ aparecerían problemas que llevaban semanas ahí sin que nadie los viera.
 3. En los tres PA, borrar la línea de apertura y la de cierre del comentario que
    envuelve la guarda de `afec_du9`, y redesplegarlos.
 
-Antes del paso 3, correr `datos_base/06_marcas_du09_centro_costo.sql` y cargar
+Antes del paso 3, correr `soporte_certificacion/06_marcas_du09_centro_costo.sql` y cargar
 `afec_du9` donde falte: encender la guarda con el dato vacío vuelve a dejar esos
 centros de costo sin poder pagar.

@@ -2,25 +2,25 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fupssSecgen14')
-   drop procedure Analisis2.sg_fupssSecgen14
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fupssSecgen14')
+    drop procedure Analisis2.sg_fupssSecgen14
 go
 
 /* Procedimiento : sg_fupssSecgen14
 
    Entrada :
-   @rut_person          -> RUT de la persona. (Obligatorio)
-   @id_contrato         -> Identificador del contrato. (Opcional)
-   @cod_cargo           -> Codigo del cargo. (Opcional)
-   @cod_unidad          -> Parametro de entrada. (Opcional)
-   @cod_calida          -> Parametro de entrada. (Opcional)
-   @ext_cuotas          -> Extension de cuotas autorizada S/N. (Opcional)
+   @rut_person           -> RUT de la persona. (Obligatorio)
+   @id_contrato          -> Identificador del contrato. (Opcional)
+   @cod_cargo            -> Codigo del cargo. (Opcional)
+   @cod_unidad           -> Parametro de entrada. (Opcional)
+   @cod_calida           -> Parametro de entrada. (Opcional)
+   @ext_cuotas           -> Extension de cuotas autorizada S/N. (Opcional)
 
-   Objetivo : Validar si el contrato evaluado para DU288 queda habilitado o no segun calidad juridica, cargo y contexto ANID/externo.
+   Objetivo : Validar si el contrato evaluado para DU288 queda habilitado o no segun calidad
+   juridica, cargo y contexto ANID/externo.
 
    Creacion: EL 2026/07/03
    Actualizacion: ELA 2026/09/29
@@ -33,6 +33,7 @@ create procedure Analisis2.sg_fupssSecgen14
     @cod_calida  varchar(2) = '',
     @ext_cuotas  char(1) = 'N'
 as
+
 begin
     declare @habilitado_du288 char(1)
 

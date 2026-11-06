@@ -52,7 +52,7 @@ evidencia por ambiente.
 
 | # | Requisito | Cómo se comprueba | Si no se cumple |
 | :-: | :--- | :--- | :--- |
-| R1 | `afec_du9 = 'S'` cargado en los centros de costo DU288 de `fin21_db..es_ccto` | Correr `datos_base/06_marcas_du09_centro_costo.sql` (solo lectura) | Con la columna vacía, el punto 6 devuelve **cero** centros de costo para cualquier RUT —sin error— y los puntos 3 a 5 rechazan toda cuota. Se apaga el flujo completo |
+| R1 | `afec_du9 = 'S'` cargado en los centros de costo DU288 de `fin21_db..es_ccto` | Correr `soporte_certificacion/06_marcas_du09_centro_costo.sql` (solo lectura) | Con la columna vacía, el punto 6 devuelve **cero** centros de costo para cualquier RUT —sin error— y los puntos 3 a 5 rechazan toda cuota. Se apaga el flujo completo |
 | R2 | Finanzas confirma `fin21_db.Analisis.valida_saldo_cc_cs` y sus casos de prueba | Casos con saldo, sin saldo y sobregiro autorizado, ejecutados contra certificación | El saldo bloquea con datos que nadie validó |
 | R3 | La prestación tiene **ítem presupuestario** (`sg_fups.cod_sitm`) | Revisar bandeja/resumen y registros a enviar | Sin ítem, backend rechaza con 422 porque no se puede validar saldo |
 | R4 | Ventana de despliegue de base de datos coordinada | — | Los PA y el backend deben quedar en la misma entrega (§4) |

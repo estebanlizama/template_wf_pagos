@@ -2,24 +2,21 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fucosSecgen02')
-   drop procedure Analisis2.sg_fucosSecgen02
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fucosSecgen02')
+    drop procedure Analisis2.sg_fucosSecgen02
 go
 
 /* Procedimiento : sg_fucosSecgen02
 
    Entrada :
-   @rut_person          -> RUT de la persona. (Obligatorio)
-   @nro_solici_excluir  -> Solicitud que no se lista. (Opcional)
+   @rut_person           -> RUT de la persona. (Obligatorio)
+   @nro_solici_excluir   -> Solicitud que no se lista. (Opcional)
 
-   Objetivo : Listar las compensaciones propuestas (sg_fuco) de todas las
-              prestaciones previas de un funcionario, con los mismos
-              filtros que sg_fupssSecgen17, para contrastarlas en una sola
-              lectura con las realizadas y con la solicitud en revision.
+   Objetivo : Listar las compensaciones propuestas (sg_fuco) de todas las prestaciones previas
+   de un funcionario, con los mismos filtros que sg_fupssSecgen17, para contrastarlas en una sola lectura con las realizadas y con la solicitud en revision.
 
    Creacion: ELA 2026/11/04
    Actualizacion: Sin registro
@@ -28,6 +25,7 @@ create procedure Analisis2.sg_fucosSecgen02
     @rut_person         char(9) = null,
     @nro_solici_excluir int     = null
 as
+
 begin
     if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
     begin

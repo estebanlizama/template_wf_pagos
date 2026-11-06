@@ -12,16 +12,12 @@ go
 /* Procedimiento : sg_epaguSecgen04
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota. (Obligatorio)
 
-   Objetivo : Registrar que una cuota aprobada se subio a Finanzas. Mueve el
-   encabezado de 4 Aprobada a 8 Enviada remuneraciones y sus meses de
-   2 Comprometida a 3 Enviada a pago, con fec_envrem. Exige cod_estcuo = 4, de
-   modo que no reenvia una cuota ya enviada. Es el PA de cierre: deja
-   sg_epag.mto_realpa con la suma de los meses enviados y completa
-   sg_fume.mto_realpa solo donde sg_fumeuSecgen03 no lo dejo.
+   Objetivo : Registrar que una cuota aprobada se subio a Finanzas. Mueve el encabezado de 4
+   Aprobada a 8 Enviada remuneraciones y sus meses de 2 Comprometida a 3 Enviada a pago, con fec_envrem. Exige cod_estcuo = 4, de modo que no reenvia una cuota ya enviada. Es el PA de cierre: deja sg_epag.mto_realpa con la suma de los meses enviados y completa sg_fume.mto_realpa solo donde sg_fumeuSecgen03 no lo dejo.
 
    Creacion: ELA 2026/10/28
    Actualizacion: Sin registro

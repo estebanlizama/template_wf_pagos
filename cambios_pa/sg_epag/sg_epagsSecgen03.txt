@@ -12,20 +12,16 @@ go
 /* Procedimiento : sg_epagsSecgen03
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @cod_estcuo          -> Estado de cuota a listar. 0 lista todas las
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @cod_estcuo           -> Estado de cuota a listar. 0 lista todas las
                            enviadas. Sin valor lista las que estan en
                            visacion. (Opcional)
 
-   Objetivo : Listar las cuotas enviadas por el jefe de proyecto que la
-   revision DGDP puede ver, con sus montos, descuentos informados, meses
-   cubiertos y compensaciones registradas. mto_rechazado permite que el
-   saldo que ve DGDP descuente lo que un rechazo dejo bloqueado.
+   Objetivo : Listar las cuotas enviadas por el jefe de proyecto que la revision DGDP puede
+   ver, con sus montos, descuentos informados, meses cubiertos y compensaciones registradas. mto_rechazado permite que el saldo que ve DGDP descuente lo que un rechazo dejo bloqueado.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: ELA 2026/10/27
-   Actualizacion: ELA 2026/10/30 - Item presupuestario y subitem vigente.
-   Actualizacion: ELA 2026/11/02 - Registro de la resolucion en sp_resl.
+   Actualizacion: ELA 2026/11/02
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,

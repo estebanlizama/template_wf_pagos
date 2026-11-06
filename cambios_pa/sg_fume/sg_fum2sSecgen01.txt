@@ -2,28 +2,25 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fum2sSecgen01')
-   drop procedure Analisis2.sg_fum2sSecgen01
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fum2sSecgen01')
+    drop procedure Analisis2.sg_fum2sSecgen01
 go
 
 /* Procedimiento : sg_fum2sSecgen01
 
    Entrada :
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @id_funprse          -> Identificador del funcionario. (Obligatorio)
-   @corr_fume           -> Limita a un mes de ejecucion. (Opcional)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @id_funprse           -> Identificador del funcionario. (Obligatorio)
+   @corr_fume            -> Limita a un mes de ejecucion. (Opcional)
 
-   Objetivo : Listar las versiones guardadas de un mes de ejecucion. Cada fila
-   es el estado que tenia el mes antes de un cambio de monto o descuento; la version
-   vigente esta en sg_fume, no aqui, y viaja como mto_vigente y fec_vigente.
-   fec_valida es la fecha de la ultima gestion de cada version.
+   Objetivo : Listar las versiones guardadas de un mes de ejecucion. Cada fila es el estado que
+   tenia el mes antes de un cambio de monto o descuento; la version vigente esta en sg_fume, no aqui, y viaja como mto_vigente y fec_vigente. fec_valida es la fecha de la ultima gestion de cada version.
 
    Creacion: ELA 2026/10/13
-   Actualizacion: ELA 2026/10/26 - Proyeccion de mto_realpa, mto_deslic, mto_dessg, rut_regist, f_regist y vigentes
+   Actualizacion: ELA 2026/10/26
 */
 create procedure Analisis2.sg_fum2sSecgen01
     @rut_person char(9) = null,

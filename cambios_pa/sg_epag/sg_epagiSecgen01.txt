@@ -12,15 +12,14 @@ go
 /* Procedimiento : sg_epagiSecgen01
 
    Entrada :
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @rut_person          -> RUT del responsable vigente del centro de costo. (Obligatorio)
-   @meses_csv           -> Correlativos de sg_fume separados por punto y coma. (Obligatorio)
-   @ano_pago            -> Ano en que se paga la cuota. (Obligatorio)
-   @mes_pago            -> Mes en que se paga la cuota. (Obligatorio)
-   @id_evidenc          -> Identificador del respaldo adjunto. (Opcional)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @rut_person           -> RUT del responsable vigente del centro de costo. (Obligatorio)
+   @meses_csv            -> Correlativos de sg_fume separados por punto y coma. (Obligatorio)
+   @ano_pago             -> Ano en que se paga la cuota. (Obligatorio)
+   @mes_pago             -> Mes en que se paga la cuota. (Obligatorio)
+   @id_evidenc           -> Identificador del respaldo adjunto. (Opcional)
 
-   Objetivo : Crear un encabezado de cuota en estado 1 (Propuesta) y asociarle
-   los meses de ejecucion indicados en sg_dpag.
+   Objetivo : Crear una cuota en borrador y asociarle los meses de ejecucion seleccionados.
 
    Creacion: ELA 2026/10/01
    Actualizacion: ELA 2026/11/06

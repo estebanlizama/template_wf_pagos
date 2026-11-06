@@ -2,22 +2,21 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fupssSecgen17')
-   drop procedure Analisis2.sg_fupssSecgen17
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fupssSecgen17')
+    drop procedure Analisis2.sg_fupssSecgen17
 go
 
 /* Procedimiento : sg_fupssSecgen17
 
    Entrada :
-   @rut_person          -> RUT de la persona. (Opcional)
-   @nro_solici_excluir  -> Parametro de entrada. (Opcional)
+   @rut_person           -> RUT de la persona. (Opcional)
+   @nro_solici_excluir   -> Parametro de entrada. (Opcional)
 
-   Objetivo : Listar las prestaciones de servicio previas de un funcionario
-              para apoyar la revision normativa de una solicitud.
+   Objetivo : Listar las prestaciones de servicio previas de un funcionario para apoyar la
+   revision normativa de una solicitud.
 
    Creacion: ELA 2026/08/19
    Actualizacion: ELA 2026/11/04
@@ -26,6 +25,7 @@ create procedure Analisis2.sg_fupssSecgen17
     @rut_person         char(9) = null,
     @nro_solici_excluir int     = null
 as
+
 begin
     if @rut_person is null or ltrim(rtrim(@rut_person)) = ''
     begin

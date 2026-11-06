@@ -12,12 +12,12 @@ go
 /* Procedimiento : sg_epagsSecgen04
 
    Entrada :
-   @rut_person          -> RUT del revisor DGDP. (Obligatorio)
-   @id_funprse          -> Prestacion del funcionario. (Obligatorio)
-   @nro_cuota           -> Correlativo de la cuota. (Obligatorio)
+   @rut_person           -> RUT del revisor DGDP. (Obligatorio)
+   @id_funprse           -> Prestacion del funcionario. (Obligatorio)
+   @nro_cuota            -> Correlativo de la cuota. (Obligatorio)
 
-   Objetivo : Consultar los meses asociados a una cuota ya enviada por el
-   jefe de proyecto, para resolverla o para consultar su historial.
+   Objetivo : Consultar los meses asociados a una cuota ya enviada por el jefe de proyecto,
+   para resolverla o para consultar su historial.
 
    Creacion: ELA 2026/10/06
    Actualizacion: Sin registro

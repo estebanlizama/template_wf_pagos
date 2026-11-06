@@ -2,23 +2,23 @@ use secgen_db
 go
 
 if exists (select 1 from sysobjects a, sysusers b
-              where a.uid  = b.uid
-                and a.type = 'P'
-                and b.name = 'Analisis2'
-                and a.name = 'sg_fupssSecgen15')
-   drop procedure Analisis2.sg_fupssSecgen15
-
+            where a.uid = b.uid
+              and a.type = 'P'
+              and b.name = 'Analisis2'
+              and a.name = 'sg_fupssSecgen15')
+    drop procedure Analisis2.sg_fupssSecgen15
 go
 
 /* Procedimiento : sg_fupssSecgen15
 
    Entrada :
-   @rut_person          -> RUT de la persona. (Obligatorio)
-   @id_contrato         -> Identificador del contrato. (Opcional)
-   @fecha_eval          -> Fecha de evaluacion. (Opcional)
-   @ext_cuotas          -> Extension de cuotas autorizada S/N. (Opcional)
+   @rut_person           -> RUT de la persona. (Obligatorio)
+   @id_contrato          -> Identificador del contrato. (Opcional)
+   @fecha_eval           -> Fecha de evaluacion. (Opcional)
+   @ext_cuotas           -> Extension de cuotas autorizada S/N. (Opcional)
 
-   Objetivo : Obtener asignaciones/designaciones vigentes del funcionario y evaluar si alguna inhabilita DU288.
+   Objetivo : Obtener asignaciones/designaciones vigentes del funcionario y evaluar si alguna
+   inhabilita DU288.
 
    Creacion: ELA 2026/07/10
    Actualizacion: ELA 2026/09/29
@@ -29,6 +29,7 @@ create procedure Analisis2.sg_fupssSecgen15
     @fecha_eval  datetime = null,
     @ext_cuotas  char(1) = 'N'
 as
+
 begin
     if @fecha_eval is null
         select @fecha_eval = getdate()
