@@ -20,7 +20,7 @@ go
    misma transaccion. El monto usado incluye los meses rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/11/06
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epaguSecgen02
     @id_funprse int = null,

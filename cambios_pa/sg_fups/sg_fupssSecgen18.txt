@@ -21,7 +21,7 @@ go
    y resumir sus cuotas de pago.
 
    Creacion: ELA 2026/09/22
-   Actualizacion: ELA 2026/10/27
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fupssSecgen18
     @rut_person char(9)  = null,

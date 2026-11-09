@@ -18,7 +18,7 @@ go
    Objetivo : Obtener lista de centros de costo disponibles para un rut
 
    Creacion: ELA 2026/08/24
-   Actualizacion: ELA 2026/11/06
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_cctosSecgen05
     @rut        char(9)  = null,

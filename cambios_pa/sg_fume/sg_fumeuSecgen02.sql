@@ -150,9 +150,6 @@ select @mto_actual = isnull(mto_apagar, 0),
 
 begin tran
 
-/* Se versiona si cambia cualquiera de los tres datos que escribe el update, no
-   solo el monto: cambiar el mes de ejecucion sin tocar el monto tambien es una
-   modificacion del mes y antes no dejaba rastro. */
 if @mto_actual <> @mto_apagar
    or isnull(isnull(@ano_ejec, @ano_ejec_actual), 0) <> isnull(@ano_ejec_actual, 0)
    or isnull(isnull(@mes_ejec, @mes_ejec_actual), 0) <> isnull(@mes_ejec_actual, 0)

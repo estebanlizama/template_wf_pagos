@@ -21,7 +21,7 @@ go
    un registro por mes de pago/asignacion SISPER y centro de costo. El neto aprobado de la cuota se distribuye segun el porcentaje CC.
 
    Creacion: ELA 2026/10/28
-   Actualizacion: 2026/10/29
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epagsSecgen05
     @rut_person char(9) = null,

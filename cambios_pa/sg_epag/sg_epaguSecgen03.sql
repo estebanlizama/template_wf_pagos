@@ -22,7 +22,7 @@ go
    devuelve o la rechaza. El rechazo bloquea los meses en sg_efum = 4 y conserva sg_dpag, asi que la cuota mantiene lo que solicito y el monto queda descontado del total de la prestacion.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epaguSecgen03
     @rut_person char(9) = null,

@@ -24,10 +24,10 @@ go
    @num_doc_ant          -> Numero del documento antecedente. (Opcional)
 
    Objetivo : Registrar en SISPER la resolucion que respalda las asignaciones de prestaciones
-   de servicios del workflow. Si ya esta registrada responde exito con el codigo EXISTS. No abre transaccion: la gobierna el llamador.
+   de servicios del workflow.
 
-   Creacion: No registrada en el procedimiento original
-   Actualizacion: ELA 2026/10/30
+   Creacion: ELA 2026/10/28
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_resliSecgen01
     @num_resoluc varchar(10),

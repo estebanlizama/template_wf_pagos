@@ -21,7 +21,7 @@ go
    pueda revisar y ajustar nuevamente sus montos y antecedentes. Los meses permanecen comprometidos (sg_fume.cod_estfum = 2). El motivo queda en sg_com1 dentro de la misma transaccion.
 
    Creacion: ELA 2026/10/28
-   Actualizacion: 2026/10/29
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epaguSecgen05
     @rut_person char(9) = null,

@@ -21,7 +21,7 @@ go
    mes de ejecucion.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fuc2sSecgen01
     @nro_solici int = null,

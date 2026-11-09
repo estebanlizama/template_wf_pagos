@@ -22,8 +22,8 @@ go
    Objetivo : Validar si el contrato evaluado para DU288 queda habilitado o no segun calidad
    juridica, cargo y contexto ANID/externo.
 
-   Creacion: EL 2026/07/03
-   Actualizacion: ELA 2026/09/29
+   Creacion: ELA 2026/07/03
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fupssSecgen14
     @rut_person  char(9),

@@ -72,8 +72,6 @@ begin
         values (6, 'CONTRATO')
     end
 
-    /* El rol revisor usa cod_organi 696 en sp_orde, RUT autenticado y
-       contrato activo. No es cod_design ni usa eta/apso. */
     if exists (
         select 1
         from sisper_db..sp_pers pers

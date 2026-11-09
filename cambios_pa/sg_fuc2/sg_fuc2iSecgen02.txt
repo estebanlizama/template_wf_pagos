@@ -23,7 +23,7 @@ go
    sin superar el total comprometido para ese mes. Una hora ya compensada ocupa su horario aunque su cuota haya sido rechazada: el rechazo no deshace el trabajo realizado.
 
    Creacion: ELA 2026/10/19
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fuc2iSecgen02
     @id_funprse int = null,

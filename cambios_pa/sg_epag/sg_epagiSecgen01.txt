@@ -22,7 +22,7 @@ go
    Objetivo : Crear una cuota en borrador y asociarle los meses de ejecucion seleccionados.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: ELA 2026/11/06
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epagiSecgen01
     @id_funprse int          = null,
@@ -217,10 +217,6 @@ begin
     return
 end
 
-/* Un mes de ejecucion se paga una sola vez en el centro de costo, aunque
-   venga de otra prestacion del mismo funcionario (impacto 19, 11.6). Se
-   compara el mes ejecutado si esta informado y si no el propuesto. Las
-   cuotas rechazadas (10) no cuentan: sus meses no se pagan. */
 if exists (select 1
              from #corr c,
                   secgen_db.dbo.sg_fume fume,

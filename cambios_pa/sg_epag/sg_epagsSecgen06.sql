@@ -20,7 +20,7 @@ go
    datos con que ingresarla. Una fila por cuota, este o no registrada.
 
    Creacion: ELA 2026/11/02
-   Actualizacion: 2026/11/02
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epagsSecgen06
     @rut_person char(9) = null,

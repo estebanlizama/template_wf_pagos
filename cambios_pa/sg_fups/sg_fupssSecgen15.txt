@@ -21,7 +21,7 @@ go
    inhabilita DU288.
 
    Creacion: ELA 2026/07/10
-   Actualizacion: ELA 2026/09/29
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fupssSecgen15
     @rut_person  char(9),

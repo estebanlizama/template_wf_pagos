@@ -19,7 +19,7 @@ go
    revision normativa de una solicitud.
 
    Creacion: ELA 2026/08/19
-   Actualizacion: ELA 2026/11/04
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fupssSecgen17
     @rut_person         char(9) = null,
@@ -75,7 +75,7 @@ begin
         soli.f_solicit,
         soli.ano_proces,
         prse.cod_etapa as cod_etapa_act,
-        rtrim(isnull(etapaAct.des_etapa, '')) as des_etapa_act,
+        rtrim(isnull(etapa_act.des_etapa, '')) as des_etapa_act,
         rslc.num_resolu as num_resolu_ext,
         rslc.id_docum,
 
@@ -100,8 +100,6 @@ begin
         fume.fec_autori,
         fume.fec_envrem,
 
-        /* Cuota vigente que contiene el mes (sg_dpag -> sg_epag). Sin cuota,
-           el mes aun no se agrupa para pago. La cuota rechazada no cuenta. */
         cuota.nro_cuota,
         cuota.ano_pago,
         cuota.mes_pago,
@@ -136,10 +134,10 @@ begin
         on carg.cod_cargo = fu.cod_cargo
     left join secgen_db.dbo.sg_efun efun
         on efun.cod_estfun = fu.cod_estfun
-    left join secgen_db.dbo.sg_eta1 etapaAct
-        on etapaAct.cod_flusol = prse.cod_flusol
-       and etapaAct.cod_etapa = prse.cod_etapa
-       and isnull(etapaAct.vigente, 'S') = 'S'
+    left join secgen_db.dbo.sg_eta1 etapa_act
+        on etapa_act.cod_flusol = prse.cod_flusol
+       and etapa_act.cod_etapa = prse.cod_etapa
+       and isnull(etapa_act.vigente, 'S') = 'S'
     left join secgen_db.dbo.sg_rslc rslc
         on rslc.nro_resolu = soli.nro_resolu
     left join secgen_db.dbo.sg_fume fume

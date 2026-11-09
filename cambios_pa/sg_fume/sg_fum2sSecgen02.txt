@@ -20,7 +20,7 @@ go
    revision DGDP. Existe aparte de sg_fum2sSecgen01 porque aquel acota por el responsable del centro de costo y el revisor no lo es. fec_valida es la fecha de la ultima gestion de cada version.
 
    Creacion: ELA 2026/10/13
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fum2sSecgen02
     @rut_person char(9) = null,

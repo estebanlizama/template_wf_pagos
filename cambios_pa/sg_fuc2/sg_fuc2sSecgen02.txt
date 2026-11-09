@@ -21,7 +21,7 @@ go
    las de una cuota, o las de toda la prestacion.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: ELA 2026/11/02
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fuc2sSecgen02
     @rut_person char(9) = null,

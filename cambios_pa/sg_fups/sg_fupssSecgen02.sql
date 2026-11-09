@@ -18,7 +18,7 @@ go
    requerida por DU288 y el flujo legado.
 
    Creacion: ELA 2026/08/24
-   Actualizacion: ELA 2026/09/28
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fupssSecgen02
     @nro_solici int = null

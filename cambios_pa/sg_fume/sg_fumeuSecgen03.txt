@@ -23,7 +23,7 @@ go
    durante la visacion DGDP, versionando en sg_fum2 si el monto cambia, y dejando el valor neto resultante en mto_realpa.
 
    Creacion: ELA 2026/10/07
-   Actualizacion: ELA 2026/10/16
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fumeuSecgen03
     @rut_person char(9) = null,
@@ -116,9 +116,6 @@ end
 
 begin tran
 
-/* Se versiona si cambia cualquiera de los tres datos que escribe el update, no
-   solo el monto: los descuentos son la decision propia de este PA y antes se
-   sobrescribian sin dejar rastro cuando DGDP no tocaba el mto_apagar. */
 if @mto_nuevo <> @mto_apagar_actual
    or @mto_deslic <> @mto_deslic_actual
    or @mto_dessg <> @mto_dessg_actual

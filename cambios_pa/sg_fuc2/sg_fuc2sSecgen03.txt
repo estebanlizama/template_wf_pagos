@@ -20,7 +20,7 @@ go
    Objetivo : Consultar los tramos realizados por el mismo funcionario para verificar cruces de horario.
 
    Creacion: ELA 2026/10/21
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fuc2sSecgen03
     @id_funprse int = null,

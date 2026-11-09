@@ -24,7 +24,7 @@ go
 
    Objetivo : Registrar el centro de costo asociado a una asignacion y devolver su codigo.
 
-   Creacion: No registrada en el procedimiento original
+   Creacion: ELA 2026/10/28
    Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_ccaiSecgen01

@@ -20,7 +20,7 @@ go
    tenia el mes antes de un cambio de monto o descuento; la version vigente esta en sg_fume, no aqui, y viaja como mto_vigente y fec_vigente. fec_valida es la fecha de la ultima gestion de cada version.
 
    Creacion: ELA 2026/10/13
-   Actualizacion: ELA 2026/10/26
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fum2sSecgen01
     @rut_person char(9) = null,

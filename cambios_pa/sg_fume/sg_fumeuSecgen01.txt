@@ -19,7 +19,7 @@ go
    Objetivo : Sincronizar los meses de ejecucion y conservar el correlativo de los meses que permanecen.
 
    Creacion: ELA 2026/08/24
-   Actualizacion: ELA 2026/09/25
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_fumeuSecgen01
     @id_funprse int = null,

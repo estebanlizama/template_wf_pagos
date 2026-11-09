@@ -15,17 +15,12 @@ go
    @numero_resol         -> Numero de la resolucion. (Obligatorio)
    @codigo_decres        -> Tipo de documento; debe ser resolucion (2). (Obligatorio)
    @codigo_unidad        -> Unidad SISPER fija 05000000. (Obligatorio)
-   @ano                  -> Ano de la resolucion, con el que se la identifica en
-                         sp_resl. No es el ano del periodo que se paga: una
-                         cuota de una resolucion de un ano puede pagarse en el
-                         siguiente. (Obligatorio)
+   @ano                  -> Ano de la resolucion registrada en SISPER. (Obligatorio)
    @codigo_ficha         -> Codigo de ficha registrado en personal. (Obligatorio)
    @numero_cuenta        -> Codigo de haber de sp_para.num_cuenta. (Opcional)
    @vigencia             -> Indicador de vigencia de la asignacion. (Obligatorio)
-   @fec_inicio           -> Primer dia del mes que se paga, formato dd/mm/aaaa.
-                         (Obligatorio)
-   @fec_termino          -> Ultimo dia de ese mismo mes, formato dd/mm/aaaa.
-                         (Obligatorio)
+   @fec_inicio           -> Primer dia del mes que se paga, formato dd/mm/aaaa. (Obligatorio)
+   @fec_termino          -> Ultimo dia de ese mismo mes, formato dd/mm/aaaa. (Obligatorio)
    @observacion          -> Observacion de la asignacion, maximo 100 caracteres. (Opcional)
    @valor                -> Monto de la asignacion, mayor que cero. (Obligatorio)
    @permanente           -> Indicador de permanencia. (Opcional)
@@ -35,8 +30,8 @@ go
    Objetivo : Registrar una asignacion mensual para una persona y devolver su codigo de
    asignacion.
 
-   Creacion: No registrada en el procedimiento original
-   Actualizacion: 2026/10/30
+   Creacion: ELA 2026/10/28
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_asdiSecgen01
     @numero_resol varchar(10),
@@ -200,11 +195,6 @@ end
 else
     select @dias_mes = 31
 
-/* El periodo tiene que abarcar un mes completo y uno solo, pero no tiene que
-   caer dentro de @ano: ese es el ano de la resolucion, con el que se la
-   identifica en sp_resl, y no el del mes que se paga. Una cuota de una
-   resolucion de diciembre pagada en enero del ano siguiente es el caso normal
-   del atraso del pago; atarla a @ano la dejaba sin asignacion posible. */
 if @dia <> @dias_mes or datepart(mm, @fecha_inicio) <> @mes
    or datepart(yy, @fecha_inicio) <> @ano_fecha
 begin

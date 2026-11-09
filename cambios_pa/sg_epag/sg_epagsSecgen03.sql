@@ -21,7 +21,7 @@ go
    ver, con sus montos, descuentos informados, meses cubiertos y compensaciones registradas. mto_rechazado permite que el saldo que ve DGDP descuente lo que un rechazo dejo bloqueado.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: ELA 2026/11/02
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epagsSecgen03
     @rut_person char(9)  = null,
