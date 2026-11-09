@@ -18,11 +18,11 @@ go
    @cod_estcuo           -> Estado de destino: 3, 4 o 10. (Obligatorio)
    @observacion          -> Motivo de observacion o rechazo. (Obligatorio en 3 y 10)
 
-   Objetivo : Registrar la decision DGDP de una cuota en visacion y dejar el motivo cuando la
-   devuelve o la rechaza. El rechazo bloquea los meses en sg_efum = 4 y conserva sg_dpag, asi que la cuota mantiene lo que solicito y el monto queda descontado del total de la prestacion.
+   Objetivo : Registrar la decision DGDP de una cuota en visacion y el motivo cuando se
+   devuelve o se rechaza.
 
    Creacion: ELA 2026/10/06
-   Actualizacion: ELA 2026/11/09
+   Actualizacion: Sin registro
 */
 create procedure Analisis2.sg_epaguSecgen03
     @rut_person char(9) = null,
