@@ -20,7 +20,7 @@ go
    Aprobada a 8 Enviada remuneraciones y sus meses de 2 Comprometida a 3 Enviada a pago, con fec_envrem. Exige cod_estcuo = 4, de modo que no reenvia una cuota ya enviada. Es el PA de cierre: deja sg_epag.mto_realpa con la suma de los meses enviados y completa sg_fume.mto_realpa solo donde sg_fumeuSecgen03 no lo dejo.
 
    Creacion: ELA 2026/10/28
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/09
 */
 create procedure Analisis2.sg_epaguSecgen04
     @rut_person char(9) = null,
@@ -54,6 +54,23 @@ if not exists (
 )
 begin
     select 'El usuario no tiene asignacion vigente para revisar cuotas DGDP.' as msg
+    return
+end
+
+declare @vig_ccto char(1)
+
+select @vig_ccto = ccto.vigente
+  from secgen_db.dbo.sg_prse prse,
+       secgen_db.dbo.sg_fups fu,
+       fin21_db..es_ccto ccto
+ where fu.id_funprse = @id_funprse
+   and prse.nro_solici = fu.nro_solici
+   and ccto.cod_ccto   = prse.cod_ccto
+   and ccto.cod_unifin = prse.cod_unifin
+
+if isnull(@vig_ccto, '0') <> '1'
+begin
+    select 'Error: El centro de costo esta cerrado, la cuota no se puede enviar a pago' as msg
     return
 end
 

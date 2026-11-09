@@ -7,6 +7,19 @@
 
 ---
 
+## 0.1 Decisiones del 09-11-2026, aplicadas
+
+| Tema | Decisión | Dónde quedó |
+| :--- | :--- | :--- |
+| Compensación (PAG-38) | Solo invalida la última cuota, con el total de horas de la prestación | Pantalla del jefe de proyecto y `assertLastInstallmentCompensation` |
+| Formación continua en pagos (PAG-39) | Manda `afec_du9` | Guardas DU09 ya encendidas |
+| Centro de costo cerrado (PAG-36) | No se paga con el centro cerrado | `sg_epaguSecgen03` (al aprobar) y `sg_epaguSecgen04`, además de los PA de crear, editar y enviar |
+| Parentesco (RES-IN-07) | Invalidante en resolución y pago; la constancia no lo levanta | Formulario, `validateStaffRelationshipWithProjectManager`, envío y aprobación de la cuota |
+| Vocabulario de la cuota | El de `sg_ecuo`: Borrador, En revisión DGDP, Devuelta para corrección, Aprobada por DGDP, Enviada a remuneraciones, Rechazada por DGDP, Devuelta de Finanzas | `lang/es/pds.js` y el historial de prestaciones |
+| Prestación sin contrato registrado | Bloquea el envío de la cuota también en el servidor | `assertInstallmentNormativeCompliance` |
+
+Pruebas: backend 383 pasando; frontend 26 archivos y 51 del historial; estándar visual de 55 archivos; lint del módulo limpio. Los dos PA modificados (`sg_epaguSecgen03` y `sg_epaguSecgen04`) tienen su `.txt` sincronizado y se compilan en la misma ventana que el resto.
+
 ## 0. Estado ejecutivo verificado el 06-11-2026
 
 | Qué | Dónde | Estado |
@@ -160,11 +173,11 @@ Existen validaciones formalizadas en el marco normativo (D.U. 288 / D.U. 9 / Mat
 | ID Control | Validación Normativa | Fuente Oficial | Estado actual | Acción pendiente |
 | :--- | :--- | :--- | :--- | :--- |
 | **RES-IN-08 / PAG-37** | **Deuda Institucional** | Sin fuente integrada | ✅ **Fuera del alcance** (decisión de ClickUp del 23-10-2026, corregido el 06-11-2026): se informa como «Deuda institucional: fuera del alcance» y no se consulta. Que no se consulte no equivale a «sin deuda». | Ninguna. La versión anterior de este punto decía que sería obligatoria desde el 01-01-2027; la decisión de ClickUp lo descarta: no se activa sola. Encenderla exige una decisión nueva y una fuente de datos. |
-| **PAG-36** | **Cierre del Proyecto a la fecha de ejecución** | `fin21_db` / `sg_fume.val_ciecc` | ⛔ Se consulta en reportes; no se confirmó guarda transaccional al enviar/aprobar cuota. | Acordar regla y fecha de referencia con Finanzas/DGDP; luego implementar en PA transaccional de pago y verificar en Sybase. No inferir que valor nulo equivale a proyecto abierto. |
-| **RES-CC-05 / PAG-39** | **Prohibición de Formación Continua** | Ficha del Centro de Costo | ✅ WF resolución valida servidor al enviar. ⛔ No se encontró bloqueo equivalente en la compuerta del pago ni en los PA transaccionales de cuotas. | Confirmar la regla aplicable a cuotas ya autorizadas y agregar compuerta backend/PA de pago si corresponde; no se resuelve solo con el interruptor de saldo/DU09. |
+| **PAG-36** | **Cierre del centro de costo** | `fin21_db..es_ccto.vigente` | ✅ **Decidido el 09-11-2026:** no se paga con el centro de costo cerrado; el pago se hace antes del cierre, dentro del mismo mes. Bloquean crear, editar y enviar la cuota (ya estaba), **aprobarla** (`sg_epaguSecgen03`, solo al aprobar; devolver y rechazar siguen posibles) y **enviarla a remuneraciones** (`sg_epaguSecgen04`). En WF resolución, el centro de costo debe estar vigente (pantalla y servidor). | La base no registra fecha de cierre (`es_ccto` solo tiene la de creación): no hay validación por fechas al crear una resolución. Si Finanzas registra la fecha de cierre, se puede agregar. |
+| **RES-CC-05 / PAG-39** | **Prohibición de Formación Continua** | Ficha del centro de costo | ✅ **Decidido el 09-11-2026:** manda la marca DU09 (`afec_du9`). En WF pagos la cubren las guardas DU09 encendidas en los PA de cuota y en la aprobación DGDP. En WF resolución se mantiene además el indicador de formación continua. | Ninguna. |
 | **PAG-33 / PAG-34** | **Licencias Médicas y Permisos sin Goce** | Marcaje biométrico (`sp_as01sSecgen01`) | ✅ **Decidido el 04-11-2026:** se ve solo en WF pagos. La única fuente automática es el marcaje biométrico cuando el día viene con un tipo de licencia o permiso, y la sección de asistencia de la cuota ya lo muestra (ausencia con motivo y justificación). Lo demás lo ajusta DGDP con documento explícito (`mto_deslic`, `mto_dessg`). | **Ya no se crea** el PA de ausencias sobre `sisper_db..sp_as21` que pedía la versión anterior de este checklist. |
-| **RES-IN-07 / PAG-32** | **Constancia Jurada de Incompatibilidad / Parentesco** | Evidencia y relación funcionario/jefe de proyecto | ⚠️ La aprobación DGDP consulta parentesco en servidor; si no puede verificarlo o la relación exige constancia, rechaza. No se acreditó una validación positiva de que la constancia exigida esté efectivamente adjunta y sea la correspondiente. | Definir dónde se persiste/identifica la constancia y validar su presencia al aprobar; probar llamada directa al endpoint y los casos con/sin parentesco. No describir el control como «constancia verificada» hasta entonces. |
-| **PAG-38** | **Cobertura de la compensación comprometida por la realizada** | `sg_fuco` / `sg_fuc2` | ⚠️ El detalle DGDP documenta bloqueo al enviar. En la página del solicitante de pagos, el indicador de compensación faltante se genera como advertencia con `blocking: false`. No se encontró esa guarda en la ruta de envío revisada ni en `sg_epaguSecgen02`. | Confirmar la regla de bloqueo y, si corresponde, aplicar la guarda para los meses de la cuota en servidor. La fuente para esta regla es el contraste declarativo, de acuerdo con la decisión de asistencia. |
+| **RES-IN-07 / PAG-32** | **Parentesco con el jefe de proyecto** | `sg_fupssSecgen12` | ✅ **Decidido el 09-11-2026:** el parentesco es invalidante en resolución y en pago. La constancia es el documento general y no lo levanta. Bloquea al agregar al funcionario y al enviar la solicitud (pantalla y servidor), al aprobarla en WF resolución, al enviar la cuota (pantalla y servidor) y al aprobarla (DGDP). Si no se puede verificar, también bloquea. | Ninguna. |
+| **PAG-38** | **Cobertura de la compensación comprometida** | `sg_fuco` / `sg_fuc2` | ✅ **Decidido el 09-11-2026:** solo invalida la **última** cuota. Las anteriores se envían y la diferencia se arrastra; la última no se envía mientras no estén realizadas todas las horas comprometidas de la prestación (total, no mes a mes). Pantalla y servidor. | Ninguna. Cierra las decisiones abiertas #1 y #2 de `decisiones_flujo_pago.md` §14. |
 | **RECESO** | **Receso Universitario No Acreditado** | Calendario institucional | ✅ Mismo criterio que licencias: no es una regla automática. DGDP rechaza el mes con su causal (estado de mes «rechazado», que no consume saldo) apoyado en documento explícito. | Ninguna, salvo que se decida automatizarlo. |
 
 ### 3.1 Compuertas de WF resolución y aprobación DGDP
