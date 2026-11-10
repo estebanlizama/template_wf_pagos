@@ -58,8 +58,8 @@ Abrir cualquiera de las vistas HTML en un navegador. Si el navegador restringe r
 
 Los procedimientos todavía no están aplicados al servidor. Preparar y ejecutar en Sybase, con revisión de los códigos disponibles del sistema:
 
-1. `datos_base/04_roles_privilegios_pagos.sql` crea el perfil 33 y sus permisos.
-2. `datos_base/05_sg_tacc_acciones_pago.sql` registra las acciones 32 (devolución) y 33 (rechazo) en `sg_tacc` para el historial.
+1. `datos_base/10_roles_privilegios_pagos.sql` crea el perfil 33 y sus permisos.
+2. `datos_base/09_sg_tacc_acciones_pago.sql` registra las acciones 32 (devolución) y 33 (rechazo) en `sg_tacc` para el historial.
 3. `cambios_pa/sg_usacs/sg_usacsSecgen01.sql` incorpora la derivación dinámica por organización 696 y contrato.
 4. `cambios_pa/sg_epag/sg_epagsSecgen01.sql` instala el listado de cuotas compatible con la BDD.
 5. `cambios_pa/sg_epag/sg_epagsSecgen03.sql` y `sg_epagsSecgen04.sql` instalan la bandeja y el detalle.

@@ -45,7 +45,7 @@ montos y antecedentes antes de enviarla a Finanzas. Exige un motivo, confirma qu
 sigan comprometidos en estado 2, conserva la asociación y registra el motivo en `sg_com1` con
 acción 34 dentro de la misma transacción. Una cuota ya enviada a Finanzas (8) no se puede reabrir.
 
-Antes de desplegarlo, cargar `datos_base/05_sg_tacc_acciones_pago.sql` (ruta relativa al paquete
+Antes de desplegarlo, cargar `datos_base/09_sg_tacc_acciones_pago.sql` (ruta relativa al paquete
 `template_wf_pagos`). La carga agrega solo las acciones faltantes 32, 33 y 34. El PA valida la
 existencia de la acción 34 antes de modificar la cuota; si falta, devuelve un mensaje de
 configuración en lugar de intentar insertar un comentario que viola la FK hacia `sg_tacc`.
@@ -326,13 +326,13 @@ que confirmarlo.
 6. sg_epag/sg_epagiSecgen01 · sg_epaguSecgen01 · sg_epagdSecgen01
 7. sg_epag/sg_epaguSecgen02   envío
 8. Backend y frontend
-9. `datos_base/04_roles_privilegios_pagos.sql`
+9. `datos_base/10_roles_privilegios_pagos.sql`
 10. `sg_usacs/sg_usacsSecgen01` y actualizar `sg_epagsSecgen01`
 11. `sg_epagsSecgen03/04` y `sg_epaguSecgen03`
 12. Backend y frontend DGDP
 13. `sg_epag/sg_epaguSecgen04`   envío a Finanzas (cierre de la cuota)
 14. Backend y frontend de la bandeja de cuotas aprobadas
-15. `datos_base/05_sg_tacc_acciones_pago.sql` (acción 34) y `sg_epag/sg_epaguSecgen05`
+15. `datos_base/09_sg_tacc_acciones_pago.sql` (acción 34) y `sg_epag/sg_epaguSecgen05`
 16. `sg_epag/sg_epagsSecgen06` e ingreso a SISPER desde el detalle de la cuota
 ```
 

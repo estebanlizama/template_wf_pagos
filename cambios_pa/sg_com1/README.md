@@ -69,7 +69,7 @@ siguen vigentes y ahora son obligatorios:
 | 33 | DGDP rechazo la cuota de pago | `cod_estcuo` → 10 |
 | 34 | DGDP devolvio una cuota aprobada a visacion | `cod_estcuo` 4 → 2 |
 
-Los carga `datos_base/05_sg_tacc_acciones_pago.sql`. **Tiene que estar aplicado
+Los carga `datos_base/09_sg_tacc_acciones_pago.sql`. **Tiene que estar aplicado
 antes** de recompilar `sg_epaguSecgen03` y `sg_epaguSecgen05`: sin la acción usada,
 el `insert` viola la FK y la transacción se revierte, de modo que DGDP no puede
 resolver o reabrir una cuota.

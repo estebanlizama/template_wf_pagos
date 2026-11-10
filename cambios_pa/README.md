@@ -360,7 +360,7 @@ Detalle del modelo, acceso y largos en [`sg_com1/README.md`](sg_com1/README.md).
 ### Orden de instalación
 
 1. `sg_com1` — ya está en la BDD de prueba.
-2. `datos_base/05_sg_tacc_acciones_pago.sql` — las acciones 32, 33 y 34.
+2. `datos_base/09_sg_tacc_acciones_pago.sql` — las acciones 32, 33 y 34.
 3. `sg_com1sSecgen01` y `sg_com1sSecgen02`.
 4. `sg_epaguSecgen03` y `sg_epaguSecgen05` recompilados, junto con el backend y frontend.
 

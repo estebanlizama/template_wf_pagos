@@ -63,7 +63,7 @@ prefijo.
 
 1. **El error se silencia.** `sg_hist` **tiene** `FK_sg_hist_sg_tacc_4` sobre
    `id_tipacc`, y las semillas base de `sg_tacc` llegan hasta el código 30. Si
-   `datos_base/05_sg_tacc_acciones_pago.sql` no está aplicado, **todo insert de
+   `datos_base/09_sg_tacc_acciones_pago.sql` no está aplicado, **todo insert de
    comentario viola la FK**, el `catch` se lo come, DGDP devuelve la cuota y el
    motivo no se guarda. La pantalla no avisa nada.
 2. **No es atómico.** Son dos llamadas sin transacción común. Si la segunda falla
@@ -265,7 +265,7 @@ fallo llega al usuario como cualquier otro error de la decisión.
 
 | Capa | Cambio |
 | :--- | :--- |
-| `datos_base/05_sg_tacc_acciones_pago.sql` | **aplicarlo**, si no lo está. Es ahora un prerrequisito duro |
+| `datos_base/09_sg_tacc_acciones_pago.sql` | **aplicarlo**, si no lo está. Es ahora un prerrequisito duro |
 | `sg_com1sSecgen01` · `sg_com1sSecgen02` | desplegar |
 | `sg_epaguSecgen03` | recompilar **después** de que exista `sg_com1` y estén las semillas |
 

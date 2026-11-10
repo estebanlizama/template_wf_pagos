@@ -112,7 +112,7 @@ Tres caminos que **no** funcionan, para cerrarlos:
 
 `sg_tacc` es un catálogo (`id_tipacc tinyint`, `des_accion varchar(50)`), llega
 hasta el 30 y la columna admite hasta 255. Agregar códigos es **semilla**, de la
-misma clase que `datos_base/01_sg_ecuo.sql`, que ya se despliega así en este
+misma clase que `datos_base/07_sg_ecuo_estados_cuota.sql`, que ya se despliega así en este
 mismo proyecto. Las dos opciones de abajo asumen que eso está permitido; si no lo
 está, no hay opción viable (§3 cierra la de reusar el 4).
 

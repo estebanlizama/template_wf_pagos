@@ -106,7 +106,7 @@ Además de compensación DGDP y contadores, verificar:
 1. sg_fumesSecgen03: lectura de todos los meses/relaciones usada por Resumen de cuotas en detalle DGDP/Finanzas.
 2. sg_fumeuSecgen03 y sg_fum2: monto/descuentos/neto y versión previa completa, incluyendo rut_regist/f_regist.
 3. sg_epaguSecgen03: rechazo bloquea meses y conserva sg_dpag; motivos acciones 32/33.
-4. datos_base/05_sg_tacc_acciones_pago.sql: carga repetible de acciones faltantes 32, 33 y 34.
+4. datos_base/09_sg_tacc_acciones_pago.sql: carga repetible de acciones faltantes 32, 33 y 34.
 5. sg_epaguSecgen05: devolución de aprobada 4→2 y guarda de acción 34 previa al cambio.
 6. sg_epaguSecgen04: cierre 4→8, meses 2→3 y total neto.
 7. sg_epagsSecgen05: recompilar corrección de error ASE 146 y ejecutar con selección controlada; sigue siendo consulta a SISPER existente, no la fuente de la descarga actual.

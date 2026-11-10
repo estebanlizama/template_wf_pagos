@@ -6,7 +6,7 @@
 
 Actualización posterior del 02-11-2026: las descripciones de cuotas se muestran directamente desde `sg_ecuo.des_estcuo`, expuestas por el backend como `status`/`installmentStatus`. Se retiró la prioridad de los diccionarios locales y el reemplazo especial del borrador. Los filtros DGDP/Finanzas consumen el endpoint existente `installment-statuses` con `codEstcuo`/`desEstcuo`; el catálogo se conserva en Vuex. Solo la opción «Todos los estados», los colores/íconos por código y los contextos como «Esta cuota» permanecen propios de la UI. Si falta una descripción de fila, se muestra No informado, no una interpretación del código.
 
-La carga inicial `datos_base/01_sg_ecuo.sql` se alineó con los nombres acordados. Si la base ya tiene los códigos vigentes y solo necesita actualizar las etiquetas, se puede usar `soporte_certificacion/07_sg_ecuo_descripciones.sql`, que contiene solo el UPDATE y la lectura de verificación, sin insertar códigos faltantes. Ambos pares SQL/TXT están sincronizados; no se ejecutó SQL en el ambiente desde esta sesión.
+La carga inicial `datos_base/07_sg_ecuo_estados_cuota.sql` se alineó con los nombres acordados. Si la base ya tiene los códigos vigentes y solo necesita actualizar las etiquetas, se puede usar `soporte_certificacion/07_sg_ecuo_descripciones.sql`, que contiene solo el UPDATE y la lectura de verificación, sin insertar códigos faltantes. Ambos pares SQL/TXT están sincronizados; no se ejecutó SQL en el ambiente desde esta sesión.
 
 Se conservan códigos y transiciones de `sg_epag`, estados de meses y decisiones DGDP. Se precisan nombres de pantalla y se agregan comprobaciones de lectura independientes. Ninguna consulta de registro modifica el estado de la cuota.
 

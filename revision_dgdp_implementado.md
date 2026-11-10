@@ -19,7 +19,7 @@ Corrección a un diagnóstico anterior: el lado DGDP **sí existe** de punta a p
 | PA | `sg_epagsSecgen03` | `sg_epagsSecgen04` | `sg_epaguSecgen03` |
 | Menú | `servicesProvisionPayments.js` → "Revisión de cuotas DGDP" | — | — |
 
-El criterio de acceso se revalida dentro de Sybase en los tres PA: contrato vigente en `sp_cont` (`vigen_cont` en 0 o 2, `cod_calida` distinto de 01, fechas vigentes) **y** fila vigente en `sp_orde` con `cod_organi = 696` para el RUT autenticado. El permiso se deriva en `sg_usacsSecgen01` y se cataloga en `datos_base/04_roles_privilegios_pagos.sql` (privilegio 94).
+El criterio de acceso se revalida dentro de Sybase en los tres PA: contrato vigente en `sp_cont` (`vigen_cont` en 0 o 2, `cod_calida` distinto de 01, fechas vigentes) **y** fila vigente en `sp_orde` con `cod_organi = 696` para el RUT autenticado. El permiso se deriva en `sg_usacsSecgen01` y se cataloga en `datos_base/10_roles_privilegios_pagos.sql` (privilegio 94).
 
 ---
 

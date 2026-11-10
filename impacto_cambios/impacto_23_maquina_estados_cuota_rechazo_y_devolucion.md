@@ -90,7 +90,7 @@ Al evaluar el saldo comprometido del funcionario (`amountCommitted` / `totalPres
 - Endpoint `POST .../dgdp/provisions/{staffProvisionId}/installments/{installmentNumber}/reopen` y PA `sg_epaguSecgen05`.
 - Exige motivo, cuota aprobada y todos sus meses comprometidos. No admite cuota ya enviada (8).
 - Conserva `sg_dpag` y los meses en 2; guarda motivo, actor y fecha en `sg_com1`, acción 34 de `sg_tacc`.
-- La carga `datos_base/05_sg_tacc_acciones_pago.sql` inserta solo las acciones faltantes 32, 33 y 34. El PA comprueba la 34 antes de modificar la cuota.
+- La carga `datos_base/09_sg_tacc_acciones_pago.sql` inserta solo las acciones faltantes 32, 33 y 34. El PA comprueba la 34 antes de modificar la cuota.
 - En la sesión se observó una violación de FK por acción 34 ausente; el usuario informó haber agregado el catálogo. Falta evidencia del reintento satisfactorio en ambiente.
 - La misma página de detalle sirve a revisión y a Finanzas; el botón de devolución se presenta al entrar desde Finanzas con estado 4.
 

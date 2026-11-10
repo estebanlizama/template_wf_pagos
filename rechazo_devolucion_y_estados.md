@@ -680,9 +680,9 @@ muestra lo que solicitó sin DDL alguno.
 
 **Catálogos y decisiones**
 
-- `datos_base/01_sg_ecuo.sql`: el 10 pasa de «libera cupo, saldo y meses» a
+- `datos_base/07_sg_ecuo_estados_cuota.sql`: el 10 pasa de «libera cupo, saldo y meses» a
   «bloquea», con la fecha y el motivo del cambio.
-- `datos_base/02_sg_efum.sql`: la transición `2 → 1` pasa a `2 → 4`, PAGOS ya no
+- `datos_base/08_sg_efum_estados_mes.sql`: la transición `2 → 1` pasa a `2 → 4`, PAGOS ya no
   escribe el 1, y la sección «los dos rechazos son distintos» se reescribió: el
   estado del mes es el mismo y lo que cambia es el alcance.
 - `decisiones_flujo_pago.md` §3.2: la regla «rechazar sí libera» quedó invertida

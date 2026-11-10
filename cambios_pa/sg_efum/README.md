@@ -24,7 +24,7 @@ estado deja de usarse se retira del diseño, no de la tabla.
 | 3 | Enviada a pago | pagos |
 | 4 | Rechazada | pagos |
 
-Carga inicial en `../../datos_base/02_sg_efum.sql`.
+Carga inicial en `../../datos_base/08_sg_efum_estados_mes.sql`.
 
 ---
 
