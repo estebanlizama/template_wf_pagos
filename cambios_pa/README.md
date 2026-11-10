@@ -97,11 +97,16 @@ urge gestionar.
 
 ### `cant_cuotas_disp` — cuotas sobre las que hoy se puede pedir pago
 
-Cuenta las cuotas sin gestionar cuya ejecucion ya termino: su mes es anterior
-al mes en curso, o la prestacion completa cerro antes de hoy. El segundo caso
-cubre una prestacion corta dentro del mes actual, que de otro modo habria que
-esperar al mes siguiente para cobrar. Responde a Q-A02: solo se paga trabajo
-ya realizado.
+Cuenta las cuotas sin gestionar cuyo mes ya comenzo: su mes es anterior o igual
+al mes en curso, o la prestacion completa cerro antes de hoy.
+
+**Cambio del 10-11-2026:** antes exigia que el mes hubiera terminado (mes
+anterior al actual), por Q-A02 "solo se paga trabajo ya realizado". Se
+reemplazo porque el pago se gestiona dentro del mismo mes: la prestacion de
+noviembre se tramita durante noviembre. Un mes se puede pagar desde su dia 1;
+los meses futuros siguen bloqueados. Mismo criterio en `sg_fumesSecgen02`,
+`sg_fumesSecgen03`, `sg_epagiSecgen01`, `sg_epaguSecgen01` y `sg_epaguSecgen02`
+(envio; ahi la regla esta negada: invalida el mes si es posterior al actual).
 
 ### `per_pendiente_min` — atraso real
 

@@ -143,6 +143,8 @@ mes de pago = último mes ejecutado + 1   →  corriente
 posterior a eso                          →  atrasada
 ```
 
+**✅ Un mes se paga desde su día 1 (decidido el 10-11-2026).** El pago se gestiona dentro del mismo mes: la prestación de noviembre se tramita durante noviembre. Reemplaza el criterio anterior (Q-A02, "solo se paga trabajo ya realizado"), que obligaba a esperar al mes siguiente. Los meses futuros siguen bloqueados. No hay plazo máximo: una cuota, incluida la última, puede pagarse incluso el año siguiente (p. ej. noviembre o diciembre pagados en enero), siempre que el centro de costo siga vigente. La última cuota no se paga antes del mes de término de la ejecución (`sg_epagiSecgen01`).
+
 **📋 Dos cuotas en el mismo mes de pago: permitido**, con advertencia y causal registrada. Es el caso legítimo de pagar en octubre la corriente de septiembre más una atrasada de julio. Pero dos cuotas agotan el cupo del año salvo extensión autorizada.
 
 **✅ Cupo:** máximo 2 cuotas por prestación y funcionario en el año de ejecución, **sin límite si `sg_fups.ext_cuotas = 'S'`** (ANID o extensión autorizada).

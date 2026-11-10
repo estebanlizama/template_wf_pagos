@@ -22,7 +22,7 @@ go
    Objetivo : Crear una cuota en borrador y asociarle los meses de ejecucion seleccionados.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/10
 */
 create procedure Analisis2.sg_epagiSecgen01
     @id_funprse int          = null,
@@ -198,12 +198,12 @@ select @validos = count(*)
    and fume.corr_fume  = c.corr_fume
    and fu.id_funprse   = fume.id_funprse
    and fume.cod_estfum = 1
-   and ((fume.ano_prop * 100 + fume.mes_prop) < @mes_actual
+   and ((fume.ano_prop * 100 + fume.mes_prop) <= @mes_actual
         or fu.f_termino < getdate())
 
 if @validos <> @pedidos
 begin
-    select 'Error: Algun mes no existe, no esta propuesto o su ejecucion no ha terminado' as msg
+    select 'Error: Algun mes no existe, no esta propuesto o su mes aun no comienza' as msg
     return
 end
 

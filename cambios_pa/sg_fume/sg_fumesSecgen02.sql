@@ -21,7 +21,7 @@ go
    descuentos y la cuota que los contiene.
 
    Creacion: ELA 2026/10/02
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/10
 */
 create procedure Analisis2.sg_fumesSecgen02
     @rut_person char(9) = null,
@@ -75,7 +75,7 @@ select
     ep.ano_pago,
     ep.mes_pago,
     case when fm.cod_estfum = 1
-          and ((fm.ano_prop * 100 + fm.mes_prop) < @mes_actual
+          and ((fm.ano_prop * 100 + fm.mes_prop) <= @mes_actual
                or fu.f_termino < getdate())
          then 'S' else 'N' end as disponible,
     (select count(*)

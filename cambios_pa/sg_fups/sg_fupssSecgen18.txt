@@ -21,7 +21,7 @@ go
    y resumir sus cuotas de pago.
 
    Creacion: ELA 2026/09/22
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/10
 */
 create procedure Analisis2.sg_fupssSecgen18
     @rut_person char(9)  = null,
@@ -88,7 +88,7 @@ select
     sum(case when fume.cod_estfum = 3        then 1 else 0 end) as cant_cuotas_paga,
     sum(case when fume.cod_estfum = 4        then 1 else 0 end) as cant_cuotas_rech,
     sum(case when fume.cod_estfum = 1
-              and ((fume.ano_prop * 100 + fume.mes_prop) < @mes_actual
+              and ((fume.ano_prop * 100 + fume.mes_prop) <= @mes_actual
                    or fu.f_termino < getdate())
              then 1 else 0 end)                                 as cant_cuotas_disp,
     (select count(*)

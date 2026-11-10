@@ -19,7 +19,7 @@ go
    Objetivo : Listar todos los meses de ejecucion de una prestacion y sus antecedentes para pagos.
 
    Creacion: ELA 2026/10/15
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/10
 */
 create procedure Analisis2.sg_fumesSecgen03
     @rut_person char(9) = null,
@@ -100,7 +100,7 @@ select
     ep.ano_pago,
     ep.mes_pago,
     case when fm.cod_estfum = 1
-          and ((fm.ano_prop * 100 + fm.mes_prop) < @mes_actual
+          and ((fm.ano_prop * 100 + fm.mes_prop) <= @mes_actual
                or fu.f_termino < getdate())
          then 'S' else 'N' end as disponible,
     (select count(*)

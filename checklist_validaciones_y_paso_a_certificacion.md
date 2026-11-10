@@ -7,6 +7,12 @@
 
 ---
 
+## 0.0 Decisión del 10-11-2026, aplicada
+
+| Tema | Decisión | Dónde quedó |
+| :--- | :--- | :--- |
+| Mes pagable | Un mes se paga desde su día 1, dentro del mismo mes (antes: desde el mes siguiente, Q-A02). Sin plazo máximo mientras el centro de costo esté vigente; la última cuota no antes del mes de término | `sg_fumesSecgen02`, `sg_fumesSecgen03`, `sg_epagiSecgen01`, `sg_epaguSecgen01`, `sg_fupssSecgen18` (`<` → `<=` sobre el mes en curso) y `sg_epaguSecgen02` (envío: `>=` → `>`), cabecera ELA 2026/11/10; texto de pantalla «El mes aún no comienza» |
+
 ## 0.1 Decisiones del 09-11-2026, aplicadas
 
 | Tema | Decisión | Dónde quedó |

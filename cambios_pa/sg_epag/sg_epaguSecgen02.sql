@@ -20,7 +20,7 @@ go
    misma transaccion. El monto usado incluye los meses rechazados: desde el 26-10-2026 ese dinero queda descontado del total.
 
    Creacion: ELA 2026/10/01
-   Actualizacion: Sin registro
+   Actualizacion: ELA 2026/11/10
 */
 create procedure Analisis2.sg_epaguSecgen02
     @id_funprse int = null,
@@ -168,7 +168,7 @@ begin
        and fume.corr_fume  = dpag.corr_fume
        and fu.id_funprse   = fume.id_funprse
        and (fume.cod_estfum <> 1
-            or ((fume.ano_prop * 100 + fume.mes_prop) >= @mes_actual
+            or ((fume.ano_prop * 100 + fume.mes_prop) > @mes_actual
                 and fu.f_termino >= getdate()))
 
     if @mal_estado > 0
